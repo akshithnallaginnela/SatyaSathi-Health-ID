@@ -12,7 +12,12 @@ import {
   Home, 
   ClipboardList, 
   User,
-  CheckCircle2
+  CheckCircle2,
+  Thermometer,
+  Flame,
+  Footprints,
+  Droplet,
+  TestTubes
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -143,6 +148,22 @@ const MetricPill = ({ label, value, note, attention = false }: { label: string, 
         · {note}
       </span>
     )}
+  </div>
+);
+
+const LabResultCard = ({ title, value, unit, date, status }: { title: string, value: string, unit: string, date: string, status: 'Normal' | 'High' | 'Low' }) => (
+  <div className="bg-white border-[1.5px] border-teal-border rounded-[20px] p-4 flex flex-col gap-2 min-w-[140px] shadow-sm">
+    <div className="flex justify-between items-start">
+      <span className="text-dark-teal font-bold text-xs">{title}</span>
+      <span className={`text-[8px] font-extrabold px-2 py-0.5 rounded-full ${status === 'Normal' ? 'bg-light-teal-surface text-primary-teal' : 'bg-red-50 text-red-500'}`}>
+        {status}
+      </span>
+    </div>
+    <div className="flex items-baseline gap-1">
+      <span className="text-dark-teal font-extrabold text-xl">{value}</span>
+      <span className="text-muted-teal text-[10px] font-bold">{unit}</span>
+    </div>
+    <span className="text-muted-teal text-[9px] font-semibold">{date}</span>
   </div>
 );
 
@@ -351,6 +372,10 @@ const VitalsScreen = () => {
           <VitalCard icon={<Droplets size={16} />} value="108" unit="mg/dl" name="Blood sugar" tag="Normal" />
           <VitalCard icon={<Activity size={16} />} value="78" unit="bpm" name="Heart rate" tag="Normal" />
           <VitalCard icon={<Wind size={16} />} value="97" unit="%" name="SpO2" tag="Normal" />
+          <VitalCard icon={<Thermometer size={16} />} value="36.8" unit="°C" name="Body Temp" tag="Normal" />
+          <VitalCard icon={<Droplet size={16} />} value="1.2" unit="L" name="Hydration" tag="Low" />
+          <VitalCard icon={<Flame size={16} />} value="1,450" unit="kcal" name="Active Energy" tag="Normal" />
+          <VitalCard icon={<Footprints size={16} />} value="6,240" unit="steps" name="Steps" tag="Normal" />
         </div>
       </div>
 
@@ -359,9 +384,22 @@ const VitalsScreen = () => {
         <div className="flex gap-3 overflow-x-auto hide-scrollbar pb-2">
           <MetricPill label="BMI" value="24.8" note="Healthy" />
           <MetricPill label="Weight" value="72 kg" />
+          <MetricPill label="Body Fat" value="18.5 %" />
+          <MetricPill label="Muscle Mass" value="54 kg" />
+          <MetricPill label="Water" value="58 %" />
           <MetricPill label="Sleep" value="6.2 hrs" note="Low" attention />
           <MetricPill label="Stress" value="6/10" note="Manage" attention />
           <MetricPill label="Activity" value="Low" note="Increase" attention />
+        </div>
+      </div>
+
+      <div className="mt-6 px-6">
+        <h3 className="text-primary-teal text-[10px] font-extrabold uppercase tracking-widest mb-3">Recent lab results</h3>
+        <div className="flex gap-4 overflow-x-auto hide-scrollbar pb-2">
+          <LabResultCard title="Cholesterol (LDL)" value="112" unit="mg/dL" date="Oct 12, 2025" status="High" />
+          <LabResultCard title="HbA1c" value="5.4" unit="%" date="Oct 12, 2025" status="Normal" />
+          <LabResultCard title="Vitamin D" value="28" unit="ng/mL" date="Oct 12, 2025" status="Low" />
+          <LabResultCard title="Triglycerides" value="145" unit="mg/dL" date="Oct 12, 2025" status="Normal" />
         </div>
       </div>
 
