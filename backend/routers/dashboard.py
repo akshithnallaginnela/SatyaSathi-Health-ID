@@ -1,0 +1,126 @@
+"""
+Dashboard router — single summary endpoint for the home screen.
+"""
+
+from datetime import date, datetime, timedelta
+from fastapi import APIRouter, Depends
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, desc, func
+
+from database import get_db
+from models.user import User
+from models.health_record import VitalsLog
+from models.task import DailyTask
+from models.coin_ledger import CoinLedger
+from security.jwt_handler import get_current_user_id
+
+router = APIRouter(prefix="/api/dashboard", tags=["Dashboard"])
+
+
+@router.get("/summary")
+async def get_dashboard_summary(
+    user_id: str = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get aggregated dashboard data for the home screen."""
+
+    # Get user
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+
+    # Get latest vitals
+    result = await db.execute(
+        select(VitalsLog)
+        .where(VitalsLog.user_id == user_id)
+        .order_by(desc(VitalsLog.measured_at))
+        .limit(1)
+    )
+    latest_vitals = result.scalar_one_or_none()
+
+    # Get today's tasks
+    today = date.today()
+    result = await db.execute(
+        select(DailyTask)
+        .where(DailyTask.user_id == user_id, DailyTask.task_date == today)
+    )
+    todays_tasks = result.scalars().all()
+
+    # Get coin balance
+    result = await db.execute(
+        select(func.coalesce(func.sum(CoinLedger.amount), 0))
+        .where(CoinLedger.user_id == user_id)
+    )
+    coin_balance = result.scalar() or 0
+
+    # Calculate streak (consecutive days with at least 1 completed task)
+    streak = 0
+    check_date = today - timedelta(days=1)
+    while True:
+        result = await db.execute(
+            select(func.count())
+            .select_from(DailyTask)
+            .where(
+                DailyTask.user_id == user_id,
+                DailyTask.task_date == check_date,
+                DailyTask.completed == True,
+            )
+        )
+        count = result.scalar()
+        if count and count > 0:
+            streak += 1
+            check_date -= timedelta(days=1)
+        else:
+            break
+
+    # Week completion (Mon=0 to Sun=6 for this week)
+    week_start = today - timedelta(days=today.weekday())
+    week_completion = []
+    for i in range(7):
+        day = week_start + timedelta(days=i)
+        result = await db.execute(
+            select(func.count())
+            .select_from(DailyTask)
+            .where(
+                DailyTask.user_id == user_id,
+                DailyTask.task_date == day,
+                DailyTask.completed == True,
+            )
+        )
+        count = result.scalar()
+        week_completion.append(bool(count and count > 0))
+
+    # Build response
+    initials = "".join(word[0].upper() for word in (user.full_name or "U").split()[:2])
+
+    tasks_done = sum(1 for t in todays_tasks if t.completed)
+    tasks_total = len(todays_tasks)
+
+    return {
+        "user": {
+            "name": user.full_name if user else "User",
+            "initials": initials,
+            "health_id": user.health_id if user else None,
+        },
+        "wellness_score": 72,  # TODO: calculate from ML models
+        "streak_days": streak,
+        "week_completion": week_completion,
+        "coin_balance": int(coin_balance),
+        "todays_tasks": [
+            {
+                "id": t.id,
+                "type": t.task_type,
+                "name": t.task_name,
+                "coins": t.coins_reward,
+                "completed": t.completed,
+                "time_slot": t.time_slot,
+            }
+            for t in todays_tasks
+        ],
+        "tasks_summary": f"{tasks_done}/{tasks_total} Done",
+        "vitals_snapshot": {
+            "bp": f"{latest_vitals.systolic}/{latest_vitals.diastolic}" if latest_vitals and latest_vitals.systolic else None,
+            "glucose": float(latest_vitals.fasting_glucose) if latest_vitals and latest_vitals.fasting_glucose else None,
+            "pulse": latest_vitals.pulse if latest_vitals else None,
+            "spo2": latest_vitals.spo2 if latest_vitals else None,
+        } if latest_vitals else {},
+    }
