@@ -85,8 +85,9 @@ async def register(data: UserCreate, request: Request, db: AsyncSession = Depend
     }
 
     # In production: send OTP via Twilio
-    # For dev: print OTP to console
-    print(f"[DEV] OTP for {data.phone_number}: {otp}")
+    # For dev fallback: prints OTP to console
+    from services.sms_service import send_otp_sms
+    send_otp_sms(data.phone_number, otp)
 
     # 6. Audit log
     await log_event(db, action="REGISTER", user_id=user.id,
