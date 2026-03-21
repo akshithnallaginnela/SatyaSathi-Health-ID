@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import { 
   Flame, 
   CheckCircle2, 
@@ -8,13 +8,35 @@ import {
   MapPin, 
   Activity, 
   Heart,
-  Image as ImageIcon
+  Image as ImageIcon,
+  UploadCloud,
+  X
 } from 'lucide-react';
-import { dashboardAPI } from '../services/api.ts';
+import { dashboardAPI, ocrAPI } from '../services/api.ts';
 
 export default function DashboardScreen() {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+
+  const [showOcrModal, setShowOcrModal] = useState(false);
+  const [ocrLoading, setOcrLoading] = useState(false);
+  const [ocrResult, setOcrResult] = useState<any>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+
+  const handleOcrUpload = async () => {
+    if (!selectedFile) return;
+    setOcrLoading(true);
+    setOcrResult(null);
+    try {
+      const res = await ocrAPI.analyze(selectedFile);
+      setOcrResult(res);
+    } catch (e) {
+      console.error(e);
+      setOcrResult({ error: 'Failed to process document. Ensure API key is set.' });
+    } finally {
+      setOcrLoading(false);
+    }
+  };
 
   useEffect(() => {
     (async () => {
@@ -327,12 +349,12 @@ export default function DashboardScreen() {
               </div>
             </div>
 
-            <div className="relative">
-              <div className="absolute left-[-21px] top-1 w-3.5 h-3.5 bg-primary-teal rounded-full border-2 border-[#FAFAFA]" />
+            <div className="relative cursor-pointer hover:bg-light-teal-surface rounded-xl p-2 -ml-2 transition-colors" onClick={() => setShowOcrModal(true)}>
+              <div className="absolute left-[-13px] top-3 w-3.5 h-3.5 bg-primary-teal rounded-full border-2 border-[#FAFAFA]" />
               <div className="flex justify-between items-center">
                 <div>
                   <h4 className="text-dark-teal font-bold text-[14px]">Upload blood report</h4>
-                  <p className="text-muted-teal text-[11px] font-medium">This week</p>
+                  <p className="text-muted-teal text-[11px] font-medium">This week (Tap to scan)</p>
                 </div>
                 <div className="bg-[#E0F7F4] text-[#1A9E98] font-bold text-[11px] px-3 py-1.5 rounded-full">+25 coins</div>
               </div>
@@ -354,6 +376,78 @@ export default function DashboardScreen() {
         </div>
 
       </div>
+
+      {/* OCR Scan Modal */}
+      <AnimatePresence>
+        {showOcrModal && (
+          <div className="fixed inset-0 bg-[#1A3A38]/40 backdrop-blur-sm flex items-end justify-center z-[100] p-4 pb-24">
+            <motion.div initial={{ y: 300, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 300, opacity: 0 }}
+              className="bg-white w-full max-w-[400px] rounded-[32px] p-6 shadow-2xl relative max-h-[80vh] overflow-y-auto no-scrollbar">
+              <button onClick={() => { setShowOcrModal(false); setOcrResult(null); setSelectedFile(null); }} className="absolute top-6 right-6 text-[#7ECCC7] bg-[#F2FDFB] p-2 rounded-full">
+                <X size={20} />
+              </button>
+              
+              <h2 className="text-[#1A3A38] font-extrabold text-xl mb-2">Scan Medical Report</h2>
+              <p className="text-[#7ECCC7] text-xs font-semibold mb-6">Powered by Gemini AI Vision</p>
+
+              {!ocrResult && (
+                <>
+                  <label className="border-2 border-dashed border-[#C8F0EC] bg-[#F2FDFB] rounded-[24px] p-8 flex flex-col items-center justify-center cursor-pointer transition-colors mt-4">
+                    <UploadCloud size={40} className="text-[#26C6BF] mb-3" />
+                    <span className="text-[#1A3A38] font-extrabold text-sm mb-1">{selectedFile ? selectedFile.name : 'Choose an image or PDF'}</span>
+                    <span className="text-[#7ECCC7] text-[10px] font-bold uppercase tracking-wider">Tap to browse</span>
+                    <input type="file" accept="image/*,application/pdf" className="hidden" onChange={(e) => setSelectedFile(e.target.files?.[0] || null)} />
+                  </label>
+
+                  <button onClick={handleOcrUpload} disabled={!selectedFile || ocrLoading}
+                    className="w-full mt-6 bg-[#26C6BF] text-white font-extrabold text-[15px] py-4 rounded-[16px] shadow-sm disabled:opacity-50 transition-all">
+                    {ocrLoading ? 'Analyzing with AI...' : 'Scan Document'}
+                  </button>
+                </>
+              )}
+
+              {ocrResult && !ocrResult.error && (
+                <div className="mt-4">
+                  <div className="bg-[#E0F7F4] border border-[#26C6BF] rounded-xl p-4 mb-4">
+                    <h3 className="text-[#26C6BF] font-extrabold text-sm mb-2 flex items-center gap-2">
+                      <CheckCircle2 size={16} /> Analysis Complete
+                    </h3>
+                    <p className="text-[#1A3A38] text-[11px] font-semibold">{ocrResult.message}</p>
+                  </div>
+                  
+                  <div className="bg-gray-50 rounded-xl p-4 max-h-[250px] overflow-y-auto border border-gray-100">
+                    {/* Render the extracted JSON nicely */}
+                    {Object.entries(ocrResult.data || {}).map(([key, val]) => (
+                      <div key={key} className="mb-3 last:mb-0">
+                        <span className="text-[#7ECCC7] text-[10px] font-extrabold uppercase tracking-wider block mb-0.5">{key.replace(/_/g, ' ')}</span>
+                        {typeof val === 'object' ? (
+                          <pre className="text-[#1A3A38] text-[11px] font-mono bg-white p-2 rounded-lg border border-gray-100">{JSON.stringify(val, null, 2)}</pre>
+                        ) : (
+                          <span className="text-[#1A3A38] font-bold text-[13px]">{val as string}</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+
+                  <button onClick={() => { setShowOcrModal(false); setOcrResult(null); setSelectedFile(null); }}
+                    className="w-full mt-6 bg-[#1A3A38] text-white font-extrabold text-[15px] py-4 rounded-[16px] shadow-sm">
+                    Save to Profile
+                  </button>
+                </div>
+              )}
+
+              {ocrResult?.error && (
+                <div className="mt-4 bg-[#FFF0F0] border border-[#FF4D4D] rounded-xl p-4 mb-4">
+                  <h3 className="text-[#FF4D4D] font-extrabold text-sm mb-1">Error analyzing</h3>
+                  <p className="text-[#1A3A38] text-[11px] font-medium">{ocrResult.error}</p>
+                  <button onClick={() => setOcrResult(null)} className="mt-3 text-[#FF4D4D] text-[11px] font-extrabold underline">Try again</button>
+                </div>
+              )}
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
     </motion.div>
   );
 }
