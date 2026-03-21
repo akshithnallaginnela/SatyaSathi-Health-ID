@@ -72,15 +72,7 @@ function App() {
           </div>
         </div>
 
-        {/* Header App Title - only on some screens if needed, otherwise handled inside screens */}
-        {activeTab === 'dashboard' && (
-          <div className="absolute top-12 w-full flex justify-center z-40 pointer-events-none opacity-50">
-            <div className="flex items-center gap-1">
-              <Stethoscope size={14} className="text-primary-teal"/>
-              <span className="text-primary-teal font-extrabold text-[10px] tracking-widest uppercase">VitalID</span>
-            </div>
-          </div>
-        )}
+        {/* Header App Title - handled inside screens so it doesn't overlap */}
 
         {/* Main Content Area */}
         <div className="flex-1 overflow-y-auto no-scrollbar bg-[#FAFAFA]">

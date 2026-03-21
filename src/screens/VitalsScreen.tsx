@@ -3,7 +3,7 @@
  */
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Activity, Plus, Droplet, Heart, Scale, X, TrendingUp } from 'lucide-react';
+import { Activity, Plus, Droplet, Heart, Scale, X, TrendingUp, FileText } from 'lucide-react';
 import { vitalsAPI } from '../services/api.ts';
 
 export default function VitalsScreen() {
@@ -82,8 +82,37 @@ export default function VitalsScreen() {
         </div>
       </div>
 
+      {/* Monthly Clinical Test */}
+      <div className="px-6 mb-2 shrink-0">
+        <div className="bg-white border-[1.5px] border-teal-border rounded-[28px] p-5 shadow-sm">
+          <div className="flex justify-between items-start mb-2">
+            <h3 className="text-dark-teal font-extrabold text-[16px] flex items-center gap-2">
+              <FileText size={18} className="text-primary-teal" />
+              Monthly Clinical Test
+            </h3>
+            <span className="bg-[#FFEFEF] text-[#FF4D4D] text-[10px] font-extrabold px-2 py-1 rounded-full">Due in 3 days</span>
+          </div>
+          <p className="text-primary-teal text-[12px] font-medium leading-snug mb-4 pr-6">
+            Complete your routine full body checkup to maintain your health streak.
+          </p>
+          
+          <div className="w-full bg-[#F2FDFB] h-[5px] rounded-full overflow-hidden mb-2">
+            <div className="bg-teal-border h-full" style={{ width: '0%' }}></div>
+          </div>
+          
+          <div className="flex justify-between items-center text-[10px] font-extrabold mb-4">
+            <span className="text-primary-teal">0/1 Completed</span>
+            <span className="text-primary-teal">+500 pts</span>
+          </div>
+
+          <button className="w-full bg-primary-teal text-white font-extrabold text-[14px] py-3.5 rounded-[14px] shadow-sm hover:opacity-90 transition-opacity">
+            Verify this month's reading
+          </button>
+        </div>
+      </div>
+
       {/* History List */}
-      <div className="px-6 flex-1 overflow-y-auto">
+      <div className="px-6 flex-1 overflow-y-auto pt-2">
         <div className="flex justify-between items-end mb-4">
           <h3 className="text-dark-teal font-extrabold text-sm uppercase tracking-wider">Recent Logs</h3>
         </div>
