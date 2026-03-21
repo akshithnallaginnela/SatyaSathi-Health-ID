@@ -15,17 +15,17 @@ def send_otp_sms(phone_number: str, otp: str):
         phone_number = f"+91{phone_number}"
         
     if not account_sid or not auth_token or not from_phone:
-        print(f"[MOCK SMS] To: {phone_number} | Your VitalID OTP is: {otp}")
+        print(f"[MOCK SMS] To: {phone_number} | Your Health ID OTP is: {otp}")
         return
         
     try:
         client = Client(account_sid, auth_token)
         message = client.messages.create(
-            body=f"Your VitalID verification code is: {otp}. Do not share this with anyone.",
+            body=f"Your Health ID verification code is: {otp}. Do not share this with anyone.",
             from_=from_phone,
             to=phone_number
         )
         print(f"Twilio SMS sent: {message.sid}")
     except Exception as e:
         print(f"Twilio failed, falling back to mock. Error: {e}")
-        print(f"[MOCK SMS] To: {phone_number} | Your VitalID OTP is: {otp}")
+        print(f"[MOCK SMS] To: {phone_number} | Your Health ID OTP is: {otp}")
