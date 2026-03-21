@@ -6,7 +6,7 @@ import { motion } from 'motion/react';
 import { User, Shield, CreditCard, Activity, LogOut, ChevronRight } from 'lucide-react';
 import { profileAPI, coinsAPI, clearTokens } from '../services/api.ts';
 
-export default function MyIDScreen({ user, onLogout }: { user: any; onLogout: () => void }) {
+export default function MyIDScreen({ user, onLogout }: { user: any; onLogout: () => void; key?: string | number }) {
   const [profile, setProfile] = useState<any>(user);
   const [coins, setCoins] = useState(0);
   const [activity, setActivity] = useState<any>({ coin_transactions: [], completed_tasks: [] });
