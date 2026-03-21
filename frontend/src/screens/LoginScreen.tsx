@@ -36,7 +36,7 @@ export default function LoginScreen({ onLogin, onSwitchToRegister }: {
         <div className="bg-primary-teal pt-16 pb-12 px-8 text-center relative overflow-hidden">
           <div className="absolute top-[-50px] right-[-50px] w-48 h-48 bg-[#1EB5AE] rounded-full opacity-40 blur-2xl" />
           <Heart className="mx-auto mb-4 text-white" size={40} />
-          <h1 className="text-white text-2xl font-extrabold">VitalID</h1>
+          <h1 className="text-white text-2xl font-extrabold">Health ID</h1>
           <p className="text-[#B2EFEB] text-sm mt-1">Your Health, Your Control</p>
         </div>
 

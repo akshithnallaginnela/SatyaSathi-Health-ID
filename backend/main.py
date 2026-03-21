@@ -1,5 +1,5 @@
 """
-VitalID Backend — FastAPI application.
+Health ID Backend — FastAPI application.
 """
 
 import sys
