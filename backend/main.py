@@ -29,6 +29,9 @@ from security.audit_log import AuditLog
 from routers.auth import router as auth_router
 from routers.vitals import router as vitals_router
 from routers.dashboard import router as dashboard_router
+from routers.tasks import router as tasks_router
+from routers.coins import router as coins_router
+from routers.profile import router as profile_router
 
 
 @asynccontextmanager
@@ -63,6 +66,9 @@ app.add_middleware(
 app.include_router(auth_router)
 app.include_router(vitals_router)
 app.include_router(dashboard_router)
+app.include_router(tasks_router)
+app.include_router(coins_router)
+app.include_router(profile_router)
 
 
 # ─── Health Check ───
