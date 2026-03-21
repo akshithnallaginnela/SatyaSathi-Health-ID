@@ -28,7 +28,8 @@ async def analyze_document(file: UploadFile = File(...)):
             filename=file.filename,
             content_type=file.content_type
         )
-        
+        # 2. Extract structured medical data using Gemini Fast Vision
+        extracted_data = await process_health_document(contents)
         
         # 3. Mint an immutable record of the medical report on Polygon Blockchain
         # (Using a mock patient ID for demo, in reality we'd extract user_id from JWT token payload)
