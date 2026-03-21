@@ -1,0 +1,33 @@
+from fastapi import APIRouter, UploadFile, File, HTTPException
+from typing import Dict
+from services.ocr_service import process_health_document
+
+router = APIRouter(prefix="/api/ocr", tags=["OCR & Document Processing"])
+
+@router.post("/analyze")
+async def analyze_document(file: UploadFile = File(...)):
+    """
+    Upload an image of a medical document (prescription, report, etc.)
+    and extract structured medical data using Gemini 1.5 Flash.
+    """
+    # Validate file type
+    if file.content_type not in ["image/jpeg", "image/png", "image/webp"]:
+        raise HTTPException(
+            status_code=400, 
+            detail="Invalid file format. Please upload a JPEG, PNG, or WEBP image."
+        )
+        
+    try:
+        contents = await file.read()
+        extracted_data = await process_health_document(contents)
+        
+        return {
+            "success": True,
+            "filename": file.filename,
+            "data": extracted_data
+        }
+    except ValueError as val_err:
+        raise HTTPException(status_code=500, detail=str(val_err))
+    except Exception as e:
+        print(f"OCR Router Error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to process document through OCR engine.")

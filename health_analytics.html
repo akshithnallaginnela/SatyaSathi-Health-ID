@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Health Analytics - VitalID</title>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-body: #E8F9F7;
+            --bg-white: #FFFFFF;
+            --primary-teal: #26C6BF;
+            --light-teal: #F2FDFB;
+            --border-teal: #C8F0EC;
+            --dark-text: #1A3A38;
+            --muted-text: #7ECCC7;
+            --badge-bg: #E0F7F4;
+            --success-teal: #1EB5AE;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Nunito', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background-color: var(--bg-body);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        /* Phone Frame */
+        .phone {
+            width: 375px;
+            height: 812px;
+            background-color: var(--bg-white);
+            border-radius: 40px;
+            border: 8px solid var(--border-teal);
+            overflow: hidden;
+            position: relative;
+            box-shadow: 0 20px 40px rgba(38, 198, 191, 0.15);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .scroll-area {
+            flex: 1;
+            overflow-y: auto;
+            position: relative;
+            padding-bottom: 90px; /* Space for bottom nav */
+        }
+
+        /* Hide scrollbar */
+        .scroll-area::-webkit-scrollbar { display: none; }
+        .scroll-span::-webkit-scrollbar { display: none; }
+
+        /* General Utilities */
+        .flex { display: flex; }
+        .items-center { align-items: center; }
+        .justify-between { justify-content: space-between; }
+        .font-800 { font-weight: 800; }
+        .font-700 { font-weight: 700; }
+        .font-600 { font-weight: 600; }
+        .font-400 { font-weight: 400; }
+        
+        .text-dark { color: var(--dark-text); }
+        .text-muted { color: var(--muted-text); }
+        .text-white { color: var(--bg-white); }
+        .text-teal { color: var(--primary-teal); }
+
+        /* SECTION 1: HEADER */
+        .header {
+            background-color: var(--primary-teal);
+            position: relative;
+            padding: 40px 24px 0;
+            overflow: hidden;
+        }
+
+        .blob-1 {
+            position: absolute;
+            width: 200px;
+            height: 200px;
+            background-color: #21B6AF;
+            border-radius: 50%;
+            top: -50px;
+            right: -60px;
+        }
+
+        .blob-2 {
+            position: absolute;
+            width: 150px;
+            height: 150px;
+            background-color: #3AD5CF;
+            border-radius: 50%;
+            top: 20px;
+            right: -80px;
+            opacity: 0.6;
+        }
+
+        .header-content {
+            position: relative;
+            z-index: 10;
+        }
+
+        .greeting { color: #B2EFEB; font-size: 13px; font-weight: 600; }
+        .name { font-size: 22px; font-weight: 800; color: #FFF; margin-bottom: 24px; }
+        
+        .avatar {
+            width: 44px;
+            height: 44px;
+            background-color: #FFF;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: var(--primary-teal);
+            font-weight: 800;
+            font-size: 16px;
+        }
+
+        .wellness-block {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .ring-container {
+            position: relative;
+            width: 80px;
+            height: 80px;
+        }
+
+        .ring-svg { transform: rotate(-90deg); width: 100%; height: 100%; }
+        .ring-track { fill: none; stroke: var(--success-teal); stroke-width: 4; }
+        .ring-fill { fill: none; stroke: #FFF; stroke-width: 4; stroke-dasharray: 251.2; stroke-dashoffset: 251.2; stroke-linecap: round; transition: stroke-dashoffset 1.2s ease; }
+        
+        .ring-text {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        .ring-score { font-size: 24px; font-weight: 800; color: #FFF; line-height: 1; }
+        .ring-label { font-size: 10px; font-weight: 700; color: #B2EFEB; text-transform: uppercase; letter-spacing: 0.5px; }
+
+        .health-index-text h3 { color: #FFF; font-size: 16px; margin-bottom: 2px; }
+        .health-index-text p { color: #B2EFEB; font-size: 12px; margin-bottom: 8px; font-weight: 600; }
+        .badge {
+            display: inline-block;
+            background-color: rgba(255,255,255,0.2);
+            color: #FFF;
+            font-size: 11px;
+            font-weight: 800;
+            padding: 4px 12px;
+            border-radius: 999px;
+            backdrop-filter: blur(4px);
+        }
+
+        .wave {
+            width: 100%;
+            display: block;
+            margin-top: 20px;
+        }
+
+        /* SECTION HEADERS */
+        .section-header {
+            font-size: 13px;
+            color: var(--primary-teal);
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin: 24px 24px 12px;
+        }
+
+        /* HORIZONTAL SCROLL STRIP */
+        .scroll-strip {
+            display: flex;
+            gap: 12px;
+            overflow-x: auto;
+            padding: 0 24px 12px;
+            scroll-snap-type: x mandatory;
+        }
+        
+        .vitals-card {
+            background-color: var(--light-teal);
+            border: 1.5px solid var(--border-teal);
+            border-radius: 20px;
+            padding: 16px;
+            min-width: 140px;
+            flex-shrink: 0;
+            scroll-snap-align: start;
+        }
+
+        .icon-circle {
+            width: 32px; height: 32px;
+            background-color: var(--primary-teal);
+            border-radius: 50%;
+            display: flex; justify-content: center; align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .icon-circle svg { width: 16px; height: 16px; fill: none; stroke: #FFF; stroke-width: 2; border-color: transparent;}
+
+        .vital-val { font-size: 24px; font-weight: 800; color: var(--dark-text); line-height: 1; }
+        .vital-unit { font-size: 11px; color: var(--muted-text); font-weight: 700; margin-left: 2px; }
+        .vital-name { font-size: 12px; color: var(--muted-text); font-weight: 600; margin: 4px 0 12px; }
+        
+        .pill-normal {
+            background-color: var(--primary-teal);
+            color: #FFF;
+            font-size: 10px; font-weight: 800;
+            padding: 4px 10px; border-radius: 999px;
+            display: inline-block;
+        }
+
+        .pill-watch {
+            background-color: #FFF;
+            color: var(--primary-teal);
+            border: 1.5px solid var(--primary-teal);
+            font-size: 10px; font-weight: 800;
+            padding: 2.5px 8.5px; border-radius: 999px;
+            display: inline-block;
+        }
+
+        /* CORE CARDS */
+        .card {
+            background-color: var(--bg-white);
+            border: 1.5px solid var(--border-teal);
+            border-radius: 24px;
+            padding: 20px;
+            margin: 0 24px 24px;
+        }
+
+        .card-title { font-size: 16px; font-weight: 800; color: var(--dark-text); margin-bottom: 4px; }
+        .card-sub { font-size: 11px; color: var(--muted-text); font-style: italic; margin-bottom: 20px; }
+
+        /* FORECAST ITEMS */
+        .risk-item { margin-bottom: 20px; }
+        .risk-item:last-child { margin-bottom: 0; }
+        .risk-name { font-size: 14px; font-weight: 700; color: var(--dark-text); }
+        .risk-desc { font-size: 11px; color: var(--muted-text); margin-bottom: 8px; }
+        
+        .progress-row { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+        .progress-track {
+            flex: 1; height: 8px; background-color: var(--border-teal); border-radius: 4px; overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%; background-color: var(--primary-teal); width: 0%; transition: width 1.2s ease; border-radius: 4px;
+        }
+        .progress-val { font-size: 15px; font-weight: 800; color: var(--primary-teal); width: 35px; text-align: right; }
+
+        .action-chip {
+            display: inline-block; background-color: var(--badge-bg); color: #1A9E98;
+            font-size: 11px; font-weight: 700; padding: 6px 14px; border-radius: 999px;
+        }
+
+        /* BP CHART */
+        .chart-svg { width: 100%; height: 120px; margin-top: 10px; }
+        .axis-text { font-size: 10px; fill: var(--primary-teal); font-weight: 600; font-family: 'Nunito', sans-serif; }
+        .chart-insight {
+            background-color: var(--badge-bg); color: var(--primary-teal);
+            font-size: 12px; font-weight: 700; padding: 10px; border-radius: 12px;
+            margin-top: 16px; text-align: center;
+        }
+
+        /* BODY METRICS PILLS */
+        .metric-pill {
+            background-color: #FFF; border: 1.5px solid var(--border-teal); border-radius: 999px;
+            padding: 10px 16px; display: flex; align-items: center; gap: 8px; white-space: nowrap;
+        }
+        .m-val { font-size: 14px; font-weight: 800; color: var(--dark-text); }
+        .m-note { font-size: 12px; font-weight: 700; color: var(--primary-teal); display: flex; align-items: center; gap: 4px; }
+        .m-dot { width: 6px; height: 6px; background-color: var(--primary-teal); border-radius: 50%; }
+
+        /* HEATMAP */
+        .heatmap-grid {
+            display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-bottom: 12px;
+        }
+        .hm-day { font-size: 10px; color: var(--primary-teal); font-weight: 700; text-align: center; margin-bottom: 4px; }
+        .hm-sq {
+            aspect-ratio: 1; border-radius: 6px; cursor: pointer; position: relative;
+        }
+        .hm-sq:hover::after {
+            content: attr(data-tooltip);
+            position: absolute; bottom: 120%; left: 50%; transform: translateX(-50%);
+            background-color: var(--dark-text); color: #FFF; font-size: 10px; font-weight: 700;
+            padding: 4px 8px; border-radius: 4px; white-space: nowrap; z-index: 10;
+        }
+        .hm-v0 { background-color: var(--light-teal); }
+        .hm-v1 { background-color: var(--border-teal); }
+        .hm-v2 { background-color: var(--muted-text); }
+        .hm-v3 { background-color: var(--primary-teal); }
+        .hm-v4 { background-color: var(--dark-text); }
+        
+        .hm-legend { display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 10px; color: var(--muted-text); font-weight: 700;}
+        .hm-lg-sq { width: 12px; height: 12px; border-radius: 3px; }
+
+        /* DIET CARDS */
+        .diet-card {
+            background-color: #FFF; border: 1.5px solid var(--border-teal); border-radius: 20px;
+            border-left: 4px solid var(--primary-teal); padding: 14px; min-width: 160px;
+            flex-shrink: 0; scroll-snap-align: start;
+        }
+        .dt-top { display: inline-block; font-size: 9px; font-weight: 800; padding: 3px 8px; border-radius: 999px; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px; }
+        .dt-t1 { background-color: var(--primary-teal); color: #FFF; }
+        .dt-t2 { background-color: var(--light-teal); color: var(--dark-text); border: 1px solid var(--border-teal); }
+        .dt-t3 { background-color: #FFF; color: var(--primary-teal); border: 1px solid var(--primary-teal); }
+        
+        .dt-title { font-size: 14px; font-weight: 700; color: var(--dark-text); margin-bottom: 8px; }
+        .dt-list { list-style: none; margin-bottom: 12px; }
+        .dt-list li { font-size: 12px; color: var(--dark-text); font-weight: 600; margin-bottom: 4px; position: relative; padding-left: 10px; }
+        .dt-list li::before { content: '•'; position: absolute; left: 0; color: var(--primary-teal); }
+        .dt-foot { font-size: 11px; color: var(--muted-text); font-style: italic; }
+
+        /* TIMELINE */
+        .timeline { position: relative; padding-left: 16px; margin: 0 24px 24px; }
+        .timeline::before { content: ''; position: absolute; left: 7px; top: 10px; bottom: 20px; width: 2px; background-color: var(--border-teal); }
+        .tl-item { position: relative; margin-bottom: 24px; }
+        .tl-item:last-child { margin-bottom: 0; }
+        .tl-dot { position: absolute; left: -16px; top: 2px; width: 16px; height: 16px; border-radius: 50%; z-index: 2; display: flex; align-items: center; justify-content: center; }
+        .tl-dot.pending { background-color: var(--primary-teal); }
+        .tl-dot.done { background-color: #FFF; border: 2px solid var(--primary-teal); }
+        .tl-dot.done svg { width: 10px; height: 10px; stroke: var(--primary-teal); }
+        
+        .tl-content { padding-left: 12px; }
+        .tl-name { font-size: 14px; font-weight: 600; color: var(--dark-text); margin-bottom: 2px; }
+        .tl-due { font-size: 11px; color: var(--muted-text); font-weight: 600; margin-bottom: 6px; }
+        .tl-coin { display: inline-block; background-color: var(--badge-bg); color: #1A9E98; font-size: 11px; font-weight: 800; padding: 4px 10px; border-radius: 999px;}
+
+        /* FOOTER CARD */
+        .footer-card { background-color: var(--primary-teal); border-radius: 24px; padding: 24px; margin: 0 24px 30px; }
+        .fc-tag { font-size: 10px; font-weight: 800; color: #FFF; letter-spacing: 1px; margin-bottom: 8px; }
+        .fc-title { font-size: 18px; font-weight: 800; color: #FFF; letter-spacing: -0.3px; line-height: 1.3; margin-bottom: 12px; }
+        .fc-sub { font-size: 12px; color: #B2EFEB; line-height: 1.6; font-weight: 600; margin-bottom: 20px; }
+        .fc-btn {
+            background-color: #FFF; color: var(--primary-teal); font-size: 14px; font-weight: 700;
+            width: 100%; border: none; border-radius: 999px; padding: 14px; cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+        .fc-btn:hover { transform: scale(1.02); }
+
+        /* BOTTOM NAV */
+        .nav-bar {
+            position: absolute; bottom: 0; left: 0; right: 0;
+            background-color: #FFF; border-top: 1.5px solid var(--border-teal);
+            display: flex; justify-content: space-around; padding: 16px 10px 24px; z-index: 50;
+        }
+        .nav-item { display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer; }
+        .nav-icon { width: 24px; height: 24px; fill: none; stroke-width: 2.5; }
+        .nav-active .nav-icon { stroke: var(--primary-teal); }
+        .nav-inactive .nav-icon { stroke: var(--muted-text); opacity: 0.35; }
+        .nav-label { font-size: 9px; font-weight: 700; text-transform: uppercase; }
+        .nav-active .nav-label { color: var(--primary-teal); }
+        .nav-inactive .nav-label { color: var(--muted-text); opacity: 0.35; }
+
+        /* Interactive utilities */
+        .hover-scale { transition: transform 0.2s ease; cursor: pointer; }
+        .hover-scale:hover { transform: scale(1.05); }
+
+    </style>
+</head>
+<body>
+
+<div class="phone">
+    <div class="scroll-area">
+        
+        <!-- SECTION 1: HEADER -->
+        <header class="header">
+            <div class="blob-1"></div>
+            <div class="blob-2"></div>
+            
+            <div class="header-content flex justify-between items-start">
+                <div>
+                    <p class="greeting">Good morning</p>
+                    <h1 class="name">Arjun Kumar</h1>
+                </div>
+                <div class="avatar">AK</div>
+            </div>
+
+            <div class="header-content wellness-block">
+                <div class="ring-container">
+                    <svg class="ring-svg" viewBox="0 0 100 100">
+                        <circle class="ring-track" cx="50" cy="50" r="40" />
+                        <!-- 72% of 251.2 circumference = 180.86 offset -->
+                        <circle class="ring-fill" id="main-ring" cx="50" cy="50" r="40" style="stroke-dashoffset: 251.2" />
+                    </svg>
+                    <div class="ring-text">
+                        <span class="ring-score">72</span>
+                        <span class="ring-label">Score</span>
+                    </div>
+                </div>
+                <div class="health-index-text">
+                    <h3 class="font-800">Health Index</h3>
+                    <p>Mostly stable. 3 tasks pending.</p>
+                    <div class="badge">Moderate attention</div>
+                </div>
+            </div>
+        </header>
+        <svg class="wave" viewBox="0 0 375 40" preserveAspectRatio="none">
+            <path d="M0 40 L0 10 C150 50, 250 -10, 375 20 L375 40 Z" fill="#FFFFFF"/>
+        </svg>
+
+        <!-- SECTION 2: TODAY'S VITALS -->
+        <h2 class="section-header">Today's vitals</h2>
+        <div class="scroll-strip">
+            <div class="vitals-card">
+                <div class="icon-circle">
+                    <svg viewBox="0 0 24 24"><path d="M20.42 4.58a5.4 5.4 0 0 0-7.65 0l-.77.78-.77-.78a5.4 5.4 0 0 0-7.65 0C1.46 6.7 1.33 10.28 4 13l8 8 8-8c2.67-2.72 2.54-6.3.42-8.42z"/></svg>
+                </div>
+                <div>
+                    <span class="vital-val">124/82</span>
+                </div>
+                <p class="vital-name">Blood pressure</p>
+                <div class="pill-watch">Watch</div>
+            </div>
+            
+            <div class="vitals-card">
+                <div class="icon-circle">
+                    <svg viewBox="0 0 24 24"><path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z"/></svg>
+                </div>
+                <div>
+                    <span class="vital-val">108</span><span class="vital-unit">mg/dl</span>
+                </div>
+                <p class="vital-name">Blood sugar</p>
+                <div class="pill-normal">Normal</div>
+            </div>
+
+            <div class="vitals-card">
+                <div class="icon-circle">
+                    <svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                </div>
+                <div>
+                    <span class="vital-val">78</span><span class="vital-unit">bpm</span>
+                </div>
+                <p class="vital-name">Heart rate</p>
+                <div class="pill-normal">Normal</div>
+            </div>
+            
+            <div class="vitals-card">
+                <div class="icon-circle">
+                    <svg viewBox="0 0 24 24"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                </div>
+                <div>
+                    <span class="vital-val">97</span><span class="vital-unit">%</span>
+                </div>
+                <p class="vital-name">SpO2</p>
+                <div class="pill-normal">Normal</div>
+            </div>
+        </div>
+
+        <!-- SECTION 3: RISK FORECAST -->
+        <div class="card mt-2">
+            <h3 class="card-title">What your body is telling you</h3>
+            <p class="card-sub">Trends only — not a diagnosis. Small habits shift these numbers fast.</p>
+            
+            <div class="risk-item">
+                <h4 class="risk-name">Hypertension</h4>
+                <p class="risk-desc">BP has crept up 3 days in a row. Small steps help.</p>
+                <div class="progress-row">
+                    <div class="progress-track"><div class="progress-fill" style="width: 0%" data-target="42%"></div></div>
+                    <span class="progress-val">42%</span>
+                </div>
+                <div class="action-chip hover-scale">&rarr; Walk 20 min today</div>
+            </div>
+
+            <div class="risk-item">
+                <h4 class="risk-name">Cardiovascular</h4>
+                <p class="risk-desc">Stress + low activity are combining. Let's counter that.</p>
+                <div class="progress-row">
+                    <div class="progress-track"><div class="progress-fill" style="width: 0%" data-target="61%"></div></div>
+                    <span class="progress-val">61%</span>
+                </div>
+                <div class="action-chip hover-scale">&rarr; Try 5-min deep breathing</div>
+            </div>
+
+            <div class="risk-item">
+                <h4 class="risk-name">Type 2 Diabetes</h4>
+                <p class="risk-desc">Sugar is stable — keep up your current habits.</p>
+                <div class="progress-row">
+                    <div class="progress-track"><div class="progress-fill" style="width: 0%" data-target="18%"></div></div>
+                    <span class="progress-val">18%</span>
+                </div>
+                <div class="action-chip hover-scale">&rarr; You're doing great, keep going</div>
+            </div>
+        </div>
+
+        <!-- SECTION 4: BP TREND CHART -->
+        <div class="card">
+            <h3 class="card-title">BP trend — last 7 days</h3>
+            <svg class="chart-svg" viewBox="0 0 300 120">
+                <!-- Normal Zone -->
+                <rect x="25" y="30" width="275" height="30" fill="var(--border-teal)" opacity="0.15" />
+                <text x="30" y="42" style="font-size: 8px; fill: var(--primary-teal); font-family: 'Nunito', sans-serif;">Normal zone</text>
+
+                <!-- Y Axis Labels -->
+                <text x="0" y="10" class="axis-text">130</text>
+                <text x="0" y="45" class="axis-text">120</text>
+                <text x="0" y="80" class="axis-text">110</text>
+
+                <!-- Diastolic Line (Dashed) -->
+                <polyline points="25,95 70,88 115,92 160,82 205,75 250,75 295,82" fill="none" stroke="var(--border-teal)" stroke-width="1.5" stroke-dasharray="4" />
+                
+                <!-- Systolic Line (Solid) -->
+                <polyline points="25,50 70,45 115,48 160,32 205,25 250,20 295,32" fill="none" stroke="var(--primary-teal)" stroke-width="2" />
+                
+                <!-- Data Points Systolic -->
+                <circle cx="25" cy="50" r="4" fill="#FFF" stroke="var(--primary-teal)" stroke-width="1.5"/>
+                <circle cx="70" cy="45" r="4" fill="#FFF" stroke="var(--primary-teal)" stroke-width="1.5"/>
+                <circle cx="115" cy="48" r="4" fill="#FFF" stroke="var(--primary-teal)" stroke-width="1.5"/>
+                <circle cx="160" cy="32" r="4" fill="#FFF" stroke="var(--primary-teal)" stroke-width="1.5"/>
+                <circle cx="205" cy="25" r="4" fill="#FFF" stroke="var(--primary-teal)" stroke-width="1.5"/>
+                <circle cx="250" cy="20" r="4" fill="#FFF" stroke="var(--primary-teal)" stroke-width="1.5"/>
+                <circle cx="295" cy="32" r="4" fill="#FFF" stroke="var(--primary-teal)" stroke-width="1.5"/>
+
+                <!-- X Axis Labels -->
+                <text x="20" y="115" class="axis-text">Mon</text>
+                <text x="65" y="115" class="axis-text">Tue</text>
+                <text x="105" y="115" class="axis-text">Wed</text>
+                <text x="155" y="115" class="axis-text">Thu</text>
+                <text x="200" y="115" class="axis-text">Fri</text>
+                <text x="245" y="115" class="axis-text">Sat</text>
+                <text x="290" y="115" class="axis-text">Sun</text>
+            </svg>
+            <div class="chart-insight hover-scale">
+                &uarr; Systolic up 6 pts this week — try reducing salt intake
+            </div>
+        </div>
+
+        <!-- SECTION 5: BODY METRICS -->
+        <h2 class="section-header pt-2">Body metrics</h2>
+        <div class="scroll-strip">
+            <div class="metric-pill">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--primary-teal)" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                <span class="m-val">24.8</span>
+                <span class="m-note">Healthy</span>
+            </div>
+            <div class="metric-pill">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--primary-teal)" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/><path d="M15 3v18"/></svg>
+                <span class="m-val">72 kg</span>
+            </div>
+            <div class="metric-pill">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--primary-teal)" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+                <span class="m-val">6.2 hrs</span>
+                <span class="m-note"><span class="m-dot"></span></span>
+            </div>
+            <div class="metric-pill">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--primary-teal)" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                <span class="m-val">6/10</span>
+                <span class="m-note">Manage</span>
+            </div>
+            <div class="metric-pill">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--primary-teal)" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                <span class="m-val">Low</span>
+                <span class="m-note">Increase</span>
+            </div>
+        </div>
+
+        <!-- SECTION 6: HABIT HEATMAP -->
+        <div class="card">
+            <h3 class="card-title mb-4">Habit consistency</h3>
+            
+            <div class="heatmap-grid">
+                <!-- Day Initials -->
+                <div class="hm-day">M</div><div class="hm-day">T</div><div class="hm-day">W</div><div class="hm-day">T</div><div class="hm-day">F</div><div class="hm-day">S</div><div class="hm-day">S</div>
+                
+                <!-- Row 1 -->
+                <div class="hm-sq hm-v4" data-tooltip="Mar 1: 100%"></div>
+                <div class="hm-sq hm-v3" data-tooltip="Mar 2: 75%"></div>
+                <div class="hm-sq hm-v3" data-tooltip="Mar 3: 75%"></div>
+                <div class="hm-sq hm-v2" data-tooltip="Mar 4: 50%"></div>
+                <div class="hm-sq hm-v4" data-tooltip="Mar 5: 100%"></div>
+                <div class="hm-sq hm-v1" data-tooltip="Mar 6: 25%"></div>
+                <div class="hm-sq hm-v0" data-tooltip="Mar 7: 0%"></div>
+                <!-- Row 2 -->
+                <div class="hm-sq hm-v3" data-tooltip="Mar 8: 75%"></div>
+                <div class="hm-sq hm-v4" data-tooltip="Mar 9: 100%"></div>
+                <div class="hm-sq hm-v2" data-tooltip="Mar 10: 50%"></div>
+                <div class="hm-sq hm-v2" data-tooltip="Mar 11: 50%"></div>
+                <div class="hm-sq hm-v1" data-tooltip="Mar 12: 25%"></div>
+                <div class="hm-sq hm-v3" data-tooltip="Mar 13: 75%"></div>
+                <div class="hm-sq hm-v4" data-tooltip="Mar 14: 100%"></div>
+                <!-- Row 3 -->
+                <div class="hm-sq hm-v4" data-tooltip="Mar 15: 100%"></div>
+                <div class="hm-sq hm-v4" data-tooltip="Mar 16: 100%"></div>
+                <div class="hm-sq hm-v3" data-tooltip="Mar 17: 75%"></div>
+                <div class="hm-sq hm-v4" data-tooltip="Mar 18: 100%"></div>
+                <div class="hm-sq hm-v0" data-tooltip="Mar 19: 0%"></div>
+                <div class="hm-sq hm-v2" data-tooltip="Mar 20: 50%"></div>
+                <div class="hm-sq hm-v1" data-tooltip="Mar 21: 25%"></div>
+                <!-- Row 4 -->
+                <div class="hm-sq hm-v4" data-tooltip="Mar 22: 100%"></div>
+                <div class="hm-sq hm-v2" data-tooltip="Mar 23: 50%"></div>
+                <div class="hm-sq hm-v3" data-tooltip="Mar 24: 75%"></div>
+                <div class="hm-sq hm-v4" data-tooltip="Mar 25: 100%"></div>
+                <div class="hm-sq hm-v4" data-tooltip="Mar 26: 100%"></div>
+                <div class="hm-sq hm-v1" data-tooltip="Mar 27: 25%"></div>
+                <div class="hm-sq hm-v2" data-tooltip="Mar 28: 50%"></div>
+            </div>
+
+            <div class="hm-legend mt-4">
+                Missed 
+                <div class="hm-lg-sq hm-v0"></div>
+                <div class="hm-lg-sq hm-v1"></div>
+                <div class="hm-lg-sq hm-v2"></div>
+                <div class="hm-lg-sq hm-v3"></div>
+                <div class="hm-lg-sq hm-v4"></div>
+                Full
+            </div>
+        </div>
+
+        <!-- SECTION 7: DIET SUGGESTIONS -->
+        <h2 class="section-header pt-2" style="margin-bottom: 4px;">Today's diet focus</h2>
+        <p style="font-size: 11px; margin: 0 24px 12px; color: var(--muted-text); font-weight: 600;">Personalised for your BP trend this week</p>
+        <div class="scroll-strip">
+            <div class="diet-card">
+                <span class="dt-top dt-t1">Eat more</span>
+                <h4 class="dt-title">Potassium foods</h4>
+                <ul class="dt-list">
+                    <li>Banana</li>
+                    <li>Sweet potato</li>
+                    <li>Spinach</li>
+                </ul>
+                <p class="dt-foot">Naturally lowers BP</p>
+            </div>
+            
+            <div class="diet-card">
+                <span class="dt-top dt-t2">Reduce</span>
+                <h4 class="dt-title">High sodium foods</h4>
+                <ul class="dt-list">
+                    <li>Pickles</li>
+                    <li>Packaged snacks</li>
+                    <li>Papad</li>
+                </ul>
+                <p class="dt-foot">Raises BP directly</p>
+            </div>
+
+            <div class="diet-card">
+                <span class="dt-top dt-t3">Habit</span>
+                <h4 class="dt-title">Hydration goal</h4>
+                <ul class="dt-list">
+                    <li>8 glasses of water daily</li>
+                </ul>
+                <p class="dt-foot">Flushes excess sodium</p>
+            </div>
+        </div>
+
+        <!-- SECTION 8: UPCOMING ACTIONS -->
+        <h2 class="section-header pt-4">Your next steps</h2>
+        <div class="timeline">
+            <div class="tl-item">
+                <div class="tl-dot pending"></div>
+                <div class="tl-content flex justify-between items-center">
+                    <div>
+                        <h4 class="tl-name">Log today's BP</h4>
+                        <p class="tl-due">Today</p>
+                    </div>
+                    <div class="tl-coin hover-scale">+15 coins</div>
+                </div>
+            </div>
+
+            <div class="tl-item">
+                <div class="tl-dot done">
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+                </div>
+                <div class="tl-content flex justify-between items-center">
+                    <div>
+                        <h4 class="tl-name">Clinic checkup (QR scan)</h4>
+                        <p class="tl-due">This week</p>
+                    </div>
+                    <div class="tl-coin hover-scale">+50 coins</div>
+                </div>
+            </div>
+
+            <div class="tl-item">
+                <div class="tl-dot pending"></div>
+                <div class="tl-content flex justify-between items-center">
+                    <div>
+                        <h4 class="tl-name">Upload blood report</h4>
+                        <p class="tl-due">This week</p>
+                    </div>
+                    <div class="tl-coin hover-scale">+25 coins</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SECTION 9: INSIGHT FOOTER CARD -->
+        <div class="footer-card">
+            <p class="fc-tag">YOUR BODY THIS WEEK</p>
+            <h2 class="fc-title">Your heart needs attention — not alarm.</h2>
+            <p class="fc-sub">Your cardiovascular risk is completely reversible with 3 small daily habits. You are in control.</p>
+            <button class="fc-btn">See my action plan &rarr;</button>
+        </div>
+
+    </div>
+
+    <!-- BOTTOM NAVIGATION -->
+    <nav class="nav-bar">
+        <div class="nav-item nav-active">
+            <svg class="nav-icon" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+            <span class="nav-label">Home</span>
+        </div>
+        <div class="nav-item nav-inactive">
+            <svg class="nav-icon" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+            <span class="nav-label">Vitals</span>
+        </div>
+        <div class="nav-item nav-inactive">
+            <svg class="nav-icon" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+            <span class="nav-label">Missions</span>
+        </div>
+        <div class="nav-item nav-inactive">
+            <svg class="nav-icon" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><rect x="7" y="7" width="3" height="3"/><rect x="14" y="7" width="3" height="3"/><rect x="7" y="14" width="3" height="3"/><rect x="14" y="14" width="3" height="3"/></svg>
+            <span class="nav-label">My ID</span>
+        </div>
+    </nav>
+</div>
+
+<!-- Scripts for Animations -->
+<script>
+    document.addEventListener("DOMContentLoaded", () => {
+        // Animate circular chart
+        setTimeout(() => {
+            document.getElementById('main-ring').style.strokeDashoffset = "70.336"; // 72% filled
+        }, 300);
+
+        // Animate progress bars
+        setTimeout(() => {
+            const fills = document.querySelectorAll('.progress-fill');
+            fills.forEach(fill => {
+                fill.style.width = fill.getAttribute('data-target');
+            });
+        }, 500);
+    });
+</script>
+
+</body>
+</html>

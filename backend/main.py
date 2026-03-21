@@ -32,6 +32,7 @@ from routers.dashboard import router as dashboard_router
 from routers.tasks import router as tasks_router
 from routers.coins import router as coins_router
 from routers.profile import router as profile_router
+from routers.ocr import router as ocr_router
 
 
 @asynccontextmanager
@@ -69,6 +70,7 @@ app.include_router(dashboard_router)
 app.include_router(tasks_router)
 app.include_router(coins_router)
 app.include_router(profile_router)
+app.include_router(ocr_router)
 
 
 # ─── Health Check ───
