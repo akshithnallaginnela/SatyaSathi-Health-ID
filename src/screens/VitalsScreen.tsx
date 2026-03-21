@@ -107,6 +107,68 @@ export default function VitalsScreen() {
           </div>
         </div>
 
+        {/* TRENDS — LAST 7 DAYS */}
+        <div className="px-6 space-y-4">
+          <h3 className="text-[#26C6BF] text-[11px] font-extrabold uppercase tracking-widest mb-0">TRENDS — LAST 7 DAYS</h3>
+          
+          {/* Blood Pressure Chart */}
+          <div className="bg-white border-[1.5px] border-[#E8F1F1] rounded-[28px] p-5 shadow-sm">
+            <h3 className="text-[#1A3A38] font-extrabold text-[16px] mb-4">Blood Pressure</h3>
+            <div className="w-full h-[120px] relative mb-2">
+              <div className="absolute top-[20px] left-0 w-full h-[25px] bg-[#E0F7F4] opacity-50" />
+              <svg viewBox="0 0 300 100" className="w-full h-full overflow-visible">
+                <polyline points="10,40 55,38 100,40 145,35 190,32 235,28 280,35" fill="none" stroke="#26C6BF" strokeWidth="2" />
+                <polyline points="10,80 55,78 100,77 145,75 190,72 235,70 280,72" fill="none" stroke="#B2EFEB" strokeWidth="1.5" strokeDasharray="4" />
+                {[
+                  {x:10, y:40}, {x:55, y:38}, {x:100, y:40}, {x:145, y:35}, {x:190, y:32}, {x:235, y:28}, {x:280, y:35}
+                ].map((pt, i) => (
+                  <circle key={i} cx={pt.x} cy={pt.y} r="3" fill="#FFF" stroke="#26C6BF" strokeWidth="1.5"/>
+                ))}
+                <g className="text-[#7ECCC7] text-[7px] font-bold" transform="translate(0, 95)">
+                  <text x="5">Mon</text><text x="50">Tue</text><text x="95">Wed</text>
+                  <text x="140">Thu</text><text x="185">Fri</text><text x="230">Sat</text>
+                  <text x="275">Sun</text>
+                </g>
+              </svg>
+            </div>
+            <div className="flex justify-between items-center mt-3 px-1">
+              <div className="flex items-center gap-1.5">
+                <div className="w-2.5 h-2.5 rounded-full bg-[#26C6BF]" />
+                <span className="text-[#7ECCC7] text-[11px] font-bold">Systolic</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <div className="w-2.5 h-2.5 rounded-full bg-[#B2EFEB]" />
+                <span className="text-[#7ECCC7] text-[11px] font-bold">Diastolic</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Fasting Blood Sugar Chart */}
+          <div className="bg-white border-[1.5px] border-[#E8F1F1] rounded-[28px] p-5 shadow-sm">
+            <h3 className="text-[#1A3A38] font-extrabold text-[16px] mb-4">Fasting Blood Sugar</h3>
+            <div className="w-full h-[120px] relative mb-2">
+              <div className="absolute top-[35px] left-0 w-full h-[50px] bg-[#E0F7F4] opacity-50" />
+              <svg viewBox="0 0 300 100" className="w-full h-full overflow-visible">
+                <polyline points="10,60 55,55 100,50 145,45 190,52 235,40 280,45" fill="none" stroke="#26C6BF" strokeWidth="2" />
+                {[
+                  {x:10, y:60}, {x:55, y:55}, {x:100, y:50}, {x:145, y:45}, {x:190, y:52}, {x:235, y:40}, {x:280, y:45}
+                ].map((pt, i) => (
+                  <circle key={i} cx={pt.x} cy={pt.y} r="3" fill="#FFF" stroke="#26C6BF" strokeWidth="1.5"/>
+                ))}
+                <g className="text-[#7ECCC7] text-[7px] font-bold" transform="translate(0, 95)">
+                  <text x="5">Mon</text><text x="50">Tue</text><text x="95">Wed</text>
+                  <text x="140">Thu</text><text x="185">Fri</text><text x="230">Sat</text>
+                  <text x="275">Sun</text>
+                </g>
+              </svg>
+            </div>
+            <div className="flex items-center gap-1.5 mt-3 px-1">
+              <div className="w-2.5 h-2.5 rounded-full bg-[#26C6BF]" />
+              <span className="text-[#7ECCC7] text-[11px] font-bold">Blood Sugar (mg/dL)</span>
+            </div>
+          </div>
+        </div>
+
         {/* RECENT LAB RESULTS */}
         <div>
           <h3 className="text-[#26C6BF] text-[11px] font-extrabold uppercase tracking-widest px-6 mb-4">RECENT LAB RESULTS</h3>
