@@ -138,6 +138,31 @@ export const tasksAPI = {
   getHistory: (page = 1) => apiFetch(`/tasks/history?page=${page}`),
 };
 
+// ─── OCR API ───
+
+export const ocrAPI = {
+  analyze: async (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    const token = getAccessToken();
+    const headers: any = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    const response = await fetch(`${API_BASE}/ocr/analyze`, {
+      method: 'POST',
+      headers,
+      body: formData,
+    });
+    
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({ detail: 'OCR failed' }));
+      throw new Error(err.detail || 'Upload failed');
+    }
+    return response.json();
+  }
+};
+
 // ─── Coins API ───
 
 export const coinsAPI = {
