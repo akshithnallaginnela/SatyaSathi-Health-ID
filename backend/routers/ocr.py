@@ -1,6 +1,7 @@
 from fastapi import APIRouter, UploadFile, File, HTTPException
 from typing import Dict
 from services.ocr_service import process_health_document
+from services.storage_service import upload_file_to_firebase
 
 router = APIRouter(prefix="/api/ocr", tags=["OCR & Document Processing"])
 
@@ -19,11 +20,21 @@ async def analyze_document(file: UploadFile = File(...)):
         
     try:
         contents = await file.read()
+        
+        # 1. Upload the raw image/PDF file to Firebase Storage
+        file_url = await upload_file_to_firebase(
+            file_bytes=contents, 
+            filename=file.filename,
+            content_type=file.content_type
+        )
+        
+        # 2. Extract structured medical data using Gemini Fast Vision
         extracted_data = await process_health_document(contents)
         
         return {
             "success": True,
             "filename": file.filename,
+            "file_url": file_url,
             "data": extracted_data
         }
     except ValueError as val_err:
