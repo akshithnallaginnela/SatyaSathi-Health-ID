@@ -63,13 +63,22 @@ const WaveHeader = ({ title = "Arjun Kumar", subtitle = "Mostly stable. 3 tasks 
           <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center text-primary-teal font-extrabold shadow-sm">
             AK
           </div>
-          <motion.div 
-            whileHover={{ scale: 1.05 }}
-            className="bg-white/20 backdrop-blur-md px-3 py-1 rounded-full flex items-center gap-1.5 border border-white/30 cursor-pointer"
-          >
-            <div className="w-3 h-3 bg-[#FFD700] rounded-full shadow-[0_0_8px_rgba(255,215,0,0.5)]" />
-            <span className="text-white text-[10px] font-extrabold">{coins.toLocaleString()} Coins</span>
-          </motion.div>
+          <div className="flex items-center gap-2">
+            <motion.div 
+              whileHover={{ scale: 1.05 }}
+              className="bg-white/20 backdrop-blur-md px-2 py-1 rounded-full flex items-center gap-1 border border-white/30 cursor-pointer"
+            >
+              <Flame size={12} className="text-orange-400" fill="currentColor" />
+              <span className="text-white text-[10px] font-extrabold">12</span>
+            </motion.div>
+            <motion.div 
+              whileHover={{ scale: 1.05 }}
+              className="bg-white/20 backdrop-blur-md px-2 py-1 rounded-full flex items-center gap-1.5 border border-white/30 cursor-pointer"
+            >
+              <div className="w-2.5 h-2.5 bg-[#FFD700] rounded-full shadow-[0_0_8px_rgba(255,215,0,0.5)]" />
+              <span className="text-white text-[10px] font-extrabold">{coins.toLocaleString()}</span>
+            </motion.div>
+          </div>
         </div>
       </div>
 
@@ -101,6 +110,46 @@ const WaveHeader = ({ title = "Arjun Kumar", subtitle = "Mostly stable. 3 tasks 
     </div>
   </div>
 );
+
+const StreakCard = ({ streak = 12, days = [true, true, true, true, false, false, false] }) => {
+  const weekDays = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+  return (
+    <div className="mt-[-20px] px-6 relative z-20 mb-4">
+      <div className="bg-white border-[1.5px] border-orange-200 rounded-[24px] p-5 shadow-sm relative overflow-hidden">
+        <div className="absolute top-[-40px] right-[-20px] w-32 h-32 bg-orange-100 rounded-full opacity-50 blur-2xl" />
+        <div className="flex justify-between items-center mb-4 relative z-10">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center">
+              <Flame size={24} className="text-orange-500" fill="currentColor" />
+            </div>
+            <div>
+              <h3 className="text-orange-600 font-extrabold text-lg">{streak} Day Streak!</h3>
+              <p className="text-orange-800/60 text-[11px] font-bold">You're on fire! Keep it up.</p>
+            </div>
+          </div>
+        </div>
+        
+        <div className="flex justify-between items-center relative z-10 mt-2">
+          {weekDays.map((day, i) => {
+            const isCompleted = days[i];
+            const isToday = i === 3; // Let's say today is Thursday
+            return (
+              <div key={i} className="flex flex-col items-center gap-1.5">
+                <span className={`text-[10px] font-extrabold ${isToday ? 'text-orange-500' : 'text-gray-400'}`}>{day}</span>
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white
+                  ${isCompleted ? 'bg-orange-500 shadow-[0_0_10px_rgba(249,115,22,0.4)]' : 'bg-gray-100'}
+                  ${isToday && !isCompleted ? 'border-2 border-orange-400 border-dashed bg-orange-50' : ''}
+                `}>
+                  {isCompleted && <CheckCircle2 size={14} strokeWidth={3} />}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const VitalCard = ({ icon, value, unit, name, tag }: { icon: React.ReactNode, value: string, unit: string, name: string, tag: string }) => (
   <div className="min-w-[110px] bg-light-teal-surface border-[1.5px] border-teal-border rounded-[20px] p-3 flex flex-col gap-1">
@@ -254,8 +303,11 @@ const HomeScreen = () => {
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
       <WaveHeader />
 
+      {/* Streak Card */}
+      <StreakCard />
+
       {/* Daily Tasks */}
-      <div className="mt-[-20px] px-6 relative z-20">
+      <div className="mt-2 px-6 relative z-20">
         <div className="bg-white border-[1.5px] border-teal-border rounded-[24px] p-5 shadow-sm">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-dark-teal font-extrabold text-base">Daily Tasks</h3>
