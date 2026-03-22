@@ -139,6 +139,47 @@ async def analyze_report(
     db.add(report)
     await db.flush()
 
+    # --- Dynamic Task Generation ---
+    today = date.today()
+    # Delete previous dynamic tasks for today that haven't been completed yet
+    default_types = ["DIET_MEAL", "WATER_INTAKE", "DEEP_BREATHING"]
+    await db.execute(
+        delete(DailyTask)
+        .where(
+            and_(
+                DailyTask.user_id == user_id,
+                DailyTask.task_date == today,
+                DailyTask.completed == False,
+                DailyTask.task_type.notin_(default_types)
+            )
+        )
+    )
+
+    # Generate new specific tasks based on the report type / analysis
+    new_tasks = []
+    if selected_report_type == "blood_sugar_report":
+        new_tasks = [
+            {"type": "POST_MEAL_WALK", "name": "15 Min Post-Meal Walk", "coins": 20, "time_slot": "afternoon"},
+            {"type": "AVOID_SUGAR", "name": "Zero Added Sugar Today", "coins": 25, "time_slot": "evening"}
+        ]
+    else:
+        new_tasks = [
+            {"type": "LOG_BP", "name": "Log Morning BP", "coins": 15, "time_slot": "morning"},
+            {"type": "MORNING_WALK", "name": "20 Min Morning Walk", "coins": 20, "time_slot": "morning"}
+        ]
+
+    for t in new_tasks:
+        db.add(DailyTask(
+            user_id=user_id,
+            task_type=t["type"],
+            task_name=t["name"],
+            coins_reward=t["coins"],
+            task_date=today,
+            time_slot=t["time_slot"],
+        ))
+
+    await db.flush()
+
     return {
         "message": "Report analyzed successfully.",
         "report_id": report.id,
