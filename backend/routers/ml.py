@@ -11,7 +11,10 @@ from security.jwt_handler import get_current_user_id
 from services.ocr_service import process_health_document
 from services.storage_service import upload_file_to_firebase
 from models.report import Report
+from models.task import DailyTask
 from ml.report_analyzer import analyze
+from datetime import date
+from sqlalchemy import delete, and_
 
 router = APIRouter(prefix="/api/ml", tags=["ML Analysis"])
 
