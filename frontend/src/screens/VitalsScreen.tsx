@@ -64,6 +64,41 @@ export default function VitalsScreen() {
   const bmiText = latestBmi?.bmi ? Number(latestBmi.bmi).toFixed(1) : '--';
   const weightText = latestBmi?.weight_kg ? `${Number(latestBmi.weight_kg).toFixed(1)} kg` : '--';
 
+  const getGraphData = () => {
+    const today = new Date();
+    today.setHours(23, 59, 59, 999);
+    
+    const days = Array.from({length: 7}).map((_, i) => {
+      const d = new Date(today);
+      d.setDate(d.getDate() - (6 - i));
+      return { 
+        label: d.toLocaleDateString('en-US', { weekday: 'short' }),
+        dateStr: d.toISOString().split('T')[0]
+      };
+    });
+
+    const bpPoints = days.map((day, i) => {
+      const x = 35 + i * 42; 
+      const entry = history.slice().reverse().find(h => h.measured_at && h.measured_at.startsWith(day.dateStr) && h.systolic);
+      return { x, sys: entry?.systolic || 0, dia: entry?.diastolic || 0 };
+    });
+
+    const sugarPoints = days.map((day, i) => {
+      const x = 35 + i * 42;
+      const entry = history.slice().reverse().find(h => h.measured_at && h.measured_at.startsWith(day.dateStr) && h.fasting_glucose);
+      return { x, val: entry?.fasting_glucose ? Number(entry.fasting_glucose) : 0 };
+    });
+
+    return { days, bpPoints, sugarPoints };
+  };
+
+  const { days, bpPoints, sugarPoints } = getGraphData();
+  const mapY = (val: number, max: number) => val === 0 ? 85 : 85 - (val / max) * 70;
+
+  const sysPolyline = bpPoints.map(p => `${p.x},${mapY(p.sys, 200)}`).join(' ');
+  const diaPolyline = bpPoints.map(p => `${p.x},${mapY(p.dia, 200)}`).join(' ');
+  const sugarPolyline = sugarPoints.map(p => `${p.x},${mapY(p.val, 200)}`).join(' ');
+
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="relative bg-[#FAFAFA] min-h-full pb-32">
       
@@ -155,19 +190,32 @@ export default function VitalsScreen() {
             <h3 className="text-[#1A3A38] font-extrabold text-[16px] mb-4">Blood Pressure</h3>
             <div className="w-full h-[120px] relative mb-2">
               <div className="absolute top-[20px] left-0 w-full h-[25px] bg-[#E0F7F4] opacity-50" />
-              <svg viewBox="0 0 300 100" className="w-full h-full overflow-visible">
-                <polyline points="10,40 55,38 100,40 145,35 190,32 235,28 280,35" fill="none" stroke="#26C6BF" strokeWidth="2" />
-                <polyline points="10,80 55,78 100,77 145,75 190,72 235,70 280,72" fill="none" stroke="#B2EFEB" strokeWidth="1.5" strokeDasharray="4" />
-                {[
-                  {x:10, y:40}, {x:55, y:38}, {x:100, y:40}, {x:145, y:35}, {x:190, y:32}, {x:235, y:28}, {x:280, y:35}
-                ].map((pt, i) => (
-                  <circle key={i} cx={pt.x} cy={pt.y} r="3" fill="#FFF" stroke="#26C6BF" strokeWidth="1.5"/>
+              <svg viewBox="0 0 320 100" className="w-full h-full overflow-visible">
+                <line x1="30" y1="15" x2="300" y2="15" stroke="#E8F1F1" strokeWidth="1" strokeDasharray="3" />
+                <line x1="30" y1="50" x2="300" y2="50" stroke="#E8F1F1" strokeWidth="1" strokeDasharray="3" />
+                <line x1="30" y1="85" x2="300" y2="85" stroke="#E8F1F1" strokeWidth="1" />
+                <text x="0" y="18" fill="#A0A0A0" fontSize="8" fontWeight="bold">200</text>
+                <text x="0" y="53" fill="#A0A0A0" fontSize="8" fontWeight="bold">100</text>
+                <text x="0" y="88" fill="#A0A0A0" fontSize="8" fontWeight="bold">0</text>
+
+                <polyline points={sysPolyline} fill="none" stroke="#FF6B6B" strokeWidth="2.5" strokeLinejoin="round" />
+                <polyline points={diaPolyline} fill="none" stroke="#26C6BF" strokeWidth="2.5" strokeLinejoin="round" />
+
+                {bpPoints.map((pt, i) => (
+                  <g key={`sys-${i}`}>
+                    <circle cx={pt.x} cy={mapY(pt.sys, 200)} r="3.5" fill="#FFF" stroke="#FF6B6B" strokeWidth="2" />
+                    {pt.sys > 0 && <text x={pt.x} y={mapY(pt.sys, 200) - 8} fill="#FF6B6B" fontSize="8" fontWeight="bold" textAnchor="middle">{pt.sys}</text>}
+                  </g>
                 ))}
-                <g className="text-[#7ECCC7] text-[7px] font-bold" transform="translate(0, 95)">
-                  <text x="5">Mon</text><text x="50">Tue</text><text x="95">Wed</text>
-                  <text x="140">Thu</text><text x="185">Fri</text><text x="230">Sat</text>
-                  <text x="275">Sun</text>
-                </g>
+                {bpPoints.map((pt, i) => (
+                  <g key={`dia-${i}`}>
+                    <circle cx={pt.x} cy={mapY(pt.dia, 200)} r="3.5" fill="#FFF" stroke="#26C6BF" strokeWidth="2" />
+                    {pt.dia > 0 && <text x={pt.x} y={mapY(pt.dia, 200) + 12} fill="#26C6BF" fontSize="8" fontWeight="bold" textAnchor="middle">{pt.dia}</text>}
+                  </g>
+                ))}
+                {days.map((day, i) => (
+                  <text key={`day-${i}`} x={35 + i * 42} y="100" fill="#A0A0A0" fontSize="8" fontWeight="bold" textAnchor="middle">{day.label}</text>
+                ))}
               </svg>
             </div>
             <div className="flex justify-between items-center mt-3 px-1">
