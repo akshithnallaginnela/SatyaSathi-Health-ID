@@ -1,18 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion } from 'motion/react';
 import { 
   Flame, 
   CheckCircle2, 
   MapPin, 
   Activity, 
-  Heart,
-  UploadCloud,
-  X,
-  AlertTriangle,
-  ShieldCheck,
-  AlertCircle
+  Heart
 } from 'lucide-react';
-import { dashboardAPI, mlAPI, clinicsAPI } from '../services/api.ts';
+import { dashboardAPI, clinicsAPI } from '../services/api.ts';
 
 // ── Score theme helper ─────────────────────────────────────────────────────
 
@@ -49,56 +44,10 @@ function getScoreTheme(score: number) {
   };
 }
 
-// ── Risk badge for ML results ──────────────────────────────────────────────
-
-function RiskBadge({ level }: { level: 'low' | 'moderate' | 'high' }) {
-  const config = {
-    low: { icon: ShieldCheck, bg: '#DCFCE7', text: '#15803D', label: 'Low Risk' },
-    moderate: { icon: AlertCircle, bg: '#FEF3C7', text: '#D97706', label: 'Moderate Risk' },
-    high: { icon: AlertTriangle, bg: '#FEE2E2', text: '#DC2626', label: 'High Risk' },
-  }[level];
-  const Icon = config.icon;
-  return (
-    <div className="flex items-center gap-2 px-4 py-2 rounded-full font-extrabold text-sm" style={{ background: config.bg, color: config.text }}>
-      <Icon size={16} />
-      {config.label}
-    </div>
-  );
-}
-
 export default function DashboardScreen() {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [clinics, setClinics] = useState<any[]>([]);
-
-  const [showOcrModal, setShowOcrModal] = useState(false);
-  const [ocrLoading, setOcrLoading] = useState(false);
-  const [ocrResult, setOcrResult] = useState<any>(null);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-
-  const handleOcrUpload = async () => {
-    if (!selectedFile) return;
-    if (selectedFile.size > 10 * 1024 * 1024) {
-      setOcrResult({ error: 'File too large. Please upload an image under 10 MB.' });
-      return;
-    }
-    const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/bmp'];
-    if (!validTypes.includes(selectedFile.type)) {
-      setOcrResult({ error: 'Unsupported file type. Use JPEG, PNG, WebP, or BMP.' });
-      return;
-    }
-    setOcrLoading(true);
-    setOcrResult(null);
-    try {
-      const res = await mlAPI.analyzeReport(selectedFile);
-      setOcrResult(res);
-    } catch (e) {
-      console.error(e);
-      setOcrResult({ error: 'Failed to process document. Ensure GEMINI_API_KEY is set in backend .env.' });
-    } finally {
-      setOcrLoading(false);
-    }
-  };
 
   useEffect(() => {
     (async () => {
@@ -146,6 +95,8 @@ export default function DashboardScreen() {
   const weekCompletion = data?.week_completion || [false, false, false, false, false, false, false];
   const todayIndex = new Date().getDay() === 0 ? 6 : new Date().getDay() - 1;
   const theme = getScoreTheme(score);
+  const preventive = data?.preventive_analytics || {};
+  const preventiveTips: string[] = preventive?.positive_precautions || [];
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="relative bg-[#FAFAFA] min-h-full pb-32">
@@ -278,34 +229,27 @@ export default function DashboardScreen() {
         {/* 4. FORECAST/RISK BARS */}
         <div className="bg-white border-[1.5px] border-border-teal rounded-[28px] p-5 shadow-sm">
           <h3 className="text-dark-teal font-extrabold text-[17px] leading-tight mb-1">What your body is telling you</h3>
-          <p className="text-muted-teal text-[11px] font-semibold italic mb-5">Trends only — not a diagnosis.</p>
+          <p className="text-muted-teal text-[11px] font-semibold italic mb-3">Positive preventive insights based on your latest report + manual vitals.</p>
 
-          <div className="mb-5 relative">
-            <div className="flex justify-between items-end mb-1">
-              <div>
-                <h4 className="text-dark-teal font-bold text-[14px]">Hypertension</h4>
-                <p className="text-muted-teal text-[11px] font-medium">BP has crept up 3 days in a row.</p>
-              </div>
-              <span className="text-primary-teal font-extrabold text-[15px]">42%</span>
-            </div>
-            <div className="w-full bg-[#E0F7F4] h-2 rounded-full overflow-hidden mb-3">
-              <div className="bg-primary-teal h-full rounded-full" style={{ width: '42%' }}></div>
-            </div>
-            <div className="bg-[#E0F7F4] text-primary-teal text-[11px] font-bold px-3 py-1.5 rounded-full inline-block">→ Walk 20 min today</div>
+          <div className="bg-[#F2FDFB] border border-border-teal rounded-2xl p-4 mb-3">
+            <p className="text-dark-teal text-[13px] font-bold">{preventive.summary || 'Keep your daily routine consistent to stay healthy.'}</p>
+            {preventive.report_type && (
+              <p className="text-muted-teal text-[10px] font-extrabold uppercase tracking-widest mt-2">
+                Based on: {String(preventive.report_type).replace(/_/g, ' ')}
+              </p>
+            )}
           </div>
 
-          <div className="relative">
-            <div className="flex justify-between items-end mb-1">
-              <div>
-                <h4 className="text-dark-teal font-bold text-[14px]">Cardiovascular</h4>
-                <p className="text-muted-teal text-[11px] font-medium">Stress + low activity combining.</p>
+          <div className="space-y-2">
+            {(preventiveTips.length ? preventiveTips : [
+              'Try a 20-minute walk today to support heart and sugar health.',
+              'Choose one low-sugar, high-fiber meal in your next meal window.',
+              'Keep tracking BP and glucose daily to spot trends early.'
+            ]).slice(0, 3).map((tip, idx) => (
+              <div key={idx} className="bg-[#E0F7F4] text-primary-teal text-[11px] font-bold px-3 py-2 rounded-full inline-block mr-2">
+                {tip}
               </div>
-              <span className="text-primary-teal font-extrabold text-[15px]">61%</span>
-            </div>
-            <div className="w-full bg-[#E0F7F4] h-2 rounded-full overflow-hidden mb-3">
-              <div className="bg-primary-teal h-full rounded-full" style={{ width: '61%' }}></div>
-            </div>
-            <div className="bg-[#E0F7F4] text-primary-teal text-[11px] font-bold px-3 py-1.5 rounded-full inline-block">→ Try 5-min deep breathing</div>
+            ))}
           </div>
         </div>
 
@@ -410,12 +354,12 @@ export default function DashboardScreen() {
               </div>
             </div>
 
-            <div className="relative cursor-pointer hover:bg-light-teal-surface rounded-xl p-2 -ml-2 transition-colors" onClick={() => setShowOcrModal(true)}>
+            <div className="relative rounded-xl p-2 -ml-2 bg-light-teal-surface">
               <div className="absolute left-[-13px] top-3 w-3.5 h-3.5 bg-primary-teal rounded-full border-2 border-[#FAFAFA]" />
               <div className="flex justify-between items-center">
                 <div>
-                  <h4 className="text-dark-teal font-bold text-[14px]">Upload blood report</h4>
-                  <p className="text-muted-teal text-[11px] font-medium">This week (Tap to scan)</p>
+                  <h4 className="text-dark-teal font-bold text-[14px]">Upload report from My ID</h4>
+                  <p className="text-muted-teal text-[11px] font-medium">Go to My ID → Upload Report</p>
                 </div>
                 <div className="bg-[#E0F7F4] text-[#1A9E98] font-bold text-[11px] px-3 py-1.5 rounded-full">+25 coins</div>
               </div>
@@ -425,100 +369,6 @@ export default function DashboardScreen() {
         </div>
 
       </div>
-
-      {/* ML + OCR Scan Modal */}
-      <AnimatePresence>
-        {showOcrModal && (
-          <div className="fixed inset-0 bg-[#1A3A38]/40 backdrop-blur-sm flex items-end justify-center z-[100] p-4 pb-24">
-            <motion.div initial={{ y: 300, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 300, opacity: 0 }}
-              className="bg-white w-full max-w-[400px] rounded-[32px] p-6 shadow-2xl relative max-h-[85vh] overflow-y-auto no-scrollbar">
-              <button onClick={() => { setShowOcrModal(false); setOcrResult(null); setSelectedFile(null); }} className="absolute top-6 right-6 text-[#7ECCC7] bg-[#F2FDFB] p-2 rounded-full">
-                <X size={20} />
-              </button>
-              
-              <h2 className="text-[#1A3A38] font-extrabold text-xl mb-1">Scan Medical Report</h2>
-              <p className="text-[#7ECCC7] text-xs font-semibold mb-6">OCR + AI Risk Analysis</p>
-
-              {!ocrResult && (
-                <>
-                  <label className="border-2 border-dashed border-[#C8F0EC] bg-[#F2FDFB] rounded-[24px] p-8 flex flex-col items-center justify-center cursor-pointer transition-colors mt-4">
-                    <UploadCloud size={40} className="text-[#26C6BF] mb-3" />
-                    <span className="text-[#1A3A38] font-extrabold text-sm mb-1">{selectedFile ? selectedFile.name : 'Choose an image'}</span>
-                    <span className="text-[#7ECCC7] text-[10px] font-bold uppercase tracking-wider">JPEG, PNG or WebP</span>
-                    <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(e) => setSelectedFile(e.target.files?.[0] || null)} />
-                  </label>
-
-                  <button onClick={handleOcrUpload} disabled={!selectedFile || ocrLoading}
-                    className="w-full mt-6 bg-[#26C6BF] text-white font-extrabold text-[15px] py-4 rounded-[16px] shadow-sm disabled:opacity-50 transition-all">
-                    {ocrLoading ? '🔍 Analyzing with AI...' : 'Scan & Analyze Report'}
-                  </button>
-                </>
-              )}
-
-              {ocrResult && !ocrResult.error && (
-                <div className="mt-2 space-y-4">
-
-                  {/* ML Risk Assessment */}
-                  {ocrResult.ml_analysis && (
-                    <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm">
-                      <h3 className="text-[#1A3A38] font-extrabold text-sm mb-3">AI Risk Assessment</h3>
-                      <RiskBadge level={ocrResult.ml_analysis.risk_level} />
-                      {ocrResult.needs_review && (
-                        <div className="mt-3 bg-[#FEF3C7] border border-[#FCD34D] text-[#92400E] text-[11px] font-semibold rounded-lg px-3 py-2">
-                          OCR confidence is low. Please review extracted fields manually or upload a clearer image.
-                        </div>
-                      )}
-                      <p className="text-[#1A3A38] text-[12px] font-medium mt-3 leading-relaxed">{ocrResult.ml_analysis.summary}</p>
-                      {ocrResult.ml_analysis.flags?.length > 0 && (
-                        <div className="mt-3 space-y-1.5">
-                          <p className="text-muted-teal text-[10px] font-extrabold uppercase tracking-widest">Detected Markers</p>
-                          {ocrResult.ml_analysis.flags.map((flag: string, i: number) => (
-                            <div key={i} className="text-[11px] font-semibold text-[#1A3A38] bg-gray-50 rounded-lg px-3 py-1.5">{flag}</div>
-                          ))}
-                        </div>
-                      )}
-                      <div className="mt-2 text-[10px] text-muted-teal font-medium">
-                        Confidence: {Math.round((ocrResult.ml_analysis.confidence || 0) * 100)}%
-                      </div>
-                      <div className="mt-1 text-[10px] text-muted-teal font-medium">
-                        OCR Quality: {Math.round(((ocrResult.ocr_quality?.confidence || 0) as number) * 100)}%
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Raw OCR Data */}
-                  <div className="bg-gray-50 rounded-xl p-4 max-h-[220px] overflow-y-auto border border-gray-100">
-                    <p className="text-muted-teal text-[10px] font-extrabold uppercase tracking-widest mb-3">Extracted Data</p>
-                    {Object.entries(ocrResult.ocr_data || ocrResult.data || {}).map(([key, val]) => (
-                      <div key={key} className="mb-3 last:mb-0">
-                        <span className="text-[#7ECCC7] text-[10px] font-extrabold uppercase tracking-wider block mb-0.5">{key.replace(/_/g, ' ')}</span>
-                        {typeof val === 'object' ? (
-                          <pre className="text-[#1A3A38] text-[11px] font-mono bg-white p-2 rounded-lg border border-gray-100">{JSON.stringify(val, null, 2)}</pre>
-                        ) : (
-                          <span className="text-[#1A3A38] font-bold text-[13px]">{val as string}</span>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-
-                  <button onClick={() => { setShowOcrModal(false); setOcrResult(null); setSelectedFile(null); }}
-                    className="w-full bg-[#1A3A38] text-white font-extrabold text-[15px] py-4 rounded-[16px] shadow-sm">
-                    Save to Profile
-                  </button>
-                </div>
-              )}
-
-              {ocrResult?.error && (
-                <div className="mt-4 bg-[#FFF0F0] border border-[#FF4D4D] rounded-xl p-4 mb-4">
-                  <h3 className="text-[#FF4D4D] font-extrabold text-sm mb-1">Error analyzing</h3>
-                  <p className="text-[#1A3A38] text-[11px] font-medium">{ocrResult.error}</p>
-                  <button onClick={() => setOcrResult(null)} className="mt-3 text-[#FF4D4D] text-[11px] font-extrabold underline">Try again</button>
-                </div>
-              )}
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
 
     </motion.div>
   );

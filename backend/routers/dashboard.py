@@ -12,6 +12,7 @@ from models.user import User
 from models.health_record import VitalsLog
 from models.task import DailyTask
 from models.coin_ledger import CoinLedger
+from models.report import Report
 from security.jwt_handler import get_current_user_id
 
 router = APIRouter(prefix="/api/dashboard", tags=["Dashboard"])
@@ -22,6 +23,7 @@ def _calculate_wellness_score(
     tasks_done: int,
     tasks_total: int,
     streak: int,
+    latest_report: Report | None,
 ) -> int:
     """Compute a practical MVP wellness score from vitals + adherence."""
     score = 55.0
@@ -64,6 +66,16 @@ def _calculate_wellness_score(
     # Streak bonus, capped to avoid dominance
     score += min(streak, 14) * 0.8
 
+    # Report risk adjustment from latest ML analysis (positive framing still shown in UI)
+    if latest_report and isinstance(latest_report.extracted_values, dict):
+        risk_level = ((latest_report.extracted_values or {}).get("ml_analysis") or {}).get("risk_level")
+        if risk_level == "high":
+            score -= 12
+        elif risk_level == "moderate":
+            score -= 6
+        elif risk_level == "low":
+            score += 3
+
     return int(max(0, min(100, round(score))))
 
 
@@ -101,6 +113,15 @@ async def get_dashboard_summary(
         .where(CoinLedger.user_id == user_id)
     )
     coin_balance = result.scalar() or 0
+
+    # Get latest processed report for preventive analytics
+    result = await db.execute(
+        select(Report)
+        .where(Report.user_id == user_id)
+        .order_by(desc(Report.uploaded_at))
+        .limit(1)
+    )
+    latest_report = result.scalar_one_or_none()
 
     # Calculate streak (consecutive days with at least 1 completed task)
     streak = 0
@@ -150,7 +171,16 @@ async def get_dashboard_summary(
         tasks_done=tasks_done,
         tasks_total=tasks_total,
         streak=streak,
+        latest_report=latest_report,
     )
+
+    report_ml = {}
+    report_precautions = []
+    report_type = None
+    if latest_report and isinstance(latest_report.extracted_values, dict):
+        report_ml = (latest_report.extracted_values or {}).get("ml_analysis") or {}
+        report_precautions = (latest_report.extracted_values or {}).get("positive_precautions") or []
+        report_type = latest_report.report_type
 
     return {
         "user": {
@@ -174,6 +204,12 @@ async def get_dashboard_summary(
             for t in todays_tasks
         ],
         "tasks_summary": f"{tasks_done}/{tasks_total} Done",
+        "preventive_analytics": {
+            "risk_level": report_ml.get("risk_level", "low"),
+            "summary": report_ml.get("summary", "Keep tracking your daily habits to stay on course."),
+            "positive_precautions": report_precautions,
+            "report_type": report_type,
+        },
         "vitals_snapshot": {
             "bp": f"{latest_vitals.systolic}/{latest_vitals.diastolic}" if latest_vitals and latest_vitals.systolic else None,
             "glucose": float(latest_vitals.fasting_glucose) if latest_vitals and latest_vitals.fasting_glucose else None,
