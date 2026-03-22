@@ -1,13 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { 
-  Flame, 
-  CheckCircle2, 
-  MapPin, 
-  Activity, 
-  Heart
-} from 'lucide-react';
-import { dashboardAPI, clinicsAPI } from '../services/api.ts';
+import { Flame, CheckCircle2, MapPin, Activity, Heart } from 'lucide-react';
+import { dashboardAPI, clinicsAPI, tasksAPI } from '../services/api.ts';
 
 // ── Score theme helper ─────────────────────────────────────────────────────
 
@@ -81,21 +75,34 @@ export default function DashboardScreen() {
     }
   }, []);
 
+  const completeTask = async (taskId: string, coinsReward: number) => {
+    // Optimistic update
+    const newTasks = data.todays_tasks.map((t: any) => t.id === taskId ? { ...t, completed: true } : t);
+    setData({ ...data, todays_tasks: newTasks, coin_balance: (data.coin_balance || 0) + coinsReward });
+    try {
+      await tasksAPI.completeTask(taskId);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   if (loading) {
     return <div className="flex justify-center items-center h-full"><p className="text-muted-teal text-sm">Loading...</p></div>;
   }
 
   const user = data?.user || { name: 'Arjun Kumar', initials: 'AK', profile_photo_url: null };
-  const score = data?.wellness_score || 72;
   const coins = data?.coin_balance || 1240;
   const streakDays = data?.streak_days || 0;
   const todaysTasks = data?.todays_tasks || [];
-  const tasksDone = todaysTasks.filter((t: any) => t.completed).length;
-  const tasksPending = Math.max(todaysTasks.length - tasksDone, 0);
+  const displayTasks = todaysTasks.slice(0, 4);
+  const tasksDone = displayTasks.filter((t: any) => t.completed).length;
+  const tasksPending = Math.max(displayTasks.length - tasksDone, 0);
   const weekCompletion = data?.week_completion || [false, false, false, false, false, false, false];
   const todayIndex = new Date().getDay() === 0 ? 6 : new Date().getDay() - 1;
-  const theme = getScoreTheme(score);
   const preventive = data?.preventive_analytics || {};
+  const hasReport = !!preventive.report_type;
+  const score = hasReport ? (data?.wellness_score || 72) : 0;
+  const theme = getScoreTheme(score);
   const preventiveTips: string[] = preventive?.positive_precautions || [];
 
   return (
@@ -206,51 +213,77 @@ export default function DashboardScreen() {
         <div className="bg-white border-[1.5px] border-border-teal rounded-[28px] p-5 shadow-sm">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-dark-teal font-extrabold text-lg">Daily Tasks</h3>
-            <span className="text-primary-teal text-[10px] font-extrabold uppercase tracking-widest">{tasksDone}/{todaysTasks.length} DONE</span>
+            <span className="text-primary-teal text-[10px] font-extrabold uppercase tracking-widest">{tasksDone}/{displayTasks.length} DONE</span>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            {todaysTasks.slice(0, 4).map((task: any, idx: number) => (
-              <div key={idx} className={`p-4 rounded-[20px] flex flex-col justify-between aspect-square border-[1.5px] transition-all bg-white shadow-sm ${task.completed ? 'border-primary-teal' : 'border-[#E8F1F1]'}`}>
-                <div className="flex justify-between items-start">
-                  <div className={`w-[26px] h-[26px] rounded-full flex items-center justify-center shrink-0 ${task.completed ? 'bg-primary-teal' : 'border-[1.5px] border-[#E0E0E0]'}`}>
+            {displayTasks.map((task: any, idx: number) => {
+              const reward = task.coins_reward ?? task.coins ?? 15;
+              return (
+              <div key={idx} 
+                   onClick={() => !task.completed && completeTask(task.id, reward)}
+                   className={`p-4 rounded-[20px] flex flex-col justify-between aspect-square border-[1.5px] transition-all bg-white relative cursor-pointer ${
+                    task.completed ? 'border-[#E8F1F1] opacity-50 blur-[0.5px]' : 'border-border-teal shadow-sm'
+                   }`}>
+                <div className="flex justify-between items-start relative z-10">
+                  <div className={`w-[26px] h-[26px] rounded-full flex items-center justify-center shrink-0 ${task.completed ? 'bg-primary-teal' : 'border-[1.5px] border-[#E0E0E0] bg-white'}`}>
                     {task.completed && <CheckCircle2 size={16} className="text-white" />}
                   </div>
                   <div className="bg-white shadow-[0_2px_8px_rgba(0,0,0,0.06)] text-[9px] font-extrabold text-[#D4AF37] border border-[#F4E3A0] px-2 py-1 rounded-full flex items-center gap-1">
                     <div className="w-1.5 h-1.5 bg-[#FFD700] rounded-full" />
-                    +{task.coins_reward ?? task.coins ?? 0}
+                    +{reward}
                   </div>
                 </div>
-                <h4 className={`font-extrabold text-sm leading-snug mt-3 ${task.completed ? 'text-primary-teal opacity-60 line-through' : 'text-dark-teal'}`}>{task.task_name ?? task.name ?? 'Task'}</h4>
+                <h4 className={`font-extrabold text-[13px] leading-snug mt-3 relative z-10 ${task.completed ? 'text-[#A0A0A0] line-through' : 'text-dark-teal'}`}>{task.task_name ?? task.name ?? 'Task'}</h4>
               </div>
-            ))}
+            )})}
           </div>
         </div>
 
         {/* 4. FORECAST/RISK BARS */}
         <div className="bg-white border-[1.5px] border-border-teal rounded-[28px] p-5 shadow-sm">
           <h3 className="text-dark-teal font-extrabold text-[17px] leading-tight mb-1">What your body is telling you</h3>
-          <p className="text-muted-teal text-[11px] font-semibold italic mb-3">Positive preventive insights based on your latest report + manual vitals.</p>
+          <p className="text-[#A0A0A0] text-[11px] font-semibold italic mb-4">Trends only — not a diagnosis.</p>
 
-          <div className="bg-[#F2FDFB] border border-border-teal rounded-2xl p-4 mb-3">
-            <p className="text-dark-teal text-[13px] font-bold">{preventive.summary || 'Keep your daily routine consistent to stay healthy.'}</p>
-            {preventive.report_type && (
-              <p className="text-muted-teal text-[10px] font-extrabold uppercase tracking-widest mt-2">
-                Based on: {String(preventive.report_type).replace(/_/g, ' ')}
-              </p>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            {(preventiveTips.length ? preventiveTips : [
-              'Try a 20-minute walk today to support heart and sugar health.',
-              'Choose one low-sugar, high-fiber meal in your next meal window.',
-              'Keep tracking BP and glucose daily to spot trends early.'
-            ]).slice(0, 3).map((tip, idx) => (
-              <div key={idx} className="bg-[#E0F7F4] text-primary-teal text-[11px] font-bold px-3 py-2 rounded-full inline-block mr-2">
-                {tip}
+          {!hasReport ? (
+            <div className="bg-[#F2FDFB] border border-border-teal rounded-2xl p-4 text-center">
+              <p className="text-dark-teal text-[13px] font-bold">No report uploaded yet.</p>
+              <p className="text-muted-teal text-[11px] mt-1">Upload a report in My ID to see your health insights.</p>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              <div>
+                <h3 className="text-dark-teal font-extrabold text-[15px]">Hypertension</h3>
+                <div className="flex justify-between items-center mt-0.5">
+                  <p className="text-muted-teal text-[11px] font-medium">BP has crept up 3 days in a row.</p>
+                  <span className="text-primary-teal font-extrabold text-[15px]">42%</span>
+                </div>
+                <div className="w-full bg-[#E0F7F4] h-2.5 rounded-full mt-2 overflow-hidden flex">
+                  <div className="bg-primary-teal h-full rounded-full" style={{ width: '42%' }}></div>
+                </div>
+                <div className="mt-3">
+                  <button className="bg-[#E0F7F4] text-primary-teal text-[10px] font-extrabold px-4 py-1.5 rounded-full">
+                    → Walk 20 min today
+                  </button>
+                </div>
               </div>
-            ))}
-          </div>
+
+              <div>
+                <h3 className="text-dark-teal font-extrabold text-[15px]">Cardiovascular</h3>
+                <div className="flex justify-between items-center mt-0.5">
+                  <p className="text-muted-teal text-[11px] font-medium">Stress + low activity combining.</p>
+                  <span className="text-primary-teal font-extrabold text-[15px]">61%</span>
+                </div>
+                <div className="w-full bg-[#E0F7F4] h-2.5 rounded-full mt-2 overflow-hidden flex">
+                  <div className="bg-primary-teal h-full rounded-full" style={{ width: '61%' }}></div>
+                </div>
+                <div className="mt-3">
+                  <button className="bg-[#E0F7F4] text-primary-teal text-[10px] font-extrabold px-4 py-1.5 rounded-full">
+                    → Try 5-min deep breathing
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* 5. NEAREST CLINICS */}

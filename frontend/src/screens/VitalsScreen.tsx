@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Plus, X, Heart, Droplet, Activity, Award, ChevronRight } from 'lucide-react';
-import { vitalsAPI } from '../services/api.ts';
+import { Plus, X, Heart, Droplet, Activity, User, Award, ChevronRight } from 'lucide-react';
+import { vitalsAPI, dashboardAPI } from '../services/api.ts';
 
 export default function VitalsScreen() {
   const [showLogModal, setShowLogModal] = useState(false);
@@ -9,6 +9,7 @@ export default function VitalsScreen() {
   const [history, setHistory] = useState<any[]>([]);
   const [latestBmi, setLatestBmi] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  const [hasReport, setHasReport] = useState(false);
 
   // Form states
   const [bp, setBp] = useState({ sys: '', dia: '', pulse: '' });
@@ -19,9 +20,12 @@ export default function VitalsScreen() {
 
   const loadHistory = async () => {
     try {
-      const [res, bmiRes] = await Promise.all([vitalsAPI.getHistory(), vitalsAPI.getLatestBMI()]);
+      const [res, bmiRes, summary] = await Promise.all([vitalsAPI.getHistory(), vitalsAPI.getLatestBMI(), dashboardAPI.getSummary()]);
       setHistory(res || []);
       setLatestBmi(bmiRes || null);
+      if (summary?.preventive_analytics?.report_type) {
+        setHasReport(true);
+      }
     } catch (e) {
       console.error(e);
     }
@@ -70,6 +74,29 @@ export default function VitalsScreen() {
       </div>
 
       <div className="relative z-20 mt-6 space-y-8">
+
+        {/* LOG VITALS MANUALLY */}
+        <div className="px-6">
+          <h3 className="text-[#1A3A38] font-extrabold text-[18px] mb-4">Log Vitals Manually</h3>
+          <div className="grid grid-cols-2 gap-3">
+            <div onClick={() => { setActiveTab('BP'); setShowLogModal(true); }} className="bg-white border-[1.5px] border-[#E8F1F1] rounded-[24px] p-4 flex flex-col items-center justify-center gap-3 shadow-sm cursor-pointer hover:border-[#26C6BF] transition-colors">
+              <Heart size={24} className="text-[#FF6B6B]" />
+              <span className="text-[#1A3A38] font-extrabold text-[13px]">Blood Pressure</span>
+            </div>
+            <div onClick={() => { setActiveTab('SUGAR'); setShowLogModal(true); }} className="bg-white border-[1.5px] border-[#E8F1F1] rounded-[24px] p-4 flex flex-col items-center justify-center gap-3 shadow-sm cursor-pointer hover:border-[#26C6BF] transition-colors">
+              <Droplet size={24} className="text-[#26C6BF]" />
+              <span className="text-[#1A3A38] font-extrabold text-[13px]">Blood Sugar</span>
+            </div>
+            <div onClick={() => { setActiveTab('BMI'); setShowLogModal(true); }} className="bg-white border-[1.5px] border-[#E8F1F1] rounded-[24px] p-4 flex flex-col items-center justify-center gap-3 shadow-sm cursor-pointer hover:border-[#26C6BF] transition-colors">
+              <User size={24} className="text-[#FF9D4A]" />
+              <span className="text-[#1A3A38] font-extrabold text-[13px]">Weight/Height</span>
+            </div>
+            <div onClick={() => { setActiveTab('BP'); setShowLogModal(true); }} className="bg-white border-[1.5px] border-[#E8F1F1] rounded-[24px] p-4 flex flex-col items-center justify-center gap-3 shadow-sm cursor-pointer hover:border-[#26C6BF] transition-colors">
+              <Plus size={24} className="text-[#26C6BF]" />
+              <span className="text-[#1A3A38] font-extrabold text-[13px]">Other Vitals</span>
+            </div>
+          </div>
+        </div>
         
         {/* TODAY'S VITALS */}
         <div className="pt-2">
@@ -181,65 +208,76 @@ export default function VitalsScreen() {
           </div>
         </div>
 
-        {/* RECENT LAB RESULTS */}
-        <div>
-          <h3 className="text-[#26C6BF] text-[11px] font-extrabold uppercase tracking-widest px-6 mb-4">RECENT LAB RESULTS</h3>
-          <div className="flex gap-4 overflow-x-auto pb-4 no-scrollbar px-6 snap-x text-left">
-            
-            <div className="bg-white border-[1.5px] border-[#E8F1F1] rounded-[24px] p-5 min-w-[150px] shrink-0 shadow-sm snap-start relative">
-              <div className="flex justify-between items-start mb-4">
-                <h4 className="text-[#1A3A38] text-[14px] font-bold leading-tight">Cholesterol<br/>(LDL)</h4>
-                <span className="bg-[#FFF0F0] text-[#FF4D4D] text-[9px] font-extrabold px-2 py-0.5 rounded-md uppercase">High</span>
+        {/* CONDITIONAL LAB RESULTS & DIET FOCUS */}
+        {hasReport ? (
+          <>
+            {/* RECENT LAB RESULTS */}
+            <div>
+              <h3 className="text-[#26C6BF] text-[11px] font-extrabold uppercase tracking-widest px-6 mb-4">RECENT LAB RESULTS</h3>
+              <div className="flex gap-4 overflow-x-auto pb-4 no-scrollbar px-6 snap-x text-left">
+                
+                <div className="bg-white border-[1.5px] border-[#E8F1F1] rounded-[24px] p-5 min-w-[150px] shrink-0 shadow-sm snap-start relative">
+                  <div className="flex justify-between items-start mb-4">
+                    <h4 className="text-[#1A3A38] text-[14px] font-bold leading-tight">Cholesterol<br/>(LDL)</h4>
+                    <span className="bg-[#FFF0F0] text-[#FF4D4D] text-[9px] font-extrabold px-2 py-0.5 rounded-md uppercase">High</span>
+                  </div>
+                  <h2 className="text-[#1A3A38] font-extrabold text-[26px] leading-none mb-4 flex items-baseline gap-1">112 <span className="text-[10px] text-[#7ECCC7]">mg/dL</span></h2>
+                  <p className="text-[#7ECCC7] text-[9px] font-bold uppercase tracking-wider">Oct 12, 2025</p>
+                </div>
+
+                <div className="bg-white border-[1.5px] border-[#E8F1F1] rounded-[24px] p-5 min-w-[150px] shrink-0 shadow-sm snap-start relative">
+                  <div className="flex justify-between items-start mb-4">
+                    <h4 className="text-[#1A3A38] text-[14px] font-bold leading-tight">HbA1c</h4>
+                    <span className="bg-[#E0F7F4] text-[#26C6BF] text-[9px] font-extrabold px-2 py-0.5 rounded-md uppercase">Normal</span>
+                  </div>
+                  <h2 className="text-[#1A3A38] font-extrabold text-[26px] leading-none mb-4 flex items-baseline gap-1">5.4 <span className="text-[12px] text-[#7ECCC7]">%</span></h2>
+                  <p className="text-[#7ECCC7] text-[9px] font-bold uppercase tracking-wider">Oct 12, 2025</p>
+                </div>
+
               </div>
-              <h2 className="text-[#1A3A38] font-extrabold text-[26px] leading-none mb-4 flex items-baseline gap-1">112 <span className="text-[10px] text-[#7ECCC7]">mg/dL</span></h2>
-              <p className="text-[#7ECCC7] text-[9px] font-bold uppercase tracking-wider">Oct 12, 2025</p>
             </div>
 
-            <div className="bg-white border-[1.5px] border-[#E8F1F1] rounded-[24px] p-5 min-w-[150px] shrink-0 shadow-sm snap-start relative">
-              <div className="flex justify-between items-start mb-4">
-                <h4 className="text-[#1A3A38] text-[14px] font-bold leading-tight">HbA1c</h4>
-                <span className="bg-[#E0F7F4] text-[#26C6BF] text-[9px] font-extrabold px-2 py-0.5 rounded-md uppercase">Normal</span>
+            {/* DIET FOCUS */}
+            <div className="pb-8">
+              <h3 className="text-[#26C6BF] text-[11px] font-extrabold uppercase tracking-widest px-6 mb-4">DIET FOCUS</h3>
+              <div className="flex gap-4 overflow-x-auto pb-4 no-scrollbar px-6 snap-x">
+                
+                <div className="bg-white border-[1.5px] border-[#E8F1F1] border-l-4 border-l-[#26C6BF] rounded-[24px] p-5 min-w-[200px] shrink-0 shadow-sm snap-start">
+                  <span className="bg-[#26C6BF] text-white text-[10px] font-extrabold px-3 py-1 rounded-full inline-block mb-3">Eat more</span>
+                  <h4 className="text-[#1A3A38] font-extrabold text-[15px] mb-3">Potassium foods</h4>
+                  <ul className="space-y-1">
+                    <li className="text-[#1A3A38] text-[12px] font-medium flex items-center gap-2">
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#26C6BF]" /> Banana
+                    </li>
+                    <li className="text-[#1A3A38] text-[12px] font-medium flex items-center gap-2">
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#26C6BF]" /> Sweet potato
+                    </li>
+                  </ul>
+                </div>
+
+                <div className="bg-white border-[1.5px] border-[#E8F1F1] border-l-4 border-l-[#FF4D4D] rounded-[24px] p-5 min-w-[200px] shrink-0 shadow-sm snap-start">
+                  <span className="bg-[#E0F7F4] text-[#1A3A38] text-[10px] font-extrabold px-3 py-1 rounded-full inline-block mb-3">Reduce</span>
+                  <h4 className="text-[#1A3A38] font-extrabold text-[15px] mb-3">High sodium</h4>
+                  <ul className="space-y-1">
+                    <li className="text-[#1A3A38] text-[12px] font-medium flex items-center gap-2">
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#26C6BF]" /> Pickles
+                    </li>
+                    <li className="text-[#1A3A38] text-[12px] font-medium flex items-center gap-2">
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#26C6BF]" /> Packaged snacks
+                    </li>
+                  </ul>
+                </div>
+
               </div>
-              <h2 className="text-[#1A3A38] font-extrabold text-[26px] leading-none mb-4 flex items-baseline gap-1">5.4 <span className="text-[12px] text-[#7ECCC7]">%</span></h2>
-              <p className="text-[#7ECCC7] text-[9px] font-bold uppercase tracking-wider">Oct 12, 2025</p>
             </div>
-
-          </div>
-        </div>
-
-        {/* DIET FOCUS */}
-        <div className="pb-8">
-          <h3 className="text-[#26C6BF] text-[11px] font-extrabold uppercase tracking-widest px-6 mb-4">DIET FOCUS</h3>
-          <div className="flex gap-4 overflow-x-auto pb-4 no-scrollbar px-6 snap-x">
-            
-            <div className="bg-white border-[1.5px] border-[#E8F1F1] border-l-4 border-l-[#26C6BF] rounded-[24px] p-5 min-w-[200px] shrink-0 shadow-sm snap-start">
-              <span className="bg-[#26C6BF] text-white text-[10px] font-extrabold px-3 py-1 rounded-full inline-block mb-3">Eat more</span>
-              <h4 className="text-[#1A3A38] font-extrabold text-[15px] mb-3">Potassium foods</h4>
-              <ul className="space-y-1">
-                <li className="text-[#1A3A38] text-[12px] font-medium flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#26C6BF]" /> Banana
-                </li>
-                <li className="text-[#1A3A38] text-[12px] font-medium flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#26C6BF]" /> Sweet potato
-                </li>
-              </ul>
+          </>
+        ) : (
+          <div className="px-6 pb-8">
+            <div className="bg-[#F2FDFB] border border-border-teal rounded-2xl p-4 text-center">
+              <p className="text-dark-teal text-[13px] font-bold">No report uploaded yet.</p>
+              <p className="text-muted-teal text-[11px] mt-1">Upload a report to see Recent Lab Results and Diet Focus.</p>
             </div>
-
-            <div className="bg-white border-[1.5px] border-[#E8F1F1] border-l-4 border-l-[#FF4D4D] rounded-[24px] p-5 min-w-[200px] shrink-0 shadow-sm snap-start">
-              <span className="bg-[#E0F7F4] text-[#1A3A38] text-[10px] font-extrabold px-3 py-1 rounded-full inline-block mb-3">Reduce</span>
-              <h4 className="text-[#1A3A38] font-extrabold text-[15px] mb-3">High sodium</h4>
-              <ul className="space-y-1">
-                <li className="text-[#1A3A38] text-[12px] font-medium flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#26C6BF]" /> Pickles
-                </li>
-                <li className="text-[#1A3A38] text-[12px] font-medium flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#26C6BF]" /> Packaged snacks
-                </li>
-              </ul>
-            </div>
-
-          </div>
-        </div>
+        )}
 
       </div>
 
