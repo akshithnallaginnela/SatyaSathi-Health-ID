@@ -3,7 +3,7 @@ ML Router — analyze uploaded health reports using OCR + rule-based risk classi
 POST /api/ml/analyze-report
 """
 
-from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
+from fastapi import APIRouter, UploadFile, File, HTTPException, Depends, Form
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from database import get_db
@@ -14,6 +14,36 @@ from models.report import Report
 from ml.report_analyzer import analyze
 
 router = APIRouter(prefix="/api/ml", tags=["ML Analysis"])
+
+
+def _normalize_report_type(value: str | None) -> str:
+    if not value:
+        return "health_report"
+    v = value.strip().lower().replace("-", "_").replace(" ", "_")
+    alias = {
+        "blood_test": "blood_test_report",
+        "blood_test_report": "blood_test_report",
+        "blood_sugar": "blood_sugar_report",
+        "blood_sugar_report": "blood_sugar_report",
+        "sugar": "blood_sugar_report",
+    }
+    return alias.get(v, v)
+
+
+def _build_positive_precautions(risk_level: str, report_type: str) -> list[str]:
+    base = [
+        "Try a 20-minute brisk walk after meals on most days.",
+        "Drink enough water through the day and keep sleep consistent.",
+        "Track one small habit daily instead of changing everything at once.",
+    ]
+    if report_type == "blood_sugar_report":
+        base[0] = "Add a 15-20 minute post-meal walk to support steady sugar levels."
+        base.append("Use high-fiber meals and reduce refined sugar portions gradually.")
+    if risk_level == "high":
+        base.insert(0, "Book a doctor follow-up this week and carry this report for review.")
+    elif risk_level == "moderate":
+        base.insert(0, "Plan a follow-up check in the next 2-4 weeks to monitor progress.")
+    return base
 
 
 def _ocr_quality_score(ocr_data: dict) -> dict:
@@ -40,6 +70,7 @@ def _ocr_quality_score(ocr_data: dict) -> dict:
 @router.post("/analyze-report")
 async def analyze_report(
     file: UploadFile = File(...),
+    report_type: str | None = Form(None),
     user_id: str = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
@@ -83,16 +114,20 @@ async def analyze_report(
     )
 
     # Step 3: Persist report + extracted values for history APIs
-    report_type = str(ocr_data.get("document_type") or "health_report").lower().replace(" ", "_")
+    selected_report_type = _normalize_report_type(report_type)
+    inferred_report_type = str(ocr_data.get("document_type") or "health_report").lower().replace(" ", "_")
     report = Report(
         user_id=user_id,
-        report_type=report_type,
+        report_type=selected_report_type,
         file_key=file_url,
         extracted_values={
             "ocr_data": ocr_data,
             "ml_analysis": ml_result,
             "ocr_quality": ocr_quality,
             "needs_review": needs_review,
+            "selected_report_type": selected_report_type,
+            "inferred_report_type": inferred_report_type,
+            "positive_precautions": _build_positive_precautions(ml_result.get("risk_level", "low"), selected_report_type),
             "original_filename": file.filename,
         },
         upload_status="needs_review" if needs_review else "processed",
@@ -106,8 +141,10 @@ async def analyze_report(
         "report_id": report.id,
         "file_url": file_url,
         "upload_status": report.upload_status,
+        "report_type": selected_report_type,
         "ocr_quality": ocr_quality,
         "needs_review": needs_review,
         "ocr_data": ocr_data,
         "ml_analysis": ml_result,
+        "positive_precautions": _build_positive_precautions(ml_result.get("risk_level", "low"), selected_report_type),
     }
