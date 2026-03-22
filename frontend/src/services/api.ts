@@ -229,3 +229,18 @@ export const reportsAPI = {
   list: (page = 1, limit = 20) => apiFetch(`/reports/?page=${page}&limit=${limit}`),
   getById: (reportId: string) => apiFetch(`/reports/${reportId}`),
 };
+
+// ─── Settings API ───
+
+export const settingsAPI = {
+  get: () => apiFetch('/settings/'),
+  update: (data: { notifications_enabled?: boolean; reminder_enabled?: boolean; reminder_time?: string; language?: string }) =>
+    apiFetch('/settings/', { method: 'PUT', body: JSON.stringify(data) }),
+};
+
+// ─── Notifications API ───
+
+export const notificationsAPI = {
+  list: () => apiFetch('/notifications/'),
+  createTest: () => apiFetch('/notifications/test', { method: 'POST' }),
+};
