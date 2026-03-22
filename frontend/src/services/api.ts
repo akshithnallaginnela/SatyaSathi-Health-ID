@@ -222,3 +222,10 @@ export const mlAPI = {
     return response.json();
   },
 };
+
+// ─── Reports API ───
+
+export const reportsAPI = {
+  list: (page = 1, limit = 20) => apiFetch(`/reports/?page=${page}&limit=${limit}`),
+  getById: (reportId: string) => apiFetch(`/reports/${reportId}`),
+};

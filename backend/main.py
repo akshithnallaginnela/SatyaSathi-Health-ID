@@ -37,6 +37,7 @@ from routers.profile import router as profile_router
 from routers.ocr import router as ocr_router
 from routers.clinics import router as clinics_router
 from routers.ml import router as ml_router
+from routers.reports import router as reports_router
 
 
 @asynccontextmanager
@@ -77,6 +78,7 @@ app.include_router(profile_router)
 app.include_router(ocr_router)
 app.include_router(clinics_router)
 app.include_router(ml_router)
+app.include_router(reports_router)
 
 # Serve locally-uploaded profile photos
 _uploads_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "uploads")
