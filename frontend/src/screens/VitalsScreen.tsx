@@ -277,6 +277,7 @@ export default function VitalsScreen() {
               <p className="text-dark-teal text-[13px] font-bold">No report uploaded yet.</p>
               <p className="text-muted-teal text-[11px] mt-1">Upload a report to see Recent Lab Results and Diet Focus.</p>
             </div>
+          </div>
         )}
 
       </div>
