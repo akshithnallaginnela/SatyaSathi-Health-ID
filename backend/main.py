@@ -11,7 +11,9 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
+import os
 
 load_dotenv()
 
@@ -34,6 +36,7 @@ from routers.coins import router as coins_router
 from routers.profile import router as profile_router
 from routers.ocr import router as ocr_router
 from routers.clinics import router as clinics_router
+from routers.ml import router as ml_router
 
 
 @asynccontextmanager
@@ -73,6 +76,12 @@ app.include_router(coins_router)
 app.include_router(profile_router)
 app.include_router(ocr_router)
 app.include_router(clinics_router)
+app.include_router(ml_router)
+
+# Serve locally-uploaded profile photos
+_uploads_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "uploads")
+os.makedirs(_uploads_dir, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=_uploads_dir), name="uploads")
 
 
 # ─── Health Check ───
