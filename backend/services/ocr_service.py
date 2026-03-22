@@ -3,7 +3,7 @@ import json
 import google.generativeai as genai
 from PIL import Image
 import io
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel, ValidationError, Field
 
 # Optional: Load env variable directly if not already done by main.py
 genai.configure(api_key=os.environ.get("GEMINI_API_KEY", ""))
@@ -14,8 +14,8 @@ class OCRPayload(BaseModel):
     patient_name: str | None = None
     date: str | None = None
     doctor: str | None = None
-    key_findings: list[str] = []
-    medications: list[str] = []
+    key_findings: list[str] = Field(default_factory=list)
+    medications: list[str] = Field(default_factory=list)
 
 def _clean_json_text(text: str) -> str:
     cleaned = text.strip()
