@@ -60,7 +60,7 @@ export default function MyIDScreen({ user, onLogout }: { user: any; onLogout: ()
 
   const uploadReport = async () => {
     if (!reportFile) {
-      setNoticeMsg('Please choose a report image first.');
+      setNoticeMsg('Please choose a report document first.');
       return;
     }
     setUploadingReport(true);
@@ -70,8 +70,10 @@ export default function MyIDScreen({ user, onLogout }: { user: any; onLogout: ()
       const res = await mlAPI.analyzeReport(reportFile, reportType);
       setReportResult(res);
       setNoticeMsg('Report uploaded and analyzed successfully.');
+      alert('✅ Upload Successful!\n\nYour Health Dashboard and Daily Tasks have been dynamically updated with insights from your report.');
     } catch (e: any) {
       setNoticeMsg(e?.message || 'Failed to upload report.');
+      alert('❌ Upload Failed:\n\n' + (e?.message || 'Unknown network error.'));
     } finally {
       setUploadingReport(false);
     }
@@ -263,10 +265,10 @@ export default function MyIDScreen({ user, onLogout }: { user: any; onLogout: ()
 
           <label className="border-2 border-dashed border-teal-border rounded-xl p-4 flex flex-col items-center justify-center cursor-pointer bg-light-teal-surface">
             <UploadCloud size={24} className="text-primary-teal mb-2" />
-            <span className="text-xs font-semibold text-dark-teal">{reportFile ? reportFile.name : 'Choose report image'}</span>
+            <span className="text-xs font-semibold text-dark-teal text-center px-2">{reportFile ? reportFile.name : 'Choose report image or PDF'}</span>
             <input
               type="file"
-              accept="image/jpeg,image/png,image/webp,image/bmp"
+              accept="image/jpeg,image/png,image/webp,image/bmp,application/pdf"
               className="hidden"
               onChange={(e) => setReportFile(e.target.files?.[0] || null)}
             />
