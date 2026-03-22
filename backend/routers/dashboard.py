@@ -187,6 +187,7 @@ async def get_dashboard_summary(
             "name": user.full_name if user else "User",
             "initials": initials,
             "health_id": user.health_id if user else None,
+            "profile_photo_url": user.profile_photo_url if user else None,
         },
         "wellness_score": wellness_score,
         "streak_days": streak,
