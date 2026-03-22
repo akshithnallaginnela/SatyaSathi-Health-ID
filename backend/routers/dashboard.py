@@ -17,6 +17,56 @@ from security.jwt_handler import get_current_user_id
 router = APIRouter(prefix="/api/dashboard", tags=["Dashboard"])
 
 
+def _calculate_wellness_score(
+    latest_vitals: VitalsLog | None,
+    tasks_done: int,
+    tasks_total: int,
+    streak: int,
+) -> int:
+    """Compute a practical MVP wellness score from vitals + adherence."""
+    score = 55.0
+
+    if latest_vitals:
+        # Blood pressure contribution
+        if latest_vitals.systolic and latest_vitals.diastolic:
+            sys = latest_vitals.systolic
+            dia = latest_vitals.diastolic
+            if sys <= 120 and dia <= 80:
+                score += 15
+            elif sys <= 140 and dia <= 90:
+                score += 8
+            else:
+                score -= 10
+
+        # Glucose contribution
+        if latest_vitals.fasting_glucose is not None:
+            glucose = float(latest_vitals.fasting_glucose)
+            if 70 <= glucose <= 99:
+                score += 12
+            elif glucose <= 125:
+                score += 6
+            else:
+                score -= 10
+
+        # Pulse contribution
+        if latest_vitals.pulse is not None:
+            pulse = latest_vitals.pulse
+            if 60 <= pulse <= 100:
+                score += 6
+            else:
+                score -= 4
+
+    # Task adherence contribution
+    if tasks_total > 0:
+        completion_ratio = tasks_done / tasks_total
+        score += completion_ratio * 18
+
+    # Streak bonus, capped to avoid dominance
+    score += min(streak, 14) * 0.8
+
+    return int(max(0, min(100, round(score))))
+
+
 @router.get("/summary")
 async def get_dashboard_summary(
     user_id: str = Depends(get_current_user_id),
@@ -95,13 +145,20 @@ async def get_dashboard_summary(
     tasks_done = sum(1 for t in todays_tasks if t.completed)
     tasks_total = len(todays_tasks)
 
+    wellness_score = _calculate_wellness_score(
+        latest_vitals=latest_vitals,
+        tasks_done=tasks_done,
+        tasks_total=tasks_total,
+        streak=streak,
+    )
+
     return {
         "user": {
             "name": user.full_name if user else "User",
             "initials": initials,
             "health_id": user.health_id if user else None,
         },
-        "wellness_score": 72,  # TODO: calculate from ML models
+        "wellness_score": wellness_score,
         "streak_days": streak,
         "week_completion": week_completion,
         "coin_balance": int(coin_balance),
