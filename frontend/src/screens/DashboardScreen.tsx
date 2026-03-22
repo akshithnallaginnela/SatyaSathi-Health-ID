@@ -3,16 +3,68 @@ import { motion, AnimatePresence } from 'motion/react';
 import { 
   Flame, 
   CheckCircle2, 
-  Circle, 
-  FileText, 
   MapPin, 
   Activity, 
   Heart,
-  Image as ImageIcon,
   UploadCloud,
-  X
+  X,
+  AlertTriangle,
+  ShieldCheck,
+  AlertCircle
 } from 'lucide-react';
-import { dashboardAPI, ocrAPI } from '../services/api.ts';
+import { dashboardAPI, mlAPI } from '../services/api.ts';
+
+// ── Score theme helper ─────────────────────────────────────────────────────
+
+function getScoreTheme(score: number) {
+  if (score < 50) return {
+    ringStroke: '#EF4444',
+    ringBg: 'rgba(239,68,68,0.2)',
+    badgeBg: '#FEE2E2',
+    badgeText: '#DC2626',
+    label: 'Needs attention',
+    emoji: '🔴',
+    glow: '#EF4444',
+    headerBlob: '#FF6B6B',
+  };
+  if (score < 75) return {
+    ringStroke: '#F59E0B',
+    ringBg: 'rgba(245,158,11,0.2)',
+    badgeBg: '#FEF3C7',
+    badgeText: '#D97706',
+    label: 'Moderate attention',
+    emoji: '🟡',
+    glow: '#F59E0B',
+    headerBlob: '#FCD34D',
+  };
+  return {
+    ringStroke: '#22C55E',
+    ringBg: 'rgba(34,197,94,0.2)',
+    badgeBg: '#DCFCE7',
+    badgeText: '#15803D',
+    label: 'Looking good!',
+    emoji: '🟢',
+    glow: '#22C55E',
+    headerBlob: '#4ADE80',
+  };
+}
+
+// ── Risk badge for ML results ──────────────────────────────────────────────
+
+function RiskBadge({ level }: { level: 'low' | 'moderate' | 'high' }) {
+  const config = {
+    low: { icon: ShieldCheck, bg: '#DCFCE7', text: '#15803D', label: 'Low Risk' },
+    moderate: { icon: AlertCircle, bg: '#FEF3C7', text: '#D97706', label: 'Moderate Risk' },
+    high: { icon: AlertTriangle, bg: '#FEE2E2', text: '#DC2626', label: 'High Risk' },
+  }[level];
+  const Icon = config.icon;
+  return (
+    <div className="flex items-center gap-2 px-4 py-2 rounded-full font-extrabold text-sm" style={{ background: config.bg, color: config.text }}>
+      <Icon size={16} />
+      {config.label}
+    </div>
+  );
+}
 
 export default function DashboardScreen() {
   const [data, setData] = useState<any>(null);
@@ -28,11 +80,11 @@ export default function DashboardScreen() {
     setOcrLoading(true);
     setOcrResult(null);
     try {
-      const res = await ocrAPI.analyze(selectedFile);
+      const res = await mlAPI.analyzeReport(selectedFile);
       setOcrResult(res);
     } catch (e) {
       console.error(e);
-      setOcrResult({ error: 'Failed to process document. Ensure API key is set.' });
+      setOcrResult({ error: 'Failed to process document. Ensure GEMINI_API_KEY is set in backend .env.' });
     } finally {
       setOcrLoading(false);
     }
@@ -55,10 +107,10 @@ export default function DashboardScreen() {
     return <div className="flex justify-center items-center h-full"><p className="text-muted-teal text-sm">Loading...</p></div>;
   }
 
-  // Use dynamic data where possible, but hardcode the UI structure for the full design
-  const user = data?.user || { name: 'Arjun Kumar', initials: 'AK' };
+  const user = data?.user || { name: 'Arjun Kumar', initials: 'AK', profile_photo_url: null };
   const score = data?.wellness_score || 72;
   const coins = data?.coin_balance || 1240;
+  const theme = getScoreTheme(score);
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="relative bg-[#FAFAFA] min-h-full pb-32">
@@ -67,6 +119,8 @@ export default function DashboardScreen() {
       <div className="bg-primary-teal w-full pt-16 pb-12 rounded-b-[40px] px-6 relative z-10 shadow-sm overflow-hidden">
         {/* Subtle background blob */}
         <div className="absolute top-[-40px] right-[-20px] w-48 h-48 bg-[#28D4CC] rounded-full opacity-30 blur-[40px]" />
+        {/* Score-colored glow overlay */}
+        <div className="absolute bottom-[-20px] left-[-10px] w-40 h-40 rounded-full opacity-20 blur-[30px]" style={{ background: theme.headerBlob }} />
         
         {/* Top Header Row */}
         <div className="flex justify-between items-start relative z-10">
@@ -74,8 +128,19 @@ export default function DashboardScreen() {
             <p className="text-[#C8F0EC] text-xs font-semibold tracking-wide">Good morning</p>
             <h1 className="text-white text-2xl font-extrabold">{user.name}</h1>
           </div>
-          <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center text-primary-teal font-extrabold text-lg shadow-sm">
-            {user.initials}
+          {/* Avatar — shows photo if available, else initials */}
+          <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-white/40 shadow-sm shrink-0">
+            {user.profile_photo_url ? (
+              <img
+                src={user.profile_photo_url.startsWith('/') ? `http://localhost:8000${user.profile_photo_url}` : user.profile_photo_url}
+                alt={user.name}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="w-full h-full bg-white flex items-center justify-center text-primary-teal font-extrabold text-lg">
+                {user.initials}
+              </div>
+            )}
           </div>
         </div>
 
@@ -91,23 +156,32 @@ export default function DashboardScreen() {
           </div>
         </div>
 
-        {/* Health Index Box */}
+        {/* Health Index Box — dynamic color */}
         <div className="mt-6 flex items-center gap-4 relative z-10">
           <div className="relative w-[70px] h-[70px] shrink-0">
             <svg viewBox="0 0 36 36" className="w-full h-full transform -rotate-90">
               <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="4" />
-              <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#fff" strokeWidth="4" strokeDasharray={`${score}, 100`} strokeLinecap="round" />
+              <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                fill="none"
+                stroke={theme.ringStroke}
+                strokeWidth="4"
+                strokeDasharray={`${score}, 100`}
+                strokeLinecap="round"
+              />
             </svg>
             <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <span className="text-white font-extrabold text-lg leading-none mt-1">{score}</span>
+              <span className="font-extrabold text-lg leading-none mt-1" style={{ color: theme.ringStroke }}>{score}</span>
               <span className="text-white text-[7px] font-extrabold tracking-widest uppercase mt-0.5">SCORE</span>
             </div>
           </div>
           <div>
             <h2 className="text-white font-extrabold text-[15px] mb-0.5">Health Index</h2>
             <p className="text-[#C8F0EC] text-xs font-semibold mb-2">Mostly stable. 3 tasks pending.</p>
-            <div className="bg-[#48D0C9] text-white text-[10px] font-extrabold px-3 py-1.5 rounded-full inline-block shadow-sm">
-              Moderate attention
+            <div
+              className="text-[10px] font-extrabold px-3 py-1.5 rounded-full inline-block shadow-sm"
+              style={{ background: theme.badgeBg, color: theme.badgeText }}
+            >
+              {theme.emoji} {theme.label}
             </div>
           </div>
         </div>
@@ -205,43 +279,7 @@ export default function DashboardScreen() {
           </div>
         </div>
 
-        {/* 5. BP TREND CHART */}
-        <div className="bg-white border-[1.5px] border-border-teal rounded-[28px] p-5 shadow-sm">
-          <h3 className="text-dark-teal font-extrabold text-[16px] mb-4">BP trend — last 7 days</h3>
-          
-          {/* Simulated chart */}
-          <div className="w-full h-[140px] relative mb-2">
-            {/* Normal zone */}
-            <div className="absolute top-[20px] left-0 w-full h-[30px] bg-light-teal-surface opacity-80" />
-            
-            <svg viewBox="0 0 300 120" className="w-full h-full overflow-visible">
-              <polyline points="10,50 55,48 100,50 145,35 190,32 235,25 280,35" fill="none" stroke="#26C6BF" strokeWidth="2" />
-              <polyline points="10,95 55,93 100,92 145,88 190,85 235,84 280,86" fill="none" stroke="#B2EFEB" strokeWidth="1.5" strokeDasharray="4" />
-              
-              {/* Nodes */}
-              {[
-                {x:10, y:50}, {x:55, y:48}, {x:100, y:50}, {x:145, y:35}, {x:190, y:32}, {x:235, y:25}, {x:280, y:35}
-              ].map((pt, i) => (
-                <circle key={i} cx={pt.x} cy={pt.y} r="3" fill="#FFF" stroke="#26C6BF" strokeWidth="1.5"/>
-              ))}
-              
-              {/* X Axis */}
-              <g className="text-primary-teal text-[7px] font-bold" transform="translate(0, 115)">
-                <text x="5">Mon</text><text x="50">Tue</text><text x="95">Wed</text>
-                <text x="140">Thu</text><text x="185">Fri</text><text x="230">Sat</text>
-                <text x="275">Sun</text>
-              </g>
-            </svg>
-          </div>
-          
-          <div className="bg-[#E0F7F4] text-primary-teal text-[12px] font-bold px-4 py-3 rounded-[12px] text-center">
-            ↑ Systolic up 6 pts this week
-          </div>
-        </div>
-
-
-
-        {/* 7. NEAREST CLINICS */}
+        {/* 5. NEAREST CLINICS */}
         <div className="bg-white border-[1.5px] border-border-teal rounded-[28px] p-5 shadow-sm">
           <div className="flex justify-between items-center mb-5">
             <h3 className="text-dark-teal font-extrabold text-[16px] flex items-center gap-2">
@@ -286,7 +324,7 @@ export default function DashboardScreen() {
           </div>
         </div>
 
-        {/* 8. REDEEM REWARDS */}
+        {/* 6. REDEEM REWARDS */}
         <div className="pt-2">
           <h3 className="text-primary-teal text-[11px] font-extrabold uppercase tracking-widest mb-4">REDEEM REWARDS</h3>
           <div className="flex gap-4 overflow-x-auto pb-4 no-scrollbar -mx-5 px-5 snap-x">
@@ -322,8 +360,8 @@ export default function DashboardScreen() {
           </div>
         </div>
 
-        {/* 9. YOUR NEXT STEPS TIMELINE */}
-        <div className="pt-2">
+        {/* 7. YOUR NEXT STEPS TIMELINE */}
+        <div className="pt-2 pb-4">
           <h3 className="text-primary-teal text-[11px] font-extrabold uppercase tracking-widest mb-5">YOUR NEXT STEPS</h3>
           <div className="relative pl-[14px] border-l-[1.5px] border-border-teal ml-2 space-y-6">
             
@@ -363,61 +401,64 @@ export default function DashboardScreen() {
           </div>
         </div>
 
-        {/* 10. BOTTOM INSIGHT CARD */}
-        <div className="bg-primary-teal rounded-[24px] p-6 mt-8 mb-6 relative overflow-hidden shadow-sm">
-          <div className="absolute top-[-30px] right-[-30px] w-32 h-32 bg-[#2ED3CA] rounded-full opacity-50 blur-xl" />
-          <div className="relative z-10">
-            <h2 className="text-white font-extrabold text-[20px] mb-2 leading-tight tracking-tight">You are in control.</h2>
-            <p className="text-[#C8F0EC] text-[13px] font-semibold mb-6">Small daily habits shift your health index fast.</p>
-            <button className="w-full bg-white text-primary-teal font-bold text-[15px] py-4 rounded-full shadow-sm">
-              See my action plan &rarr;
-            </button>
-          </div>
-        </div>
-
       </div>
 
-      {/* OCR Scan Modal */}
+      {/* ML + OCR Scan Modal */}
       <AnimatePresence>
         {showOcrModal && (
           <div className="fixed inset-0 bg-[#1A3A38]/40 backdrop-blur-sm flex items-end justify-center z-[100] p-4 pb-24">
             <motion.div initial={{ y: 300, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 300, opacity: 0 }}
-              className="bg-white w-full max-w-[400px] rounded-[32px] p-6 shadow-2xl relative max-h-[80vh] overflow-y-auto no-scrollbar">
+              className="bg-white w-full max-w-[400px] rounded-[32px] p-6 shadow-2xl relative max-h-[85vh] overflow-y-auto no-scrollbar">
               <button onClick={() => { setShowOcrModal(false); setOcrResult(null); setSelectedFile(null); }} className="absolute top-6 right-6 text-[#7ECCC7] bg-[#F2FDFB] p-2 rounded-full">
                 <X size={20} />
               </button>
               
-              <h2 className="text-[#1A3A38] font-extrabold text-xl mb-2">Scan Medical Report</h2>
-              <p className="text-[#7ECCC7] text-xs font-semibold mb-6">Powered by Gemini AI Vision</p>
+              <h2 className="text-[#1A3A38] font-extrabold text-xl mb-1">Scan Medical Report</h2>
+              <p className="text-[#7ECCC7] text-xs font-semibold mb-6">OCR + AI Risk Analysis</p>
 
               {!ocrResult && (
                 <>
                   <label className="border-2 border-dashed border-[#C8F0EC] bg-[#F2FDFB] rounded-[24px] p-8 flex flex-col items-center justify-center cursor-pointer transition-colors mt-4">
                     <UploadCloud size={40} className="text-[#26C6BF] mb-3" />
-                    <span className="text-[#1A3A38] font-extrabold text-sm mb-1">{selectedFile ? selectedFile.name : 'Choose an image or PDF'}</span>
-                    <span className="text-[#7ECCC7] text-[10px] font-bold uppercase tracking-wider">Tap to browse</span>
-                    <input type="file" accept="image/*,application/pdf" className="hidden" onChange={(e) => setSelectedFile(e.target.files?.[0] || null)} />
+                    <span className="text-[#1A3A38] font-extrabold text-sm mb-1">{selectedFile ? selectedFile.name : 'Choose an image'}</span>
+                    <span className="text-[#7ECCC7] text-[10px] font-bold uppercase tracking-wider">JPEG, PNG or WebP</span>
+                    <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(e) => setSelectedFile(e.target.files?.[0] || null)} />
                   </label>
 
                   <button onClick={handleOcrUpload} disabled={!selectedFile || ocrLoading}
                     className="w-full mt-6 bg-[#26C6BF] text-white font-extrabold text-[15px] py-4 rounded-[16px] shadow-sm disabled:opacity-50 transition-all">
-                    {ocrLoading ? 'Analyzing with AI...' : 'Scan Document'}
+                    {ocrLoading ? '🔍 Analyzing with AI...' : 'Scan & Analyze Report'}
                   </button>
                 </>
               )}
 
               {ocrResult && !ocrResult.error && (
-                <div className="mt-4">
-                  <div className="bg-[#E0F7F4] border border-[#26C6BF] rounded-xl p-4 mb-4">
-                    <h3 className="text-[#26C6BF] font-extrabold text-sm mb-2 flex items-center gap-2">
-                      <CheckCircle2 size={16} /> Analysis Complete
-                    </h3>
-                    <p className="text-[#1A3A38] text-[11px] font-semibold">{ocrResult.message}</p>
-                  </div>
-                  
-                  <div className="bg-gray-50 rounded-xl p-4 max-h-[250px] overflow-y-auto border border-gray-100">
-                    {/* Render the extracted JSON nicely */}
-                    {Object.entries(ocrResult.data || {}).map(([key, val]) => (
+                <div className="mt-2 space-y-4">
+
+                  {/* ML Risk Assessment */}
+                  {ocrResult.ml_analysis && (
+                    <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm">
+                      <h3 className="text-[#1A3A38] font-extrabold text-sm mb-3">AI Risk Assessment</h3>
+                      <RiskBadge level={ocrResult.ml_analysis.risk_level} />
+                      <p className="text-[#1A3A38] text-[12px] font-medium mt-3 leading-relaxed">{ocrResult.ml_analysis.summary}</p>
+                      {ocrResult.ml_analysis.flags?.length > 0 && (
+                        <div className="mt-3 space-y-1.5">
+                          <p className="text-muted-teal text-[10px] font-extrabold uppercase tracking-widest">Detected Markers</p>
+                          {ocrResult.ml_analysis.flags.map((flag: string, i: number) => (
+                            <div key={i} className="text-[11px] font-semibold text-[#1A3A38] bg-gray-50 rounded-lg px-3 py-1.5">{flag}</div>
+                          ))}
+                        </div>
+                      )}
+                      <div className="mt-2 text-[10px] text-muted-teal font-medium">
+                        Confidence: {Math.round((ocrResult.ml_analysis.confidence || 0) * 100)}%
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Raw OCR Data */}
+                  <div className="bg-gray-50 rounded-xl p-4 max-h-[220px] overflow-y-auto border border-gray-100">
+                    <p className="text-muted-teal text-[10px] font-extrabold uppercase tracking-widest mb-3">Extracted Data</p>
+                    {Object.entries(ocrResult.ocr_data || ocrResult.data || {}).map(([key, val]) => (
                       <div key={key} className="mb-3 last:mb-0">
                         <span className="text-[#7ECCC7] text-[10px] font-extrabold uppercase tracking-wider block mb-0.5">{key.replace(/_/g, ' ')}</span>
                         {typeof val === 'object' ? (
@@ -430,7 +471,7 @@ export default function DashboardScreen() {
                   </div>
 
                   <button onClick={() => { setShowOcrModal(false); setOcrResult(null); setSelectedFile(null); }}
-                    className="w-full mt-6 bg-[#1A3A38] text-white font-extrabold text-[15px] py-4 rounded-[16px] shadow-sm">
+                    className="w-full bg-[#1A3A38] text-white font-extrabold text-[15px] py-4 rounded-[16px] shadow-sm">
                     Save to Profile
                   </button>
                 </div>
