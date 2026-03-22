@@ -16,6 +16,27 @@ from ml.report_analyzer import analyze
 router = APIRouter(prefix="/api/ml", tags=["ML Analysis"])
 
 
+def _ocr_quality_score(ocr_data: dict) -> dict:
+    """Heuristic OCR confidence from field coverage + content richness."""
+    scalar_fields = ["document_type", "patient_name", "date", "doctor"]
+    filled_scalars = sum(1 for f in scalar_fields if str(ocr_data.get(f) or "").strip())
+    findings_count = len(ocr_data.get("key_findings") or [])
+    meds_count = len(ocr_data.get("medications") or [])
+
+    score = 0.25
+    score += filled_scalars * 0.12
+    score += min(findings_count, 5) * 0.08
+    score += min(meds_count, 4) * 0.05
+    score = max(0.0, min(1.0, score))
+
+    return {
+        "confidence": round(score, 2),
+        "filled_scalar_fields": filled_scalars,
+        "findings_count": findings_count,
+        "medications_count": meds_count,
+    }
+
+
 @router.post("/analyze-report")
 async def analyze_report(
     file: UploadFile = File(...),
@@ -55,6 +76,11 @@ async def analyze_report(
 
     # Step 2: ML — run risk classifier on extracted data
     ml_result = analyze(ocr_data)
+    ocr_quality = _ocr_quality_score(ocr_data)
+    needs_review = (
+        ocr_quality["confidence"] < 0.75
+        or (ocr_quality["findings_count"] == 0 and ocr_quality["medications_count"] == 0)
+    )
 
     # Step 3: Persist report + extracted values for history APIs
     report_type = str(ocr_data.get("document_type") or "health_report").lower().replace(" ", "_")
@@ -65,10 +91,12 @@ async def analyze_report(
         extracted_values={
             "ocr_data": ocr_data,
             "ml_analysis": ml_result,
+            "ocr_quality": ocr_quality,
+            "needs_review": needs_review,
             "original_filename": file.filename,
         },
-        upload_status="processed",
-        ocr_confidence=float(ml_result.get("confidence", 0.0)),
+        upload_status="needs_review" if needs_review else "processed",
+        ocr_confidence=float(ocr_quality["confidence"]),
     )
     db.add(report)
     await db.flush()
@@ -77,6 +105,9 @@ async def analyze_report(
         "message": "Report analyzed successfully.",
         "report_id": report.id,
         "file_url": file_url,
+        "upload_status": report.upload_status,
+        "ocr_quality": ocr_quality,
+        "needs_review": needs_review,
         "ocr_data": ocr_data,
         "ml_analysis": ml_result,
     }
