@@ -21,12 +21,9 @@ MAX_DAILY_COINS = 50
 
 # Default task templates
 DEFAULT_TASKS = [
-    {"type": "LOG_BP", "name": "Log Morning BP", "coins": 15, "time_slot": "morning"},
-    {"type": "MORNING_WALK", "name": "20 Min Morning Walk", "coins": 25, "time_slot": "morning"},
-    {"type": "LOG_BP", "name": "Log Afternoon BP", "coins": 15, "time_slot": "afternoon"},
-    {"type": "DEEP_BREATHING", "name": "5 Min Deep Breathing", "coins": 10, "time_slot": "evening"},
-    {"type": "WATER_INTAKE", "name": "Drink 8 Glasses Water", "coins": 8, "time_slot": "all_day"},
-    {"type": "DIET_MEAL", "name": "Log Healthy Meal", "coins": 8, "time_slot": "afternoon"},
+    {"type": "DIET_MEAL", "name": "Healthy Meal", "coins": 15, "time_slot": "morning"},
+    {"type": "WATER_INTAKE", "name": "Drink 8 Glasses Water", "coins": 15, "time_slot": "all_day"},
+    {"type": "DEEP_BREATHING", "name": "5 Min Deep Breathing", "coins": 15, "time_slot": "evening"}
 ]
 
 
