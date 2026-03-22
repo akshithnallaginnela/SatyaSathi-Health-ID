@@ -110,6 +110,11 @@ export default function DashboardScreen() {
   const user = data?.user || { name: 'Arjun Kumar', initials: 'AK', profile_photo_url: null };
   const score = data?.wellness_score || 72;
   const coins = data?.coin_balance || 1240;
+  const streakDays = data?.streak_days || 0;
+  const todaysTasks = data?.todays_tasks || [];
+  const tasksDone = todaysTasks.filter((t: any) => t.completed).length;
+  const tasksPending = Math.max(todaysTasks.length - tasksDone, 0);
+  const weekCompletion = data?.week_completion || [false, false, false, false, false, false, false];
   const theme = getScoreTheme(score);
 
   return (
@@ -148,7 +153,7 @@ export default function DashboardScreen() {
         <div className="flex justify-end gap-2 mt-[-10px] relative z-10">
           <div className="bg-[#48D0C9] border border-[#71DED9] rounded-full px-3 py-1 flex items-center gap-1.5 shadow-sm">
             <Flame size={12} className="text-[#FF7A00] fill-[#FF7A00]" />
-            <span className="text-white font-extrabold text-xs">12</span>
+            <span className="text-white font-extrabold text-xs">{streakDays}</span>
           </div>
           <div className="bg-[#48D0C9] border border-[#71DED9] rounded-full px-3 py-1 flex items-center gap-1.5 shadow-sm">
             <div className="w-2.5 h-2.5 bg-[#FFD700] rounded-full shadow-[0_0_4px_rgba(255,215,0,0.8)]" />
@@ -176,7 +181,7 @@ export default function DashboardScreen() {
           </div>
           <div>
             <h2 className="text-white font-extrabold text-[15px] mb-0.5">Health Index</h2>
-            <p className="text-[#C8F0EC] text-xs font-semibold mb-2">Mostly stable. 3 tasks pending.</p>
+            <p className="text-[#C8F0EC] text-xs font-semibold mb-2">Mostly stable. {tasksPending} tasks pending.</p>
             <div
               className="text-[10px] font-extrabold px-3 py-1.5 rounded-full inline-block shadow-sm"
               style={{ background: theme.badgeBg, color: theme.badgeText }}
@@ -196,13 +201,13 @@ export default function DashboardScreen() {
               <Flame size={24} className="text-[#FF6B00] fill-[#FF6B00]" />
             </div>
             <div>
-              <h3 className="text-[#E05200] font-extrabold text-lg flex items-center gap-1">12 Day Streak!</h3>
+              <h3 className="text-[#E05200] font-extrabold text-lg flex items-center gap-1">{streakDays} Day Streak!</h3>
               <p className="text-[#FF6B00] text-xs font-semibold mt-0.5 opacity-80">You're on fire! Keep it up.</p>
             </div>
           </div>
           <div className="flex justify-between items-end px-1">
             {['M','T','W','T','F','S','S'].map((day, idx) => {
-              const checked = idx < 4; 
+              const checked = !!weekCompletion[idx];
               const isToday = idx === 3;
               return (
                 <div key={idx} className="flex flex-col items-center gap-2">
@@ -220,26 +225,21 @@ export default function DashboardScreen() {
         <div className="bg-white border-[1.5px] border-border-teal rounded-[28px] p-5 shadow-sm">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-dark-teal font-extrabold text-lg">Daily Tasks</h3>
-            <span className="text-primary-teal text-[10px] font-extrabold uppercase tracking-widest">2/4 DONE</span>
+            <span className="text-primary-teal text-[10px] font-extrabold uppercase tracking-widest">{tasksDone}/{todaysTasks.length} DONE</span>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            {[
-              { title: "Log Morning BP", coins: 15, done: true },
-              { title: "20 Min Morning Walk", coins: 25, done: true },
-              { title: "Drink 2L Water", coins: 15, done: false },
-              { title: "Take Medication", coins: 20, done: false }
-            ].map((task, idx) => (
+            {todaysTasks.slice(0, 4).map((task: any, idx: number) => (
               <div key={idx} className={`p-4 rounded-[20px] flex flex-col justify-between aspect-square border-[1.5px] transition-all bg-white shadow-sm ${task.done ? 'border-primary-teal' : 'border-[#E8F1F1]'}`}>
                 <div className="flex justify-between items-start">
-                  <div className={`w-[26px] h-[26px] rounded-full flex items-center justify-center shrink-0 ${task.done ? 'bg-primary-teal' : 'border-[1.5px] border-[#E0E0E0]'}`}>
-                    {task.done && <CheckCircle2 size={16} className="text-white" />}
+                  <div className={`w-[26px] h-[26px] rounded-full flex items-center justify-center shrink-0 ${task.completed ? 'bg-primary-teal' : 'border-[1.5px] border-[#E0E0E0]'}`}>
+                    {task.completed && <CheckCircle2 size={16} className="text-white" />}
                   </div>
                   <div className="bg-white shadow-[0_2px_8px_rgba(0,0,0,0.06)] text-[9px] font-extrabold text-[#D4AF37] border border-[#F4E3A0] px-2 py-1 rounded-full flex items-center gap-1">
                     <div className="w-1.5 h-1.5 bg-[#FFD700] rounded-full" />
                     +{task.coins}
                   </div>
                 </div>
-                <h4 className={`font-extrabold text-sm leading-snug mt-3 ${task.done ? 'text-primary-teal opacity-60 line-through' : 'text-dark-teal'}`}>{task.title}</h4>
+                <h4 className={`font-extrabold text-sm leading-snug mt-3 ${task.completed ? 'text-primary-teal opacity-60 line-through' : 'text-dark-teal'}`}>{task.name}</h4>
               </div>
             ))}
           </div>
