@@ -13,15 +13,19 @@ const TASK_ICONS: Record<string, React.ReactNode> = {
 export default function MissionsScreen() {
   const [tasks, setTasks] = useState<any[]>([]);
   const [coins, setCoins] = useState(0);
+  const [offers, setOffers] = useState<any[]>([]);
+  const [redeemingOfferId, setRedeemingOfferId] = useState<string | null>(null);
+  const [redeemNotice, setRedeemNotice] = useState('');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => { loadData(); }, []);
 
   const loadData = async () => {
     try {
-      const [t, c] = await Promise.all([tasksAPI.getToday(), coinsAPI.getBalance()]);
+      const [t, c, o] = await Promise.all([tasksAPI.getToday(), coinsAPI.getBalance(), coinsAPI.getOffers()]);
       setTasks(t);
       setCoins(c.total_balance);
+      setOffers(o || []);
     } catch (e) {
       console.error(e);
     } finally {
@@ -35,6 +39,20 @@ export default function MissionsScreen() {
       loadData();
     } catch (e: any) {
       console.error(e);
+    }
+  };
+
+  const redeemOffer = async (offerId: string) => {
+    setRedeemNotice('');
+    setRedeemingOfferId(offerId);
+    try {
+      const res = await coinsAPI.redeem(offerId);
+      setRedeemNotice(`Redeemed successfully. Promo code: ${res.promo_code}`);
+      await loadData();
+    } catch (e: any) {
+      setRedeemNotice(e?.message || 'Redemption failed.');
+    } finally {
+      setRedeemingOfferId(null);
     }
   };
 
@@ -98,64 +116,34 @@ export default function MissionsScreen() {
         <div className="pt-2">
           <h3 className="text-[#1A3A38] font-extrabold text-[18px] mb-4">Redeem Sessions</h3>
           <div className="grid grid-cols-2 gap-4">
-            
-            <div className="bg-white border-[1.5px] border-[#E8F1F1] rounded-[24px] p-3 shadow-sm flex flex-col">
-              <div className="w-full aspect-square bg-gray-200 rounded-[16px] mb-3 overflow-hidden">
-                <img src="https://images.unsplash.com/photo-1542281286-9e0a16bb7366?w=400&h=400&fit=crop" alt="Pharmacy" className="w-full h-full object-cover" />
-              </div>
-              <h4 className="text-[#1A3A38] font-extrabold text-[12px] mb-2 px-1">Pharmacy 15% Off</h4>
-              <div className="flex justify-between items-center mt-auto px-1 pb-1">
-                <div className="flex items-center gap-1.5">
-                  <div className="w-2.5 h-2.5 bg-[#FFD700] rounded-full shadow-[0_0_4px_rgba(255,215,0,0.8)]" />
-                  <span className="text-[#D4AF37] font-extrabold text-[12px]">500</span>
+            {offers.map((offer) => {
+              const canRedeem = coins >= offer.coins_required;
+              const isRedeeming = redeemingOfferId === offer.id;
+              return (
+                <div key={offer.id} className="bg-white border-[1.5px] border-[#E8F1F1] rounded-[24px] p-3 shadow-sm flex flex-col">
+                  <div className="w-full aspect-square bg-[#F2FDFB] rounded-[16px] mb-3 overflow-hidden flex items-center justify-center">
+                    <Award size={42} className="text-[#26C6BF]" />
+                  </div>
+                  <h4 className="text-[#1A3A38] font-extrabold text-[12px] mb-1 px-1">{offer.partner}</h4>
+                  <p className="text-[#7ECCC7] text-[10px] font-semibold mb-2 px-1">{offer.offer}</p>
+                  <div className="flex justify-between items-center mt-auto px-1 pb-1">
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-2.5 h-2.5 bg-[#FFD700] rounded-full shadow-[0_0_4px_rgba(255,215,0,0.8)]" />
+                      <span className="text-[#D4AF37] font-extrabold text-[12px]">{offer.coins_required}</span>
+                    </div>
+                    <button
+                      onClick={() => redeemOffer(offer.id)}
+                      disabled={!canRedeem || isRedeeming}
+                      className="text-[#26C6BF] text-[10px] font-extrabold uppercase tracking-wider disabled:opacity-40"
+                    >
+                      {isRedeeming ? 'PROCESSING' : 'REDEEM'}
+                    </button>
+                  </div>
                 </div>
-                <span className="text-[#26C6BF] text-[10px] font-extrabold uppercase tracking-wider">REDEEM</span>
-              </div>
-            </div>
-
-            <div className="bg-white border-[1.5px] border-[#E8F1F1] rounded-[24px] p-3 shadow-sm flex flex-col">
-              <div className="w-full aspect-square bg-gray-200 rounded-[16px] mb-3 overflow-hidden">
-                <img src="https://images.unsplash.com/photo-1506126613408-eca07ce68773?w=400&h=400&fit=crop" alt="Checkup" className="w-full h-full object-cover" />
-              </div>
-              <h4 className="text-[#1A3A38] font-extrabold text-[12px] mb-2 px-1">Health Checkup</h4>
-              <div className="flex justify-between items-center mt-auto px-1 pb-1">
-                <div className="flex items-center gap-1.5">
-                  <div className="w-2.5 h-2.5 bg-[#FFD700] rounded-full shadow-[0_0_4px_rgba(255,215,0,0.8)]" />
-                  <span className="text-[#D4AF37] font-extrabold text-[12px]">1200</span>
-                </div>
-                <span className="text-[#26C6BF] text-[10px] font-extrabold uppercase tracking-wider">REDEEM</span>
-              </div>
-            </div>
-
-            <div className="bg-white border-[1.5px] border-[#E8F1F1] rounded-[24px] p-3 shadow-sm flex flex-col">
-              <div className="w-full aspect-square bg-gray-200 rounded-[16px] mb-3 overflow-hidden">
-                <img src="https://images.unsplash.com/photo-1490260400179-d656f04de422?w=400&h=400&fit=crop" alt="Vitamin C" className="w-full h-full object-cover" />
-              </div>
-              <h4 className="text-[#1A3A38] font-extrabold text-[12px] mb-2 px-1">Vitamin C Pack</h4>
-              <div className="flex justify-between items-center mt-auto px-1 pb-1">
-                <div className="flex items-center gap-1.5">
-                  <div className="w-2.5 h-2.5 bg-[#FFD700] rounded-full shadow-[0_0_4px_rgba(255,215,0,0.8)]" />
-                  <span className="text-[#D4AF37] font-extrabold text-[12px]">350</span>
-                </div>
-                <span className="text-[#26C6BF] text-[10px] font-extrabold uppercase tracking-wider">REDEEM</span>
-              </div>
-            </div>
-
-            <div className="bg-white border-[1.5px] border-[#E8F1F1] rounded-[24px] p-3 shadow-sm flex flex-col">
-              <div className="w-full aspect-square bg-gray-200 rounded-[16px] mb-3 overflow-hidden">
-                <img src="https://images.unsplash.com/photo-1542838132-92c53300491e?w=400&h=400&fit=crop" alt="Dietitian" className="w-full h-full object-cover" />
-              </div>
-              <h4 className="text-[#1A3A38] font-extrabold text-[12px] mb-2 px-1">Dietitian Consult</h4>
-              <div className="flex justify-between items-center mt-auto px-1 pb-1">
-                <div className="flex items-center gap-1.5">
-                  <div className="w-2.5 h-2.5 bg-[#FFD700] rounded-full shadow-[0_0_4px_rgba(255,215,0,0.8)]" />
-                  <span className="text-[#D4AF37] font-extrabold text-[12px]">800</span>
-                </div>
-                <span className="text-[#26C6BF] text-[10px] font-extrabold uppercase tracking-wider">REDEEM</span>
-              </div>
-            </div>
-
+              );
+            })}
           </div>
+          {redeemNotice && <p className="mt-3 text-[11px] font-semibold text-[#1A3A38]">{redeemNotice}</p>}
         </div>
 
       </div>

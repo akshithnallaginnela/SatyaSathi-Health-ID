@@ -12,7 +12,7 @@ import {
   ShieldCheck,
   AlertCircle
 } from 'lucide-react';
-import { dashboardAPI, mlAPI } from '../services/api.ts';
+import { dashboardAPI, mlAPI, clinicsAPI } from '../services/api.ts';
 
 // ── Score theme helper ─────────────────────────────────────────────────────
 
@@ -69,6 +69,7 @@ function RiskBadge({ level }: { level: 'low' | 'moderate' | 'high' }) {
 export default function DashboardScreen() {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [clinics, setClinics] = useState<any[]>([]);
 
   const [showOcrModal, setShowOcrModal] = useState(false);
   const [ocrLoading, setOcrLoading] = useState(false);
@@ -110,6 +111,25 @@ export default function DashboardScreen() {
         setLoading(false);
       }
     })();
+
+    const loadClinics = async (lat: number, lng: number) => {
+      try {
+        const clinicData = await clinicsAPI.nearest(lat, lng);
+        setClinics(Array.isArray(clinicData) ? clinicData : []);
+      } catch (e) {
+        console.error('Clinics fetch error', e);
+      }
+    };
+
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => loadClinics(pos.coords.latitude, pos.coords.longitude),
+        () => loadClinics(12.9716, 77.5946),
+        { timeout: 4000 }
+      );
+    } else {
+      loadClinics(12.9716, 77.5946);
+    }
   }, []);
 
   if (loading) {
@@ -300,37 +320,30 @@ export default function DashboardScreen() {
           </div>
           
           <div className="space-y-3">
-            <div className="border border-border-teal rounded-[16px] p-3 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full border border-border-teal flex items-center justify-center shrink-0">
-                  <Activity size={18} className="text-primary-teal" />
+            {clinics.slice(0, 3).map((clinic, idx) => (
+              <div key={`${clinic.name}-${idx}`} className="border border-border-teal rounded-[16px] p-3 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full border border-border-teal flex items-center justify-center shrink-0">
+                    {idx % 2 === 0 ? (
+                      <Activity size={18} className="text-primary-teal" />
+                    ) : (
+                      <Heart size={18} className="text-primary-teal" />
+                    )}
+                  </div>
+                  <div>
+                    <h4 className="text-dark-teal font-extrabold text-[13px]">{clinic.name}</h4>
+                    <p className="text-muted-teal text-[10px] font-medium leading-tight">{clinic.type}</p>
+                  </div>
                 </div>
-                <div>
-                  <h4 className="text-dark-teal font-extrabold text-[13px]">City Health Clinic</h4>
-                  <p className="text-muted-teal text-[10px] font-medium leading-tight">Dr. Sharma • General<br/>Physician</p>
-                </div>
-              </div>
-              <div className="text-right">
-                <p className="text-primary-teal text-[11px] font-extrabold mb-1">1.2 km</p>
-                <button className="bg-primary-teal text-white text-[10px] font-bold px-3 py-1.5 rounded-[6px]">Book</button>
-              </div>
-            </div>
-
-            <div className="border border-border-teal rounded-[16px] p-3 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full border border-border-teal flex items-center justify-center shrink-0">
-                  <Heart size={18} className="text-primary-teal" />
-                </div>
-                <div>
-                  <h4 className="text-dark-teal font-extrabold text-[13px]">HeartCare Center</h4>
-                  <p className="text-muted-teal text-[10px] font-medium leading-tight">Dr. Patel • Cardiologist</p>
+                <div className="text-right">
+                  <p className="text-primary-teal text-[11px] font-extrabold mb-1">{clinic.distance || 'Nearby'}</p>
+                  <button className="bg-primary-teal text-white text-[10px] font-bold px-3 py-1.5 rounded-[6px]">Book</button>
                 </div>
               </div>
-              <div className="text-right">
-                <p className="text-primary-teal text-[11px] font-extrabold mb-1">3.5 km</p>
-                <button className="bg-primary-teal text-white text-[10px] font-bold px-3 py-1.5 rounded-[6px]">Book</button>
-              </div>
-            </div>
+            ))}
+            {clinics.length === 0 && (
+              <p className="text-muted-teal text-[12px] font-medium">No nearby clinics available right now.</p>
+            )}
           </div>
         </div>
 
