@@ -3,20 +3,25 @@
  */
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { User, Shield, CreditCard, Activity, LogOut, ChevronRight, Bell } from 'lucide-react';
-import { profileAPI, coinsAPI, clearTokens, notificationsAPI } from '../services/api.ts';
+import { Shield, CreditCard, Activity, LogOut, ChevronRight, Bell, Settings } from 'lucide-react';
+import { profileAPI, coinsAPI, clearTokens, notificationsAPI, settingsAPI } from '../services/api.ts';
 
 export default function MyIDScreen({ user, onLogout }: { user: any; onLogout: () => void; key?: string | number }) {
   const [profile, setProfile] = useState<any>(user);
   const [coins, setCoins] = useState(0);
   const [activity, setActivity] = useState<any>({ coin_transactions: [], completed_tasks: [] });
+  const [settings, setSettings] = useState<any>({ notifications_enabled: true, reminder_enabled: true, reminder_time: '08:00', language: 'en' });
+  const [savingSettings, setSavingSettings] = useState(false);
   const [noticeMsg, setNoticeMsg] = useState('');
 
   useEffect(() => {
     (async () => {
       try {
-        const [p, c, a] = await Promise.all([profileAPI.get(), coinsAPI.getBalance(), profileAPI.getActivity()]);
-        setProfile(p); setCoins(c.total_balance); setActivity(a);
+        const [p, c, a, s] = await Promise.all([profileAPI.get(), coinsAPI.getBalance(), profileAPI.getActivity(), settingsAPI.get()]);
+        setProfile(p);
+        setCoins(c.total_balance);
+        setActivity(a);
+        setSettings(s);
       } catch (e) { console.error(e); }
     })();
   }, []);
@@ -32,6 +37,20 @@ export default function MyIDScreen({ user, onLogout }: { user: any; onLogout: ()
       setNoticeMsg('Test reminder created successfully.');
     } catch (e) {
       setNoticeMsg('Failed to create test reminder.');
+    }
+  };
+
+  const saveSettings = async () => {
+    setSavingSettings(true);
+    setNoticeMsg('');
+    try {
+      const updated = await settingsAPI.update(settings);
+      setSettings(updated);
+      setNoticeMsg('Settings saved successfully.');
+    } catch (e) {
+      setNoticeMsg('Failed to save settings.');
+    } finally {
+      setSavingSettings(false);
     }
   };
 
@@ -115,6 +134,66 @@ export default function MyIDScreen({ user, onLogout }: { user: any; onLogout: ()
           {activity.completed_tasks.length === 0 && (
             <p className="text-muted-teal text-xs text-center py-4">No activity yet. Complete some missions!</p>
           )}
+        </div>
+      </div>
+
+      {/* Activity Log */}
+      <div className="px-6 mt-4">
+        <h3 className="text-primary-teal text-[10px] font-extrabold uppercase tracking-widest mb-3">Activity Log</h3>
+        <div className="bg-white border border-teal-border rounded-2xl p-3 max-h-52 overflow-y-auto space-y-2">
+          {activity.coin_transactions.slice(0, 10).map((tx: any) => (
+            <div key={tx.id} className="flex items-center justify-between bg-light-teal-surface rounded-xl px-3 py-2">
+              <span className="text-dark-teal text-xs font-semibold">{tx.type}</span>
+              <span className={`text-xs font-extrabold ${tx.amount >= 0 ? 'text-primary-teal' : 'text-red-500'}`}>
+                {tx.amount >= 0 ? `+${tx.amount}` : tx.amount}
+              </span>
+            </div>
+          ))}
+          {activity.coin_transactions.length === 0 && (
+            <p className="text-muted-teal text-xs text-center py-2">No transactions yet.</p>
+          )}
+        </div>
+      </div>
+
+      {/* Settings */}
+      <div className="px-6 mt-4">
+        <h3 className="text-primary-teal text-[10px] font-extrabold uppercase tracking-widest mb-3">Settings</h3>
+        <div className="bg-white border border-teal-border rounded-2xl p-4 space-y-3">
+          <label className="flex items-center justify-between text-sm font-semibold text-dark-teal">
+            Notifications
+            <input
+              type="checkbox"
+              checked={!!settings.notifications_enabled}
+              onChange={(e) => setSettings({ ...settings, notifications_enabled: e.target.checked })}
+              className="accent-primary-teal"
+            />
+          </label>
+          <label className="flex items-center justify-between text-sm font-semibold text-dark-teal">
+            Daily Reminder
+            <input
+              type="checkbox"
+              checked={!!settings.reminder_enabled}
+              onChange={(e) => setSettings({ ...settings, reminder_enabled: e.target.checked })}
+              className="accent-primary-teal"
+            />
+          </label>
+          <label className="block text-sm font-semibold text-dark-teal">
+            Reminder Time
+            <input
+              type="time"
+              value={settings.reminder_time || '08:00'}
+              onChange={(e) => setSettings({ ...settings, reminder_time: e.target.value })}
+              className="mt-1 w-full border border-teal-border rounded-xl px-3 py-2"
+            />
+          </label>
+          <button
+            onClick={saveSettings}
+            disabled={savingSettings}
+            className="w-full bg-primary-teal text-white rounded-xl py-2 font-bold text-sm disabled:opacity-50 flex items-center justify-center gap-2"
+          >
+            <Settings size={14} />
+            {savingSettings ? 'Saving...' : 'Save Settings'}
+          </button>
         </div>
       </div>
 

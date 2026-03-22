@@ -230,6 +230,12 @@ export const reportsAPI = {
   getById: (reportId: string) => apiFetch(`/reports/${reportId}`),
 };
 
+// ─── Clinics API ───
+
+export const clinicsAPI = {
+  nearest: (lat: number, lng: number) => apiFetch(`/clinics/nearest?lat=${lat}&lng=${lng}`),
+};
+
 // ─── Settings API ───
 
 export const settingsAPI = {

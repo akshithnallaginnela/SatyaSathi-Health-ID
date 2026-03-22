@@ -7,6 +7,7 @@ export default function VitalsScreen() {
   const [showLogModal, setShowLogModal] = useState(false);
   const [activeTab, setActiveTab] = useState<'BP' | 'SUGAR' | 'BMI'>('BP');
   const [history, setHistory] = useState<any[]>([]);
+  const [latestBmi, setLatestBmi] = useState<any>(null);
   const [loading, setLoading] = useState(false);
 
   // Form states
@@ -18,8 +19,9 @@ export default function VitalsScreen() {
 
   const loadHistory = async () => {
     try {
-      const res = await vitalsAPI.getHistory();
-      setHistory(res);
+      const [res, bmiRes] = await Promise.all([vitalsAPI.getHistory(), vitalsAPI.getLatestBMI()]);
+      setHistory(res || []);
+      setLatestBmi(bmiRes || null);
     } catch (e) {
       console.error(e);
     }
@@ -48,6 +50,16 @@ export default function VitalsScreen() {
     }
   };
 
+  const latestBP = history.find((h) => h.systolic && h.diastolic);
+  const latestGlucose = history.find((h) => h.fasting_glucose !== null && h.fasting_glucose !== undefined);
+  const latestPulse = history.find((h) => h.pulse !== null && h.pulse !== undefined);
+
+  const bpText = latestBP ? `${latestBP.systolic}/${latestBP.diastolic}` : '--/--';
+  const glucoseText = latestGlucose ? Number(latestGlucose.fasting_glucose).toFixed(0) : '--';
+  const pulseText = latestPulse ? String(latestPulse.pulse) : '--';
+  const bmiText = latestBmi?.bmi ? Number(latestBmi.bmi).toFixed(1) : '--';
+  const weightText = latestBmi?.weight_kg ? `${Number(latestBmi.weight_kg).toFixed(1)} kg` : '--';
+
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="relative bg-[#FAFAFA] min-h-full pb-32">
       
@@ -66,21 +78,21 @@ export default function VitalsScreen() {
             
             <div className="bg-white border-[1.5px] border-[#E8F1F1] rounded-[24px] p-5 min-w-[140px] shrink-0 shadow-sm snap-start">
               <Heart size={20} className="text-[#26C6BF] mb-4" />
-              <h2 className="text-[#1A3A38] font-extrabold text-[22px] leading-none mb-1">124/82</h2>
+              <h2 className="text-[#1A3A38] font-extrabold text-[22px] leading-none mb-1">{bpText}</h2>
               <p className="text-[#7ECCC7] text-[11px] font-semibold mb-6">Blood pressure</p>
               <span className="text-[#26C6BF] border border-[#26C6BF] px-4 py-1.5 rounded-full text-[10px] font-bold">Watch</span>
             </div>
 
             <div className="bg-white border-[1.5px] border-[#E8F1F1] rounded-[24px] p-5 min-w-[140px] shrink-0 shadow-sm snap-start">
               <Droplet size={20} className="text-[#26C6BF] mb-4" />
-              <h2 className="text-[#1A3A38] font-extrabold text-[22px] leading-none mb-1 flex items-baseline gap-1">108 <span className="text-[10px] text-[#7ECCC7]">mg/dL</span></h2>
+              <h2 className="text-[#1A3A38] font-extrabold text-[22px] leading-none mb-1 flex items-baseline gap-1">{glucoseText} <span className="text-[10px] text-[#7ECCC7]">mg/dL</span></h2>
               <p className="text-[#7ECCC7] text-[11px] font-semibold mb-6">Blood sugar</p>
               <span className="bg-[#26C6BF] text-white px-4 py-1.5 rounded-full text-[10px] font-bold">Normal</span>
             </div>
 
             <div className="bg-white border-[1.5px] border-[#E8F1F1] rounded-[24px] p-5 min-w-[140px] shrink-0 shadow-sm snap-start">
               <Activity size={20} className="text-[#26C6BF] mb-4" />
-              <h2 className="text-[#1A3A38] font-extrabold text-[22px] leading-none mb-1 flex items-baseline gap-1">78 <span className="text-[10px] text-[#7ECCC7]">bpm</span></h2>
+              <h2 className="text-[#1A3A38] font-extrabold text-[22px] leading-none mb-1 flex items-baseline gap-1">{pulseText} <span className="text-[10px] text-[#7ECCC7]">bpm</span></h2>
               <p className="text-[#7ECCC7] text-[11px] font-semibold mb-6">Heart rate</p>
               <span className="bg-[#26C6BF] text-white px-4 py-1.5 rounded-full text-[10px] font-bold">Normal</span>
             </div>
@@ -94,11 +106,11 @@ export default function VitalsScreen() {
           <div className="flex gap-3 overflow-x-auto pb-2 no-scrollbar px-6 snap-x">
             <div className="bg-white border border-[#E8F1F1] px-5 py-3 rounded-[24px] shrink-0 shadow-sm snap-start">
               <span className="text-[#7ECCC7] text-[11px] font-semibold mr-2 uppercase">BMI</span>
-              <span className="text-[#26C6BF] font-extrabold text-[14px]">24.8 <span className="text-[#7ECCC7] font-semibold text-[11px] ml-1">· Healthy</span></span>
+              <span className="text-[#26C6BF] font-extrabold text-[14px]">{bmiText} <span className="text-[#7ECCC7] font-semibold text-[11px] ml-1">· Latest</span></span>
             </div>
             <div className="bg-white border border-[#E8F1F1] px-5 py-3 rounded-[24px] shrink-0 shadow-sm snap-start">
               <span className="text-[#7ECCC7] text-[11px] font-semibold mr-2 uppercase">WEIGHT</span>
-              <span className="text-[#26C6BF] font-extrabold text-[14px]">72 kg</span>
+              <span className="text-[#26C6BF] font-extrabold text-[14px]">{weightText}</span>
             </div>
             <div className="bg-white border border-[#E8F1F1] px-5 py-3 rounded-[24px] shrink-0 shadow-sm snap-start">
               <span className="text-[#7ECCC7] text-[11px] font-semibold mr-2 uppercase">BODY FAT</span>
