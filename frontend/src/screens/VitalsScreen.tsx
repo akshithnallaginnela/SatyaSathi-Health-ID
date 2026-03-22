@@ -235,18 +235,25 @@ export default function VitalsScreen() {
             <h3 className="text-[#1A3A38] font-extrabold text-[16px] mb-4">Fasting Blood Sugar</h3>
             <div className="w-full h-[120px] relative mb-2">
               <div className="absolute top-[35px] left-0 w-full h-[50px] bg-[#E0F7F4] opacity-50" />
-              <svg viewBox="0 0 300 100" className="w-full h-full overflow-visible">
-                <polyline points="10,60 55,55 100,50 145,45 190,52 235,40 280,45" fill="none" stroke="#26C6BF" strokeWidth="2" />
-                {[
-                  {x:10, y:60}, {x:55, y:55}, {x:100, y:50}, {x:145, y:45}, {x:190, y:52}, {x:235, y:40}, {x:280, y:45}
-                ].map((pt, i) => (
-                  <circle key={i} cx={pt.x} cy={pt.y} r="3" fill="#FFF" stroke="#26C6BF" strokeWidth="1.5"/>
+              <svg viewBox="0 0 320 100" className="w-full h-full overflow-visible">
+                <line x1="30" y1="15" x2="300" y2="15" stroke="#E8F1F1" strokeWidth="1" strokeDasharray="3" />
+                <line x1="30" y1="50" x2="300" y2="50" stroke="#E8F1F1" strokeWidth="1" strokeDasharray="3" />
+                <line x1="30" y1="85" x2="300" y2="85" stroke="#E8F1F1" strokeWidth="1" />
+                <text x="0" y="18" fill="#A0A0A0" fontSize="8" fontWeight="bold">200</text>
+                <text x="0" y="53" fill="#A0A0A0" fontSize="8" fontWeight="bold">100</text>
+                <text x="0" y="88" fill="#A0A0A0" fontSize="8" fontWeight="bold">0</text>
+
+                <polyline points={sugarPolyline} fill="none" stroke="#26C6BF" strokeWidth="2.5" strokeLinejoin="round" />
+
+                {sugarPoints.map((pt, i) => (
+                  <g key={`sug-${i}`}>
+                    <circle cx={pt.x} cy={mapY(pt.val, 200)} r="3.5" fill="#FFF" stroke="#26C6BF" strokeWidth="2" />
+                    {pt.val > 0 && <text x={pt.x} y={mapY(pt.val, 200) - 8} fill="#26C6BF" fontSize="8" fontWeight="bold" textAnchor="middle">{pt.val}</text>}
+                  </g>
                 ))}
-                <g className="text-[#7ECCC7] text-[7px] font-bold" transform="translate(0, 95)">
-                  <text x="5">Mon</text><text x="50">Tue</text><text x="95">Wed</text>
-                  <text x="140">Thu</text><text x="185">Fri</text><text x="230">Sat</text>
-                  <text x="275">Sun</text>
-                </g>
+                {days.map((day, i) => (
+                  <text key={`day-${i}`} x={35 + i * 42} y="100" fill="#A0A0A0" fontSize="8" fontWeight="bold" textAnchor="middle">{day.label}</text>
+                ))}
               </svg>
             </div>
             <div className="flex items-center gap-1.5 mt-3 px-1">
