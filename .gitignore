@@ -7,6 +7,7 @@ coverage/
 .env*
 !.env.example
 
+<<<<<<< HEAD
 # Python artifacts
 __pycache__/
 *.pyc
@@ -16,3 +17,18 @@ __pycache__/
 *.db
 *.sqlite
 backend/vitalid.db
+=======
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Uploads directory (user-generated content)
+backend/uploads/*
+!backend/uploads/.gitkeep
+>>>>>>> 7be3f583ae895e28f328688936fd963cbaff0724
