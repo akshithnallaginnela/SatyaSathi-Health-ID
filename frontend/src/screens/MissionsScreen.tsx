@@ -74,17 +74,17 @@ export default function MissionsScreen() {
                     className={`w-11 h-11 rounded-full flex items-center justify-center shrink-0 transition-colors ${
                       task.completed ? 'bg-[#E0F7F4] text-[#26C6BF]' : 'border-2 border-[#E8F1F1] text-[#7ECCC7]'
                     }`}>
-                    {task.completed ? <CheckCircle2 size={24} /> : TASK_ICONS[task.type] || <Circle size={20} />}
+                    {task.completed ? <CheckCircle2 size={24} /> : TASK_ICONS[task.task_type] || <Circle size={20} />}
                   </button>
                   <div>
-                    <h4 className="text-[#1A3A38] font-extrabold text-[15px]">{task.name}</h4>
+                    <h4 className="text-[#1A3A38] font-extrabold text-[15px]">{task.task_name}</h4>
                     <span className="text-[#7ECCC7] text-[12px] font-semibold block capitalize">
                       {task.completed ? 'Completed at 8:00 AM' : task.time_slot.replace('_', ' ')}
                     </span>
                   </div>
                 </div>
                 <div className="text-[#26C6BF] font-extrabold text-[14px]">
-                  +{task.coins} pts
+                  +{task.coins_reward} pts
                 </div>
               </div>
             ))}
