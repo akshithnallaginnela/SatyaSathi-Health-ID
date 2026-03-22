@@ -181,4 +181,44 @@ export const profileAPI = {
   changePassword: (old_password: string, new_password: string) =>
     apiFetch('/profile/change-password', { method: 'POST', body: JSON.stringify({ old_password, new_password }) }),
   getActivity: () => apiFetch('/profile/activity'),
+
+  uploadPhoto: async (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const token = getAccessToken();
+    const headers: any = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const response = await fetch(`${API_BASE}/profile/upload-photo`, {
+      method: 'POST',
+      headers,
+      body: formData,
+    });
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({ detail: 'Upload failed' }));
+      throw new Error(err.detail || 'Upload failed');
+    }
+    return response.json();
+  },
+};
+
+// ─── ML API ───
+
+export const mlAPI = {
+  analyzeReport: async (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const token = getAccessToken();
+    const headers: any = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const response = await fetch(`${API_BASE}/ml/analyze-report`, {
+      method: 'POST',
+      headers,
+      body: formData,
+    });
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({ detail: 'Analysis failed' }));
+      throw new Error(err.detail || 'Analysis failed');
+    }
+    return response.json();
+  },
 };
