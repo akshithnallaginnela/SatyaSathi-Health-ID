@@ -252,36 +252,35 @@ export default function DashboardScreen() {
           ) : (
             <div className="space-y-6">
               <div>
-                <h3 className="text-dark-teal font-extrabold text-[15px]">Hypertension</h3>
+                <h3 className="text-dark-teal font-extrabold text-[15px] capitalize">
+                  {preventive.report_type ? preventive.report_type.replace(/_/g, " ") : "Risk Analysis"}
+                </h3>
                 <div className="flex justify-between items-center mt-0.5">
-                  <p className="text-muted-teal text-[11px] font-medium">BP has crept up 3 days in a row.</p>
-                  <span className="text-primary-teal font-extrabold text-[15px]">42%</span>
+                  <p className="text-muted-teal text-[11px] font-medium leading-tight pr-4">
+                    {preventive.summary || "Keep tracking your daily habits to stay on course."}
+                  </p>
+                  <span className="text-primary-teal font-extrabold text-[15px]">
+                    {preventive.risk_level === 'high' ? '82%' : preventive.risk_level === 'moderate' ? '55%' : '20%'}
+                  </span>
                 </div>
                 <div className="w-full bg-[#E0F7F4] h-2.5 rounded-full mt-2 overflow-hidden flex">
-                  <div className="bg-primary-teal h-full rounded-full" style={{ width: '42%' }}></div>
-                </div>
-                <div className="mt-3">
-                  <button className="bg-[#E0F7F4] text-primary-teal text-[10px] font-extrabold px-4 py-1.5 rounded-full">
-                    → Walk 20 min today
-                  </button>
+                  <div className="bg-primary-teal h-full rounded-full transition-all duration-1000" 
+                       style={{ width: preventive.risk_level === 'high' ? '82%' : preventive.risk_level === 'moderate' ? '55%' : '20%' }} />
                 </div>
               </div>
 
-              <div>
-                <h3 className="text-dark-teal font-extrabold text-[15px]">Cardiovascular</h3>
-                <div className="flex justify-between items-center mt-0.5">
-                  <p className="text-muted-teal text-[11px] font-medium">Stress + low activity combining.</p>
-                  <span className="text-primary-teal font-extrabold text-[15px]">61%</span>
+              {preventiveTips.length > 0 && (
+                <div>
+                  <h3 className="text-dark-teal font-extrabold text-[13px] mb-2">Recommended Actions</h3>
+                  <div className="flex flex-col gap-2">
+                    {preventiveTips.slice(0, 3).map((tip: string, idx: number) => (
+                      <button key={idx} className="bg-[#E0F7F4] text-left text-primary-teal text-[11px] font-extrabold px-4 py-2 rounded-xl">
+                        → {tip}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-                <div className="w-full bg-[#E0F7F4] h-2.5 rounded-full mt-2 overflow-hidden flex">
-                  <div className="bg-primary-teal h-full rounded-full" style={{ width: '61%' }}></div>
-                </div>
-                <div className="mt-3">
-                  <button className="bg-[#E0F7F4] text-primary-teal text-[10px] font-extrabold px-4 py-1.5 rounded-full">
-                    → Try 5-min deep breathing
-                  </button>
-                </div>
-              </div>
+              )}
             </div>
           )}
         </div>
