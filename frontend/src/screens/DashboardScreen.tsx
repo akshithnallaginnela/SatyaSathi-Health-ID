@@ -115,6 +115,7 @@ export default function DashboardScreen() {
   const tasksDone = todaysTasks.filter((t: any) => t.completed).length;
   const tasksPending = Math.max(todaysTasks.length - tasksDone, 0);
   const weekCompletion = data?.week_completion || [false, false, false, false, false, false, false];
+  const todayIndex = new Date().getDay() === 0 ? 6 : new Date().getDay() - 1;
   const theme = getScoreTheme(score);
 
   return (
@@ -208,7 +209,7 @@ export default function DashboardScreen() {
           <div className="flex justify-between items-end px-1">
             {['M','T','W','T','F','S','S'].map((day, idx) => {
               const checked = !!weekCompletion[idx];
-              const isToday = idx === 3;
+              const isToday = idx === todayIndex;
               return (
                 <div key={idx} className="flex flex-col items-center gap-2">
                   <span className={`text-[10px] font-extrabold ${isToday ? 'text-[#FF6B00]' : 'text-[#A0A0A0]'}`}>{day}</span>
@@ -229,7 +230,7 @@ export default function DashboardScreen() {
           </div>
           <div className="grid grid-cols-2 gap-3">
             {todaysTasks.slice(0, 4).map((task: any, idx: number) => (
-              <div key={idx} className={`p-4 rounded-[20px] flex flex-col justify-between aspect-square border-[1.5px] transition-all bg-white shadow-sm ${task.done ? 'border-primary-teal' : 'border-[#E8F1F1]'}`}>
+              <div key={idx} className={`p-4 rounded-[20px] flex flex-col justify-between aspect-square border-[1.5px] transition-all bg-white shadow-sm ${task.completed ? 'border-primary-teal' : 'border-[#E8F1F1]'}`}>
                 <div className="flex justify-between items-start">
                   <div className={`w-[26px] h-[26px] rounded-full flex items-center justify-center shrink-0 ${task.completed ? 'bg-primary-teal' : 'border-[1.5px] border-[#E0E0E0]'}`}>
                     {task.completed && <CheckCircle2 size={16} className="text-white" />}
