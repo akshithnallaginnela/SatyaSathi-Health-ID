@@ -3,8 +3,8 @@
  */
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { Shield, CreditCard, Activity, LogOut, ChevronRight, Bell, Settings } from 'lucide-react';
-import { profileAPI, coinsAPI, clearTokens, notificationsAPI, settingsAPI } from '../services/api.ts';
+import { Shield, CreditCard, Activity, LogOut, ChevronRight, Bell, Settings, UploadCloud } from 'lucide-react';
+import { profileAPI, coinsAPI, clearTokens, notificationsAPI, settingsAPI, mlAPI } from '../services/api.ts';
 
 export default function MyIDScreen({ user, onLogout }: { user: any; onLogout: () => void; key?: string | number }) {
   const [profile, setProfile] = useState<any>(user);
@@ -12,6 +12,10 @@ export default function MyIDScreen({ user, onLogout }: { user: any; onLogout: ()
   const [activity, setActivity] = useState<any>({ coin_transactions: [], completed_tasks: [] });
   const [settings, setSettings] = useState<any>({ notifications_enabled: true, reminder_enabled: true, reminder_time: '08:00', language: 'en' });
   const [savingSettings, setSavingSettings] = useState(false);
+  const [reportType, setReportType] = useState<'blood_test_report' | 'blood_sugar_report'>('blood_test_report');
+  const [reportFile, setReportFile] = useState<File | null>(null);
+  const [uploadingReport, setUploadingReport] = useState(false);
+  const [reportResult, setReportResult] = useState<any>(null);
   const [noticeMsg, setNoticeMsg] = useState('');
 
   useEffect(() => {
@@ -54,6 +58,25 @@ export default function MyIDScreen({ user, onLogout }: { user: any; onLogout: ()
     }
   };
 
+  const uploadReport = async () => {
+    if (!reportFile) {
+      setNoticeMsg('Please choose a report image first.');
+      return;
+    }
+    setUploadingReport(true);
+    setNoticeMsg('');
+    setReportResult(null);
+    try {
+      const res = await mlAPI.analyzeReport(reportFile, reportType);
+      setReportResult(res);
+      setNoticeMsg('Report uploaded and analyzed successfully.');
+    } catch (e: any) {
+      setNoticeMsg(e?.message || 'Failed to upload report.');
+    } finally {
+      setUploadingReport(false);
+    }
+  };
+
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
       {/* Header */}
@@ -67,8 +90,16 @@ export default function MyIDScreen({ user, onLogout }: { user: any; onLogout: ()
       <div className="px-6 -mt-8 relative z-20">
         <div className="bg-white border-[1.5px] border-teal-border rounded-[24px] p-6 shadow-lg">
           <div className="flex items-center gap-4 mb-4">
-            <div className="w-16 h-16 bg-primary-teal rounded-full flex items-center justify-center text-white font-extrabold text-xl shadow-md">
-              {initials}
+            <div className="w-16 h-16 bg-primary-teal rounded-full flex items-center justify-center text-white font-extrabold text-xl shadow-md overflow-hidden">
+              {profile?.profile_photo_url ? (
+                <img
+                  src={profile.profile_photo_url.startsWith('/') ? `http://localhost:8000${profile.profile_photo_url}` : profile.profile_photo_url}
+                  alt={profile?.full_name || 'Profile'}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                initials
+              )}
             </div>
             <div className="flex-1">
               <h2 className="text-dark-teal font-extrabold text-lg">{profile?.full_name || 'User'}</h2>
@@ -194,6 +225,53 @@ export default function MyIDScreen({ user, onLogout }: { user: any; onLogout: ()
             <Settings size={14} />
             {savingSettings ? 'Saving...' : 'Save Settings'}
           </button>
+        </div>
+      </div>
+
+      {/* Upload Report */}
+      <div className="px-6 mt-4">
+        <h3 className="text-primary-teal text-[10px] font-extrabold uppercase tracking-widest mb-3">Upload Report</h3>
+        <div className="bg-white border border-teal-border rounded-2xl p-4 space-y-3">
+          <label className="block text-sm font-semibold text-dark-teal">
+            Report Type
+            <select
+              value={reportType}
+              onChange={(e) => setReportType(e.target.value as 'blood_test_report' | 'blood_sugar_report')}
+              className="mt-1 w-full border border-teal-border rounded-xl px-3 py-2"
+            >
+              <option value="blood_test_report">Blood Test Report</option>
+              <option value="blood_sugar_report">Blood Sugar Report</option>
+            </select>
+          </label>
+
+          <label className="border-2 border-dashed border-teal-border rounded-xl p-4 flex flex-col items-center justify-center cursor-pointer bg-light-teal-surface">
+            <UploadCloud size={24} className="text-primary-teal mb-2" />
+            <span className="text-xs font-semibold text-dark-teal">{reportFile ? reportFile.name : 'Choose report image'}</span>
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/bmp"
+              className="hidden"
+              onChange={(e) => setReportFile(e.target.files?.[0] || null)}
+            />
+          </label>
+
+          <button
+            onClick={uploadReport}
+            disabled={uploadingReport || !reportFile}
+            className="w-full bg-primary-teal text-white rounded-xl py-2.5 font-bold text-sm disabled:opacity-50"
+          >
+            {uploadingReport ? 'Uploading...' : 'Upload & Analyze'}
+          </button>
+
+          {reportResult?.ml_analysis && (
+            <div className="bg-light-teal-surface border border-teal-border rounded-xl p-3">
+              <p className="text-xs font-extrabold text-primary-teal uppercase">Preventive Insights</p>
+              <p className="text-sm font-semibold text-dark-teal mt-1">{reportResult.ml_analysis.summary}</p>
+              {(reportResult.positive_precautions || []).slice(0, 3).map((tip: string, idx: number) => (
+                <p key={idx} className="text-xs text-dark-teal mt-1">• {tip}</p>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 

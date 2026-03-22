@@ -204,9 +204,12 @@ export const profileAPI = {
 // ─── ML API ───
 
 export const mlAPI = {
-  analyzeReport: async (file: File) => {
+  analyzeReport: async (file: File, reportType?: string) => {
     const formData = new FormData();
     formData.append('file', file);
+    if (reportType) {
+      formData.append('report_type', reportType);
+    }
     const token = getAccessToken();
     const headers: any = {};
     if (token) headers['Authorization'] = `Bearer ${token}`;
@@ -217,7 +220,7 @@ export const mlAPI = {
     });
     if (!response.ok) {
       const err = await response.json().catch(() => ({ detail: 'Analysis failed' }));
-      throw new Error(err.detail || 'Analysis failed');
+      throw new Error(err.detail || `Analysis failed (HTTP ${response.status})`);
     }
     return response.json();
   },
