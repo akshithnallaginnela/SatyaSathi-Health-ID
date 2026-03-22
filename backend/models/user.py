@@ -30,6 +30,9 @@ class User(Base):
     aadhaar_last4 = Column(String(4), nullable=True)
     aadhaar_verified = Column(Boolean, default=False)
     
+    # Profile photo
+    profile_photo_url = Column(String(500), nullable=True)
+
     # Blockchain wallet
     wallet_address = Column(String(42), nullable=True)
     wallet_key_encrypted = Column(Text, nullable=True)
@@ -107,6 +110,7 @@ class UserResponse(BaseModel):
     aadhaar_verified: bool = False
     aadhaar_last4: Optional[str] = None
     wallet_address: Optional[str] = None
+    profile_photo_url: Optional[str] = None
     status: str
     created_at: Optional[datetime] = None
 

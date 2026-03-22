@@ -2,7 +2,9 @@
 Profile router — user profile management and activity log.
 """
 
-from fastapi import APIRouter, Depends, HTTPException
+import os
+import uuid
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc
 from pydantic import BaseModel, Field
@@ -17,6 +19,10 @@ from security.jwt_handler import get_current_user_id
 from security.encryption import hash_password, verify_password
 
 router = APIRouter(prefix="/api/profile", tags=["Profile"])
+
+# ─── Local uploads dir (fallback when Firebase not configured) ─────────────
+UPLOADS_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "uploads")
+os.makedirs(UPLOADS_DIR, exist_ok=True)
 
 
 class ProfileUpdate(BaseModel):
