@@ -1,13 +1,8 @@
 import os
 import json
-import google.generativeai as genai
 from PIL import Image
 import io
 from pydantic import BaseModel, ValidationError, Field
-
-# Optional: Load env variable directly if not already done by main.py
-genai.configure(api_key=os.environ.get("GEMINI_API_KEY", ""))
-
 
 class OCRPayload(BaseModel):
     document_type: str | None = None
@@ -43,15 +38,32 @@ async def process_health_document(image_bytes: bytes) -> dict:
     Takes an image (prescription, blood test, etc.) and uses Gemini 1.5 Flash
     to extract vital health information into a structured JSON dictionary.
     """
-    if not os.environ.get("GEMINI_API_KEY"):
+    api_key = os.environ.get("GEMINI_API_KEY")
+    if not api_key:
         raise ValueError("GEMINI_API_KEY is not set in the environment.")
     
     try:
         # Load image with PIL
         image = Image.open(io.BytesIO(image_bytes))
         
-        # We use the fast and affordable gemini-1.5-flash for OCR
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        # Prefer legacy google.generativeai if available, else fall back to google.genai SDK.
+        sdk_mode = None
+        model = None
+        client = None
+        try:
+            import google.generativeai as genai  # type: ignore
+            genai.configure(api_key=api_key)
+            model = genai.GenerativeModel("gemini-1.5-flash")
+            sdk_mode = "legacy"
+        except Exception:
+            try:
+                from google import genai as genai_client  # type: ignore
+                client = genai_client.Client(api_key=api_key)
+                sdk_mode = "new"
+            except Exception as sdk_err:
+                raise ValueError(
+                    "Gemini SDK not available. Install `google-generativeai` or ensure `google-genai` is installed correctly."
+                ) from sdk_err
         
         base_prompt = """
         You are an expert medical data extractor. I am providing an image of a health document.
@@ -79,8 +91,25 @@ async def process_health_document(image_bytes: bytes) -> dict:
         last_error = None
         for attempt in range(2):
             prompt = base_prompt if attempt == 0 else f"{base_prompt}\n\n{retry_prompt}"
-            response = model.generate_content([image, prompt])
-            text_response = _clean_json_text((response.text or "").strip())
+            if sdk_mode == "legacy":
+                response = model.generate_content([image, prompt])
+                raw_text = (response.text or "").strip()
+            else:
+                from io import BytesIO
+
+                img_buf = BytesIO()
+                image.save(img_buf, format=image.format or "PNG")
+                img_bytes = img_buf.getvalue()
+                response = client.models.generate_content(
+                    model="gemini-1.5-flash",
+                    contents=[
+                        prompt,
+                        {"mime_type": "image/png", "data": img_bytes},
+                    ],
+                )
+                raw_text = (getattr(response, "text", "") or "").strip()
+
+            text_response = _clean_json_text(raw_text)
             try:
                 parsed = json.loads(text_response)
                 return _validate_payload(parsed)
