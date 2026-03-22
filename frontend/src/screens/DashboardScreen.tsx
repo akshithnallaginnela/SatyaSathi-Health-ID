@@ -77,6 +77,15 @@ export default function DashboardScreen() {
 
   const handleOcrUpload = async () => {
     if (!selectedFile) return;
+    if (selectedFile.size > 10 * 1024 * 1024) {
+      setOcrResult({ error: 'File too large. Please upload an image under 10 MB.' });
+      return;
+    }
+    const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/bmp'];
+    if (!validTypes.includes(selectedFile.type)) {
+      setOcrResult({ error: 'Unsupported file type. Use JPEG, PNG, WebP, or BMP.' });
+      return;
+    }
     setOcrLoading(true);
     setOcrResult(null);
     try {
@@ -237,10 +246,10 @@ export default function DashboardScreen() {
                   </div>
                   <div className="bg-white shadow-[0_2px_8px_rgba(0,0,0,0.06)] text-[9px] font-extrabold text-[#D4AF37] border border-[#F4E3A0] px-2 py-1 rounded-full flex items-center gap-1">
                     <div className="w-1.5 h-1.5 bg-[#FFD700] rounded-full" />
-                    +{task.coins}
+                    +{task.coins_reward ?? task.coins ?? 0}
                   </div>
                 </div>
-                <h4 className={`font-extrabold text-sm leading-snug mt-3 ${task.completed ? 'text-primary-teal opacity-60 line-through' : 'text-dark-teal'}`}>{task.name}</h4>
+                <h4 className={`font-extrabold text-sm leading-snug mt-3 ${task.completed ? 'text-primary-teal opacity-60 line-through' : 'text-dark-teal'}`}>{task.task_name ?? task.name ?? 'Task'}</h4>
               </div>
             ))}
           </div>
@@ -441,6 +450,11 @@ export default function DashboardScreen() {
                     <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm">
                       <h3 className="text-[#1A3A38] font-extrabold text-sm mb-3">AI Risk Assessment</h3>
                       <RiskBadge level={ocrResult.ml_analysis.risk_level} />
+                      {ocrResult.needs_review && (
+                        <div className="mt-3 bg-[#FEF3C7] border border-[#FCD34D] text-[#92400E] text-[11px] font-semibold rounded-lg px-3 py-2">
+                          OCR confidence is low. Please review extracted fields manually or upload a clearer image.
+                        </div>
+                      )}
                       <p className="text-[#1A3A38] text-[12px] font-medium mt-3 leading-relaxed">{ocrResult.ml_analysis.summary}</p>
                       {ocrResult.ml_analysis.flags?.length > 0 && (
                         <div className="mt-3 space-y-1.5">
@@ -452,6 +466,9 @@ export default function DashboardScreen() {
                       )}
                       <div className="mt-2 text-[10px] text-muted-teal font-medium">
                         Confidence: {Math.round((ocrResult.ml_analysis.confidence || 0) * 100)}%
+                      </div>
+                      <div className="mt-1 text-[10px] text-muted-teal font-medium">
+                        OCR Quality: {Math.round(((ocrResult.ocr_quality?.confidence || 0) as number) * 100)}%
                       </div>
                     </div>
                   )}
