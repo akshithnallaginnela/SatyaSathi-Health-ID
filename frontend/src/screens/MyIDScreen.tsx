@@ -90,16 +90,33 @@ export default function MyIDScreen({ user, onLogout }: { user: any; onLogout: ()
       <div className="px-6 -mt-8 relative z-20">
         <div className="bg-white border-[1.5px] border-teal-border rounded-[24px] p-6 shadow-lg">
           <div className="flex items-center gap-4 mb-4">
-            <div className="w-16 h-16 bg-primary-teal rounded-full flex items-center justify-center text-white font-extrabold text-xl shadow-md overflow-hidden">
-              {profile?.profile_photo_url ? (
-                <img
-                  src={profile.profile_photo_url.startsWith('/') ? `http://localhost:8000${profile.profile_photo_url}` : profile.profile_photo_url}
-                  alt={profile?.full_name || 'Profile'}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                initials
-              )}
+            <div className="relative group w-16 h-16 rounded-full overflow-hidden shrink-0 shadow-md">
+              <label className="cursor-pointer w-full h-full block">
+                <div className="w-full h-full bg-primary-teal flex items-center justify-center text-white font-extrabold text-xl">
+                  {profile?.profile_photo_url ? (
+                    <img
+                      src={profile.profile_photo_url.startsWith('/') ? `http://localhost:8000${profile.profile_photo_url}` : profile.profile_photo_url}
+                      alt={profile?.full_name || 'Profile'}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : initials}
+                </div>
+                <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                  <span className="text-[9px] text-white font-bold">Edit</span>
+                </div>
+                <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  setNoticeMsg('Uploading photo...');
+                  try {
+                    const updated = await profileAPI.uploadPhoto(file);
+                    setProfile({ ...profile, profile_photo_url: updated.profile_photo_url });
+                    setNoticeMsg('Photo updated successfully.');
+                  } catch (err: any) {
+                    setNoticeMsg('Failed to upload photo.');
+                  }
+                }} />
+              </label>
             </div>
             <div className="flex-1">
               <h2 className="text-dark-teal font-extrabold text-lg">{profile?.full_name || 'User'}</h2>
