@@ -17,7 +17,6 @@ class OCRPayload(BaseModel):
     key_findings: list[str] = []
     medications: list[str] = []
 
-
 def _clean_json_text(text: str) -> str:
     cleaned = text.strip()
     if cleaned.startswith("```json"):
@@ -35,7 +34,7 @@ def _validate_payload(raw: dict) -> dict:
         raw["key_findings"] = [raw["key_findings"]]
     if isinstance(raw.get("medications"), str):
         raw["medications"] = [raw["medications"]]
-
+        
     payload = OCRPayload.model_validate(raw)
     return payload.model_dump()
 
