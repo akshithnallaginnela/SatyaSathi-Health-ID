@@ -138,3 +138,45 @@ async def get_activity_log(
             for t in tasks
         ],
     }
+
+
+@router.post("/upload-photo", response_model=UserResponse)
+async def upload_profile_photo(
+    file: UploadFile = File(...),
+    user_id: str = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """Upload a profile photo. Saves locally (Firebase optional)."""
+    ALLOWED_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
+    if file.content_type not in ALLOWED_TYPES:
+        raise HTTPException(status_code=400, detail="Only JPEG, PNG, WebP or GIF images are allowed.")
+
+    contents = await file.read()
+    if len(contents) > 5 * 1024 * 1024:  # 5 MB limit
+        raise HTTPException(status_code=400, detail="Image must be under 5 MB.")
+
+    # Try Firebase first, fall back to local disk
+    photo_url: str
+    try:
+        from services.storage_service import upload_file_to_firebase
+        ext = (file.filename or "photo.jpg").rsplit(".", 1)[-1]
+        unique_name = f"profile_{user_id}_{uuid.uuid4().hex[:8]}.{ext}"
+        photo_url = await upload_file_to_firebase(contents, unique_name, file.content_type or "image/jpeg")
+    except Exception:
+        # Local fallback — save in uploads/ and expose via /uploads static route
+        ext = (file.filename or "photo.jpg").rsplit(".", 1)[-1]
+        filename = f"profile_{user_id}_{uuid.uuid4().hex[:8]}.{ext}"
+        filepath = os.path.join(UPLOADS_DIR, filename)
+        with open(filepath, "wb") as f:
+            f.write(contents)
+        photo_url = f"/uploads/{filename}"
+
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found.")
+
+    user.profile_photo_url = photo_url
+    await db.flush()
+    return UserResponse.model_validate(user)
+
