@@ -3,13 +3,14 @@
  */
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { User, Shield, CreditCard, Activity, LogOut, ChevronRight } from 'lucide-react';
-import { profileAPI, coinsAPI, clearTokens } from '../services/api.ts';
+import { User, Shield, CreditCard, Activity, LogOut, ChevronRight, Bell } from 'lucide-react';
+import { profileAPI, coinsAPI, clearTokens, notificationsAPI } from '../services/api.ts';
 
 export default function MyIDScreen({ user, onLogout }: { user: any; onLogout: () => void; key?: string | number }) {
   const [profile, setProfile] = useState<any>(user);
   const [coins, setCoins] = useState(0);
   const [activity, setActivity] = useState<any>({ coin_transactions: [], completed_tasks: [] });
+  const [noticeMsg, setNoticeMsg] = useState('');
 
   useEffect(() => {
     (async () => {
@@ -23,6 +24,16 @@ export default function MyIDScreen({ user, onLogout }: { user: any; onLogout: ()
   const initials = profile?.full_name ? profile.full_name.split(' ').map((w: string) => w[0]).join('').toUpperCase() : 'U';
 
   const handleLogout = () => { clearTokens(); onLogout(); };
+
+  const handleTestNotification = async () => {
+    setNoticeMsg('');
+    try {
+      await notificationsAPI.createTest();
+      setNoticeMsg('Test reminder created successfully.');
+    } catch (e) {
+      setNoticeMsg('Failed to create test reminder.');
+    }
+  };
 
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
@@ -110,6 +121,14 @@ export default function MyIDScreen({ user, onLogout }: { user: any; onLogout: ()
       {/* Quick Actions */}
       <div className="px-6 mt-4 mb-6 space-y-2">
         <h3 className="text-primary-teal text-[10px] font-extrabold uppercase tracking-widest mb-3">Account</h3>
+        <button onClick={handleTestNotification}
+          className="w-full bg-white border border-teal-border rounded-2xl p-4 flex items-center justify-between hover:bg-light-teal-surface transition-colors">
+          <div className="flex items-center gap-3">
+            <Bell size={16} className="text-primary-teal" />
+            <span className="text-dark-teal font-semibold text-sm">Create Test Reminder</span>
+          </div>
+          <ChevronRight size={14} className="text-muted-teal" />
+        </button>
         <button onClick={handleLogout}
           className="w-full bg-white border border-teal-border rounded-2xl p-4 flex items-center justify-between hover:bg-light-teal-surface transition-colors">
           <div className="flex items-center gap-3">
@@ -118,6 +137,7 @@ export default function MyIDScreen({ user, onLogout }: { user: any; onLogout: ()
           </div>
           <ChevronRight size={14} className="text-muted-teal" />
         </button>
+        {noticeMsg && <p className="text-xs text-primary-teal font-semibold px-1 pt-1">{noticeMsg}</p>}
       </div>
     </motion.div>
   );
