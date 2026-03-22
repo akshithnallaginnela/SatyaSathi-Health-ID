@@ -6,3 +6,13 @@ coverage/
 *.log
 .env*
 !.env.example
+
+# Python artifacts
+__pycache__/
+*.pyc
+*.pyo
+
+# Local runtime data
+*.db
+*.sqlite
+backend/vitalid.db
