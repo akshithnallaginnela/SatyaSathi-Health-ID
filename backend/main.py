@@ -25,6 +25,7 @@ from models.health_record import VitalsLog, BodyMetrics
 from models.report import Report
 from models.task import DailyTask
 from models.coin_ledger import CoinLedger
+from models.user_settings import UserSettings
 from security.audit_log import AuditLog
 
 # Import routers
@@ -38,6 +39,8 @@ from routers.ocr import router as ocr_router
 from routers.clinics import router as clinics_router
 from routers.ml import router as ml_router
 from routers.reports import router as reports_router
+from routers.settings import router as settings_router
+from routers.notifications import router as notifications_router
 
 
 @asynccontextmanager
@@ -79,6 +82,8 @@ app.include_router(ocr_router)
 app.include_router(clinics_router)
 app.include_router(ml_router)
 app.include_router(reports_router)
+app.include_router(settings_router)
+app.include_router(notifications_router)
 
 # Serve locally-uploaded profile photos
 _uploads_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "uploads")
