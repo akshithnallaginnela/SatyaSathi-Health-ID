@@ -215,7 +215,7 @@ def calculate_health_index(features: dict) -> int:
     score = 100.0
     
     # ── BP Score ──
-    bp_avg = features.get("bp_systolic_avg")
+    bp_avg = features.get("bp_systolic_latest", features.get("bp_systolic_avg"))
     if bp_avg is not None:
         if bp_avg < 120:
             pass
@@ -231,7 +231,7 @@ def calculate_health_index(features: dict) -> int:
             score -= 5
     
     # ── Sugar Score ──
-    sugar_avg = features.get("sugar_avg")
+    sugar_avg = features.get("sugar_latest", features.get("sugar_avg"))
     if sugar_avg is not None:
         if sugar_avg < 100:
             pass
@@ -307,7 +307,7 @@ def generate_preventive_care(features: dict) -> list[dict]:
         return care_items
     
     # ── BP Care ──
-    bp_avg = features.get("bp_systolic_avg")
+    bp_avg = features.get("bp_systolic_latest", features.get("bp_systolic_avg"))
     if bp_avg is not None:
         bp_trend = features.get("bp_trend", "steady")
         
@@ -386,7 +386,7 @@ def generate_preventive_care(features: dict) -> list[dict]:
             })
     
     # ── Sugar Care ──
-    sugar_avg = features.get("sugar_avg")
+    sugar_avg = features.get("sugar_latest", features.get("sugar_avg"))
     if sugar_avg is not None:
         sugar_trend = features.get("sugar_trend", "steady")
         
@@ -636,13 +636,13 @@ def generate_preventive_care(features: dict) -> list[dict]:
         # Fine-tune based on actual data
         cat = item["category"]
         if cat == "blood_pressure":
-            bp_avg = features.get("bp_systolic_avg", 120)
+            bp_avg = features.get("bp_systolic_latest", features.get("bp_systolic_avg", 120))
             if bp_avg and bp_avg > 0:
                 item["risk_score"] = min(95, max(10, int((bp_avg - 90) / 0.8)))
             else:
                 item["risk_score"] = base
         elif cat == "blood_sugar":
-            sugar_avg = features.get("sugar_avg", 90)
+            sugar_avg = features.get("sugar_latest", features.get("sugar_avg", 90))
             if sugar_avg and sugar_avg > 0:
                 item["risk_score"] = min(95, max(10, int((sugar_avg - 60) / 1.5)))
             else:
@@ -689,7 +689,7 @@ def generate_daily_tasks(features: dict, user) -> list[dict]:
     
     # ── BP-Based Tasks (ONLY if user has logged BP) ──
     if features.get("has_bp_data"):
-        bp_avg = features.get("bp_systolic_avg", 120)
+        bp_avg = features.get("bp_systolic_latest", features.get("bp_systolic_avg", 120))
         
         if bp_avg >= 130:
             tasks.append({
@@ -737,7 +737,7 @@ def generate_daily_tasks(features: dict, user) -> list[dict]:
     
     # ── Sugar-Based Tasks (ONLY if user has logged sugar) ──
     if features.get("has_sugar_data"):
-        sugar_avg = features.get("sugar_avg", 100)
+        sugar_avg = features.get("sugar_latest", features.get("sugar_avg", 100))
         
         if sugar_avg >= 100:
             tasks.append({
@@ -879,8 +879,8 @@ def generate_diet_plan(features: dict) -> dict | None:
         return None
     
     bmi = features.get("bmi")
-    bp_avg = features.get("bp_systolic_avg")
-    sugar_avg = features.get("sugar_avg")
+    bp_avg = features.get("bp_systolic_latest", features.get("bp_systolic_avg"))
+    sugar_avg = features.get("sugar_latest", features.get("sugar_avg"))
     hb = features.get("hemoglobin")
     platelets = features.get("platelet_count")
     gender_enc = features.get("gender_enc", 1)
