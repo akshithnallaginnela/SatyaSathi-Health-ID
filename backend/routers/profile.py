@@ -33,7 +33,18 @@ async def get_activity(user_id: str = Depends(get_current_user_id), db: AsyncSes
         .order_by(desc(CoinLedger.created_at))
         .limit(20)
     )
-    return result.scalars().all()
+    history = result.scalars().all()
+    # Frontend expects an object with completed_tasks key
+    return {
+        "completed_tasks": [
+            {
+                "id": str(h.id),
+                "name": h.activity_type.replace("TASK_COMPLETION_", "").replace("_", " ").title(),
+                "coins": h.amount,
+                "date": h.created_at
+            } for h in history
+        ]
+    }
 
 @router.post("/upload-photo")
 async def upload_photo(

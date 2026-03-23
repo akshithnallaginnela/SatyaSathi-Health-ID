@@ -18,7 +18,7 @@ async def get_coin_balance(
         select(func.sum(CoinLedger.amount)).where(CoinLedger.user_id == user_id)
     )
     balance = result.scalar() or 0
-    return {"balance": balance}
+    return {"total_balance": balance}
 
 @router.get("/offers")
 async def get_offers():
