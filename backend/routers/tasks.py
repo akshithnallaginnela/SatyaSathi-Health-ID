@@ -22,7 +22,26 @@ async def get_today_tasks(
         .where(DailyTask.user_id == user_id, DailyTask.task_date == today)
         .order_by(DailyTask.time_of_day)
     )
-    return result.scalars().all()
+    tasks = result.scalars().all()
+    
+    # Serialize to dicts for JSON response
+    return [
+        {
+            "id": str(t.id),
+            "task_type": t.task_type,
+            "task_name": t.task_name,
+            "description": t.description,
+            "why_this_task": t.why_this_task,
+            "category": t.category,
+            "time_of_day": t.time_of_day,
+            "time_slot": t.time_of_day,  # Alias for Missions screen
+            "duration_or_quantity": t.duration_or_quantity,
+            "coins_reward": t.coins_reward,
+            "completed": t.completed,
+            "completed_at": str(t.completed_at) if t.completed_at else None,
+        }
+        for t in tasks
+    ]
 
 @router.post("/{task_id}/complete")
 async def complete_task(
