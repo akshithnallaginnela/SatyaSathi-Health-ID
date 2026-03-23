@@ -98,18 +98,37 @@ async def get_dashboard_summary(
     # 10. Health Index (Mock for now, but dynamic)
     health_index = 85
     if status and not status.has_report:
-        health_index = 70 # Lower if no report
+        health_index = 0 # UI shows 0 if no report as per requirement
     
+    # 11. Empty State Check
+    has_data = False
+    if status and (status.has_bp or status.has_sugar or status.has_report):
+        has_data = True
+
+    initials = "".join(word[0].upper() for word in (user.full_name or "U").split()[:2]) if user else "U"
+
     return {
-        "health_index": health_index,
-        "health_id": user.health_id if user else None,
-        "has_report": status.has_report if status else False,
-        "coin_balance": coin_balance,
-        "vitals": {
-            "bp": f"{latest_bp.systolic}/{latest_bp.diastolic}" if latest_bp else "No data",
-            "sugar": f"{latest_sugar.fasting_glucose} mg/dL" if latest_sugar else "No data"
+        "user": {
+            "name": user.full_name if user else "User",
+            "initials": initials,
+            "health_id": user.health_id if user else None,
         },
-        "tasks": formatted_tasks,
-        "preventive_care": formatted_care,
-        "diet_plan": formatted_diet
+        "health_index": health_index,
+        "wellness_score": health_index, # for compat
+        "has_report": status.has_report if status else False,
+        "has_data": has_data,
+        "coin_balance": int(coin_balance),
+        "vitals_snapshot": {
+            "bp": f"{latest_bp.systolic}/{latest_bp.diastolic}" if latest_bp else None,
+            "glucose": float(latest_sugar.fasting_glucose) if latest_sugar else None
+        },
+        "todays_tasks": formatted_tasks,
+        "preventive_analytics": {
+            "risk_level": formatted_care[0]["urgency"] if formatted_care else "low",
+            "summary": formatted_care[0]["risk"] if formatted_care else "Keep tracking your daily habits.",
+            "positive_precautions": formatted_care[0]["steps"] if formatted_care else [],
+            "report_type": "Blood Test" if status and status.has_report else None,
+            "diet_plan": formatted_diet
+        },
+        "streak_days": 3 # Mock streak
     }

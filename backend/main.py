@@ -14,9 +14,9 @@ load_dotenv()
 from database import create_tables
 from routers.auth import router as auth_router
 from routers.vitals import router as vitals_router
-# from routers.dashboard import router as dashboard_router
-# from routers.tasks import router as tasks_router
-# from routers.ocr import router as ocr_router
+from routers.dashboard import router as dashboard_router
+from routers.tasks import router as tasks_router
+from routers.reports import router as reports_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -27,8 +27,8 @@ async def lifespan(app: FastAPI):
     print("👋 Shutting down")
 
 app = FastAPI(
-    title="VitalID Backend",
-    description="Preventive Healthcare Engine",
+    title="VitalID Backend Engine",
+    description="Preventive Healthcare Engine V2.0",
     version="2.0.0",
     lifespan=lifespan,
 )
@@ -44,9 +44,12 @@ app.add_middleware(
 # ─── Register Routers ───
 app.include_router(auth_router)
 app.include_router(vitals_router)
+app.include_router(dashboard_router)
+app.include_router(tasks_router)
+app.include_router(reports_router)
 
-# Note: Other routers (dashboard, tasks, reports) will be added as they are redesigned 
-# to use the new domain-first schema.
+# Note: Additional routers like clinics, notifications, profile can be migrated 
+# as needed or kept if they don't break the new domain schema.
 
 _uploads_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "uploads")
 os.makedirs(_uploads_dir, exist_ok=True)
