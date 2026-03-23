@@ -60,6 +60,7 @@ class User(Base):
     medications = Column(Text, default="[]") 
     aadhaar_last4 = Column(String(4))
     aadhaar_verified = Column(Boolean, default=False)
+    profile_photo_url = Column(String(255))
     created_at = Column(DateTime, default=datetime.utcnow)
 
 class UserDataStatus(Base):

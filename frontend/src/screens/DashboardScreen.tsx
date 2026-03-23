@@ -61,15 +61,12 @@ export default function DashboardScreen() {
     const updatedAt = localStorage.getItem('vitalid_data_updated');
     if (updatedAt) {
       const updateTime = parseInt(updatedAt, 10);
-      // If the update happened after our last fetch, force refetch
       if (updateTime > lastFetchRef.current) {
         console.log('📊 Data updated while away — refetching dashboard');
       }
-      // Always clear the flag
       localStorage.removeItem('vitalid_data_updated');
     }
     
-    // Always fetch fresh data on mount
     fetchDashboard();
 
     const loadClinics = async (lat: number, lng: number) => {
@@ -91,11 +88,7 @@ export default function DashboardScreen() {
       loadClinics(12.9716, 77.5946);
     }
 
-    // Listen for live updates (when Dashboard stays mounted)
-    const handleDataUpdate = () => {
-      fetchDashboard();
-    };
-
+    const handleDataUpdate = () => fetchDashboard();
     window.addEventListener('report-uploaded', handleDataUpdate);
     window.addEventListener('vitals-logged', handleDataUpdate);
     return () => {
@@ -105,8 +98,7 @@ export default function DashboardScreen() {
   }, []);
 
   const completeTask = async (taskId: string, coinsReward: number) => {
-    // Optimistic update
-    const newTasks = data.todays_tasks.map((t: any) => t.id === taskId ? { ...t, completed: true } : t);
+    const newTasks = (data.todays_tasks || []).map((t: any) => t.id === taskId ? { ...t, completed: true } : t);
     setData({ ...data, todays_tasks: newTasks, coin_balance: (data.coin_balance || 0) + coinsReward });
     try {
       await tasksAPI.completeTask(taskId);
@@ -116,71 +108,62 @@ export default function DashboardScreen() {
   };
 
   if (loading) {
-    return <div className="flex justify-center items-center h-full"><p className="text-muted-teal text-sm">Loading...</p></div>;
+    return <div className="flex justify-center items-center h-full"><p className="text-muted-teal text-sm">Loading dashboard...</p></div>;
   }
 
-  const user = data?.user || { name: 'Arjun Kumar', initials: 'AK', profile_photo_url: null };
+  const user = data?.user || { name: 'User', initials: 'U', profile_photo_url: null };
   const coins = data?.coin_balance || 0;
   const streakDays = data?.streak_days || 0;
   const todaysTasks = data?.todays_tasks || [];
-  const displayTasks = todaysTasks; // Show all model tasks
-  const tasksDone = displayTasks.filter((t: any) => t.completed).length;
-  const tasksPending = Math.max(displayTasks.length - tasksDone, 0);
+  const tasksDone = todaysTasks.filter((t: any) => t.completed).length;
   const weekCompletion = data?.week_completion || [false, false, false, false, false, false, false];
   const preventive = data?.preventive_analytics || {};
   const dietPlan = preventive?.diet_plan || null;
-
-  const todayIndex = new Date().getDay() === 0 ? 6 : new Date().getDay() - 1;
-  const hasReport = !!preventive.report_type;
   const hasData = !!data?.has_data;
+  const hasReport = !!preventive.report_type;
   const score = data?.wellness_score || 0;
   const theme = getScoreTheme(score);
+  const todayIndex = new Date().getDay() === 0 ? 6 : new Date().getDay() - 1;
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="relative bg-[#FAFAFA] min-h-full pb-32">
       
       {/* 1. TEAL HEADER SECTION */}
       <div className="bg-primary-teal w-full pt-16 pb-12 rounded-b-[40px] px-6 relative z-10 shadow-sm overflow-hidden">
-        {/* Subtle background blob */}
         <div className="absolute top-[-40px] right-[-20px] w-48 h-48 bg-[#28D4CC] rounded-full opacity-30 blur-[40px]" />
-        {/* Score-colored glow overlay */}
         <div className="absolute bottom-[-20px] left-[-10px] w-40 h-40 rounded-full opacity-20 blur-[30px]" style={{ background: theme.headerBlob }} />
         
-        {/* Top Header Row */}
         <div className="flex justify-between items-start relative z-10">
           <div>
             <p className="text-[#C8F0EC] text-xs font-semibold tracking-wide">Good morning</p>
-            <h1 className="text-white text-2xl font-extrabold">{user.name}</h1>
+            <h1 className="text-white text-2xl font-extrabold">{user.full_name || user.name}</h1>
           </div>
-          {/* Avatar — shows photo if available, else initials */}
           <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-white/40 shadow-sm shrink-0">
             {user.profile_photo_url ? (
               <img
                 src={user.profile_photo_url.startsWith('/') ? `http://localhost:8000${user.profile_photo_url}` : user.profile_photo_url}
-                alt={user.name}
+                alt={user.full_name}
                 className="w-full h-full object-cover"
               />
             ) : (
               <div className="w-full h-full bg-white flex items-center justify-center text-primary-teal font-extrabold text-lg">
-                {user.initials}
+                {(user.full_name || 'U')[0]}
               </div>
             )}
           </div>
         </div>
 
-        {/* Top Pills Row */}
         <div className="flex justify-end gap-2 mt-[-10px] relative z-10">
           <div className="bg-[#48D0C9] border border-[#71DED9] rounded-full px-3 py-1 flex items-center gap-1.5 shadow-sm">
             <Flame size={12} className="text-[#FF7A00] fill-[#FF7A00]" />
             <span className="text-white font-extrabold text-xs">{streakDays}</span>
           </div>
           <div className="bg-[#48D0C9] border border-[#71DED9] rounded-full px-3 py-1 flex items-center gap-1.5 shadow-sm">
-            <div className="w-2.5 h-2.5 bg-[#FFD700] rounded-full shadow-[0_0_4px_rgba(255,215,0,0.8)]" />
+            <div className="w-2.5 h-2.5 bg-[#FFD700] rounded-full" />
             <span className="text-white font-extrabold text-xs">{coins.toLocaleString()}</span>
           </div>
         </div>
 
-        {/* Health Index Box — dynamic color */}
         <div className="mt-6 flex items-center gap-4 relative z-10">
           <div className="relative w-[70px] h-[70px] shrink-0">
             <svg viewBox="0 0 36 36" className="w-full h-full transform -rotate-90">
@@ -200,11 +183,8 @@ export default function DashboardScreen() {
           </div>
           <div>
             <h2 className="text-white font-extrabold text-[15px] mb-0.5">Health Index</h2>
-            <p className="text-[#C8F0EC] text-xs font-semibold mb-2">{data?.health_subtitle || 'Log vitals to see your score.'}</p>
-            <div
-              className="text-[10px] font-extrabold px-3 py-1.5 rounded-full inline-block shadow-sm"
-              style={{ background: theme.badgeBg, color: theme.badgeText }}
-            >
+            <p className="text-[#C8F0EC] text-xs font-semibold mb-2">{data?.health_subtitle || 'Keep tracking for higher accuracy.'}</p>
+            <div className="text-[10px] font-extrabold px-3 py-1.5 rounded-full inline-block shadow-sm" style={{ background: theme.badgeBg, color: theme.badgeText }}>
               {theme.emoji} {theme.label}
             </div>
           </div>
@@ -213,210 +193,146 @@ export default function DashboardScreen() {
 
       <div className="px-5 relative z-20 -mt-6 space-y-5">
         
-        {/* 1.5 EMPTY STATE CARD (ONLY IF NO DATA) */}
-        {!data?.has_data && (
+        {!hasData && (
           <div className="bg-[#F2FDFB] border-[1.5px] border-dashed border-primary-teal/40 rounded-[28px] p-8 text-center shadow-inner">
             <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm">
               <Activity size={32} className="text-primary-teal" />
             </div>
             <h3 className="text-dark-teal font-extrabold text-[18px] mb-2">Welcome to VitalID</h3>
-            <p className="text-muted-teal text-[13px] leading-relaxed mb-6">
-              Log your first Blood Pressure, Sugar or upload a Blood Report 
-              to see your AI health insights and daily tasks.
-            </p>
-            <div className="flex flex-col gap-3">
-              <button onClick={() => window.location.hash = '#/vitals'} className="bg-primary-teal text-white font-extrabold py-3 rounded-2xl shadow-md active:scale-95 transition-all">
-                Log Vitals Now
-              </button>
-            </div>
+            <p className="text-muted-teal text-[13px] leading-relaxed mb-6">Log vitals or upload a report to see insights.</p>
+            <button onClick={() => window.location.hash = '#/vitals'} className="bg-primary-teal text-white font-extrabold w-full py-4 rounded-2xl shadow-md">
+              Start Now
+            </button>
           </div>
         )}
 
         {/* 2. STREAK CARD */}
-        <div className="bg-white border-[1.5px] border-[#FFE2C8] rounded-[24px] p-5 shadow-[0_4px_16px_-8px_rgba(255,122,0,0.15)]">
+        <div className="bg-white border-[1.5px] border-[#FFE2C8] rounded-[24px] p-5 shadow-sm">
           <div className="flex items-center gap-4 mb-5">
-            <div className="w-12 h-12 rounded-full bg-[#FFF0E0] flex items-center justify-center shrink-0">
-              <Flame size={24} className="text-[#FF6B00] fill-[#FF6B00]" />
+            <div className="w-10 h-10 rounded-full bg-[#FFF0E0] flex items-center justify-center">
+              <Flame size={20} className="text-[#FF6B00] fill-[#FF6B00]" />
             </div>
-            <div>
-              <h3 className="text-[#E05200] font-extrabold text-lg flex items-center gap-1">{streakDays} Day Streak!</h3>
-              <p className="text-[#FF6B00] text-xs font-semibold mt-0.5 opacity-80">You're on fire! Keep it up.</p>
-            </div>
+            <h3 className="text-[#E05200] font-extrabold text-lg">{streakDays} Day Streak!</h3>
           </div>
           <div className="flex justify-between items-end px-1">
-            {['M','T','W','T','F','S','S'].map((day, idx) => {
-              const checked = !!weekCompletion[idx];
-              const isToday = idx === todayIndex;
-              return (
-                <div key={idx} className="flex flex-col items-center gap-2">
-                  <span className={`text-[10px] font-extrabold ${isToday ? 'text-[#FF6B00]' : 'text-[#A0A0A0]'}`}>{day}</span>
-                  <div className={`w-[34px] h-[34px] rounded-full flex items-center justify-center ${checked ? 'bg-[#E05200] shadow-sm' : 'bg-[#F2F2F2]'}`}>
-                    {checked ? <CheckCircle2 size={16} className="text-white" /> : null}
-                  </div>
+            {['M','T','W','T','F','S','S'].map((day, idx) => (
+              <div key={idx} className="flex flex-col items-center gap-2">
+                <span className={`text-[10px] font-extrabold ${idx === todayIndex ? 'text-[#FF6B00]' : 'text-[#A0A0A0]'}`}>{day}</span>
+                <div className={`w-[30px] h-[30px] rounded-full flex items-center justify-center ${weekCompletion[idx] ? 'bg-[#E05200]' : 'bg-[#F2F2F2]'}`}>
+                  {weekCompletion[idx] && <CheckCircle2 size={14} className="text-white" />}
                 </div>
-              );
-            })}
+              </div>
+            ))}
           </div>
         </div>
 
-        {/* 3. ML-DRIVEN DAILY TASKS */}
-        {hasData && displayTasks.length > 0 && (
+        {/* 3. DAILY TASKS */}
+        {hasData && todaysTasks.length > 0 && (
           <div className="bg-white border-[1.5px] border-border-teal rounded-[28px] p-5 shadow-sm">
             <div className="flex justify-between items-center mb-4">
-              <div>
-                <h3 className="text-dark-teal font-extrabold text-[17px]">Daily Care Plan</h3>
-                <p className="text-muted-teal text-[11px] font-medium leading-tight">Generated from your vitals & health data</p>
-              </div>
-              <span className="bg-[#E0F7F4] text-primary-teal text-[10px] px-2 py-1 rounded-lg font-extrabold tracking-widest">{tasksDone}/{displayTasks.length} DONE</span>
+              <h3 className="text-dark-teal font-extrabold text-[17px]">Daily Care Plan</h3>
+              <span className="bg-[#E0F7F4] text-primary-teal text-[10px] px-2 py-1 rounded-lg font-extrabold">{tasksDone}/{todaysTasks.length} DONE</span>
             </div>
             <div className="grid grid-cols-2 gap-3">
-              {displayTasks.map((task: any, idx: number) => {
-                const reward = task.coins_reward ?? task.coins ?? 15;
+              {todaysTasks.map((task: any, idx: number) => {
+                const reward = task.coins_reward || 15;
                 return (
-                <div key={idx} 
-                     onClick={() => !task.completed && completeTask(task.id, reward)}
-                     className={`p-4 rounded-[20px] flex flex-col justify-between aspect-square border-[1.5px] transition-all bg-white relative cursor-pointer ${
-                      task.completed ? 'border-[#E8F1F1] opacity-50 blur-[0.5px]' : 'border-border-teal shadow-sm hover:border-[#48D0C9]'
-                     }`}>
-                  <div className="flex justify-between items-start relative z-10">
-                    <div className={`w-[26px] h-[26px] rounded-full flex items-center justify-center shrink-0 ${task.completed ? 'bg-primary-teal' : 'border-[1.5px] border-[#E0E0E0] bg-white'}`}>
-                      {task.completed && <CheckCircle2 size={16} className="text-white" />}
+                  <div key={task.id || idx} 
+                       onClick={() => !task.completed && completeTask(task.id, reward)}
+                       className={`p-4 rounded-[20px] aspect-square border-[1.5px] transition-all bg-white relative cursor-pointer ${
+                         task.completed ? 'border-[#E8F1F1] opacity-50' : 'border-border-teal shadow-sm hover:border-primary-teal'
+                       }`}>
+                    <div className="flex justify-between items-start">
+                      <div className={`w-6 h-6 rounded-full flex items-center justify-center ${task.completed ? 'bg-primary-teal' : 'border border-gray-200'}`}>
+                        {task.completed && <CheckCircle2 size={14} className="text-white" />}
+                      </div>
+                      <div className="bg-white shadow-sm text-[9px] font-extrabold text-[#D4AF37] border border-[#F4E3A0] px-2 py-0.5 rounded-full flex items-center gap-1">
+                        <div className="w-1 h-1 bg-[#FFD700] rounded-full" /> +{reward}
+                      </div>
                     </div>
-                    <div className="bg-white shadow-[0_2px_8px_rgba(0,0,0,0.06)] text-[9px] font-extrabold text-[#D4AF37] border border-[#F4E3A0] px-2 py-1 rounded-full flex items-center gap-1">
-                      <div className="w-1.5 h-1.5 bg-[#FFD700] rounded-full" />
-                      +{reward}
-                    </div>
+                    <h4 className={`font-extrabold text-[13px] leading-tight mt-4 ${task.completed ? 'text-gray-400 line-through' : 'text-dark-teal'}`}>
+                      {task.task_name || 'Health Task'}
+                    </h4>
                   </div>
-                  <h4 className={`font-extrabold text-[13px] leading-snug mt-3 relative z-10 ${task.completed ? 'text-[#A0A0A0] line-through' : 'text-dark-teal'}`}>{task.task_name ?? task.name ?? 'Task'}</h4>
-                </div>
-              )})}
+                );
+              })}
             </div>
           </div>
         )}
 
-        {/* 4. PREVENTIVE CARE ANALYSIS — Clean card matching reference UI */}
-        <div className="bg-white border-[1.5px] border-border-teal rounded-[28px] p-5 shadow-sm">
-          <h3 className="text-dark-teal font-extrabold text-[17px] leading-tight mb-0.5">What your body is telling you</h3>
-          <p className="text-[#A0A0A0] text-[11px] font-semibold italic mb-5">Trends only — not a diagnosis.</p>
+        {/* 4. PREVENTIVE ANALYTICS */}
+        <div className="bg-white border-[1.5px] border-border-teal rounded-[28px] p-6 shadow-sm">
+          <div className="flex items-center justify-between mb-1">
+            <h3 className="text-dark-teal font-extrabold text-[18px] leading-tight">Body Health & Insights</h3>
+            {hasReport && (
+              <span className="bg-[#E8F9F7] text-primary-teal text-[9px] font-bold px-2 py-0.5 rounded-full border border-teal-border/30">
+                Medical Report Included
+              </span>
+            )}
+          </div>
+          <p className="text-[#A0A0A0] text-[11px] font-semibold italic mb-6">AI-driven analysis — not a diagnosis.</p>
 
           {!hasData ? (
-            <div className="bg-[#F2FDFB] border border-border-teal rounded-2xl p-4 text-center">
-              <p className="text-dark-teal text-[13px] font-bold">No health data yet.</p>
-              <p className="text-muted-teal text-[11px] mt-1">Log your BP, Sugar, or upload a report to see insights.</p>
-            </div>
+             <div className="py-6 text-center bg-gray-50 rounded-2xl border border-dashed border-gray-200">
+               <p className="text-gray-400 text-sm">No data yet.</p>
+             </div>
           ) : (
-            <div className="space-y-0">
+            <div className="space-y-6">
               {(preventive.all_care_items || []).map((item: any, idx: number) => {
-                const barColor = 
-                  item.urgency === 'act_now' ? '#EF4444' :
-                  item.urgency === 'focus' ? '#F97316' :
-                  item.urgency === 'watch' ? '#F59E0B' :
-                  '#22C55E';
-                
-                const categoryLabel: Record<string, string> = {
-                  blood_pressure: 'Hypertension',
-                  blood_sugar: 'Blood Sugar',
-                  weight_bmi: 'Weight Management',
-                  hemoglobin: 'Hemoglobin',
-                  platelets: 'Platelets',
-                  kidney_health: 'Kidney Health',
-                  lifestyle_compound: 'Lifestyle',
-                  genetic_risk: 'Genetic Risk'
-                };
-                
+                const categoryLabel: any = { blood_pressure: 'BP Health', blood_sugar: 'Sugar/Glucose', weight_bmi: 'Body Composition', hemoglobin: 'Blood Health (Hb)', platelets: 'Platelets', kidney_health: 'Kidney Health' };
+                const scoreValue = item.risk_score || 30;
+                let barColor = 'bg-primary-teal';
+                if (scoreValue > 70) barColor = 'bg-[#FF6B6B]';
+                else if (scoreValue > 40) barColor = 'bg-[#FFB84D]';
+
                 return (
-                  <div key={idx} className={`py-4 ${idx > 0 ? 'border-t border-[#F0F0F0]' : ''}`}>
-                    {/* Category Title + Score */}
-                    <div className="flex justify-between items-baseline">
-                      <h4 className="text-dark-teal font-extrabold text-[15px]">
-                        {categoryLabel[item.category] || item.category.replace(/_/g, ' ')}
-                      </h4>
-                      <span className="font-extrabold text-[18px]" style={{ color: barColor }}>
-                        {item.risk_score || 30}%
-                      </span>
+                  <div key={idx}>
+                    <div className="flex justify-between items-center mb-1.5">
+                      <span className="text-[11px] font-bold text-dark-teal uppercase tracking-tight">{categoryLabel[item.category] || item.category}</span>
+                      <span className="text-[11px] font-extrabold text-dark-teal">{item.current_status}</span>
                     </div>
-                    
-                    {/* Description */}
-                    <p className="text-muted-teal text-[12px] font-medium mt-0.5 leading-snug">
-                      {item.status}
-                    </p>
-                    
-                    {/* Progress Bar */}
-                    <div className="w-full bg-[#E8F1F1] h-[6px] rounded-full mt-2.5 overflow-hidden">
-                      <div 
-                        className="h-full rounded-full transition-all duration-1000 ease-out" 
-                        style={{ 
-                          width: `${item.risk_score || 30}%`,
-                          backgroundColor: barColor 
-                        }} 
-                      />
+                    <div className="h-2.5 w-full bg-gray-100 rounded-full overflow-hidden mb-3">
+                      <motion.div initial={{ width: 0 }} animate={{ width: `${scoreValue}%` }} transition={{ duration: 1 }} className={`h-full rounded-full ${barColor}`} />
                     </div>
-                    
-                    {/* Action Button */}
+                    <p className="text-[13px] text-dark-teal/80 font-medium leading-normal mb-2">{item.future_risk_message}</p>
                     {item.top_action && (
-                      <div className="mt-2.5 inline-block bg-[#E0F7F4] text-primary-teal text-[11px] font-extrabold px-3.5 py-2 rounded-xl">
-                        → {item.top_action}
+                      <div className="inline-flex items-center gap-1.5 bg-[#F0FDFB] border border-teal-border/20 px-2 py-1 rounded-lg">
+                        <div className="w-1 h-1 bg-primary-teal rounded-full" />
+                        <span className="text-[10px] font-extrabold text-primary-teal uppercase">{item.top_action}</span>
                       </div>
                     )}
+                    {idx < (preventive.all_care_items.length - 1) && <div className="h-[1px] bg-gray-100 mt-6" />}
                   </div>
                 );
               })}
-              
-              {/* Fallback if no care items */}
-              {(!preventive.all_care_items || preventive.all_care_items.length === 0) && (
-                <div className="py-4 text-center">
-                  <p className="text-muted-teal text-[12px] font-semibold">
-                    {preventive.summary || 'Your health data is being analyzed.'}
-                  </p>
-                </div>
-              )}
             </div>
           )}
         </div>
 
-        {/* 4.5 PERSONALIZED DIET PLAN */}
+        {/* 5. DIET PLAN */}
         {hasData && dietPlan && (
           <div className="pt-2">
-            <h3 className="text-dark-teal font-extrabold text-[17px] leading-tight mb-1">Diet Focus</h3>
-            <p className="text-[#A0A0A0] text-[11px] font-semibold italic mb-4 capitalize">Personalized for: {dietPlan.focus?.replace(/_/g, ' ')}</p>
-
-            <div className="flex gap-4 overflow-x-auto pb-4 no-scrollbar -mx-5 px-5 snap-x">
-              
-              <div className="bg-white border-[1.5px] border-[#E8F1F1] border-l-4 border-l-[#26C6BF] rounded-[24px] p-5 min-w-[220px] shrink-0 shadow-sm snap-start">
-                <span className="bg-[#26C6BF] text-white text-[10px] font-extrabold px-3 py-1 rounded-full inline-block mb-3">Eat more</span>
-                <h4 className="text-dark-teal font-extrabold text-[15px] mb-3">Recommended Foods</h4>
+            <h3 className="text-dark-teal font-extrabold text-[17px] mb-4">Nutrition Plan</h3>
+            <div className="flex gap-4 overflow-x-auto pb-4 no-scrollbar -mx-5 px-5">
+              <div className="bg-white border border-[#E8F1F1] border-l-4 border-l-primary-teal rounded-2xl p-4 min-w-[200px] shadow-sm">
+                <span className="text-[9px] font-bold bg-primary-teal text-white px-2 py-0.5 rounded-full mb-2 inline-block">EAT MORE</span>
+                <h4 className="text-dark-teal font-extrabold text-sm mb-2">Recommended</h4>
                 <ul className="space-y-1">
-                  {(dietPlan.eat_more || [])
-                    .slice(0, 5).map((item: string, i: number) => (
-                    <li key={i} className="text-dark-teal text-[12px] font-medium flex items-center gap-2">
-                      <span className="w-1.5 h-1.5 rounded-full bg-[#26C6BF] shrink-0" /> <span className="leading-tight">{item}</span>
+                  {(dietPlan.eat_more || []).slice(0, 4).map((f: any, i: number) => (
+                    <li key={i} className="text-[11px] text-muted-teal font-medium flex items-center gap-1.5">
+                      <div className="w-1 h-1 bg-primary-teal rounded-full" /> {f}
                     </li>
                   ))}
                 </ul>
               </div>
-
-              {dietPlan.reduce && dietPlan.reduce.length > 0 && (
-                <div className="bg-white border-[1.5px] border-[#E8F1F1] border-l-4 border-l-[#F59E0B] rounded-[24px] p-5 min-w-[220px] shrink-0 shadow-sm snap-start">
-                  <span className="bg-[#FEF3C7] text-[#D97706] text-[10px] font-extrabold px-3 py-1 rounded-full inline-block mb-3">Reduce</span>
-                  <h4 className="text-dark-teal font-extrabold text-[15px] mb-3">Limit These</h4>
+              {dietPlan.reduce?.length > 0 && (
+                <div className="bg-white border border-[#E8F1F1] border-l-4 border-l-orange-400 rounded-2xl p-4 min-w-[200px] shadow-sm">
+                  <span className="text-[9px] font-bold bg-orange-100 text-orange-600 px-2 py-0.5 rounded-full mb-2 inline-block">REDUCE</span>
+                  <h4 className="text-dark-teal font-extrabold text-sm mb-2">Limit Items</h4>
                   <ul className="space-y-1">
-                    {dietPlan.reduce.slice(0, 4).map((item: string, i: number) => (
-                      <li key={i} className="text-dark-teal text-[12px] font-medium flex items-center gap-2">
-                        <span className="w-1.5 h-1.5 rounded-full bg-[#F59E0B] shrink-0" /> <span className="leading-tight">{item}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              {dietPlan.avoid && dietPlan.avoid.length > 0 && (
-                <div className="bg-white border-[1.5px] border-[#E8F1F1] border-l-4 border-l-[#FF4D4D] rounded-[24px] p-5 min-w-[220px] shrink-0 shadow-sm snap-start">
-                  <span className="bg-[#FEE2E2] text-[#DC2626] text-[10px] font-extrabold px-3 py-1 rounded-full inline-block mb-3">Avoid</span>
-                  <h4 className="text-dark-teal font-extrabold text-[15px] mb-3">Foods to Avoid</h4>
-                  <ul className="space-y-1">
-                    {dietPlan.avoid.slice(0, 4).map((item: string, i: number) => (
-                      <li key={i} className="text-dark-teal text-[12px] font-medium flex items-center gap-2">
-                        <span className="w-1.5 h-1.5 rounded-full bg-[#FF4D4D] shrink-0" /> <span className="leading-tight">{item}</span>
+                    {dietPlan.reduce.slice(0, 4).map((f: any, i: number) => (
+                      <li key={i} className="text-[11px] text-muted-teal font-medium flex items-center gap-1.5">
+                        <div className="w-1 h-1 bg-orange-400 rounded-full" /> {f}
                       </li>
                     ))}
                   </ul>
@@ -426,84 +342,28 @@ export default function DashboardScreen() {
           </div>
         )}
 
-        {/* 5. NEAREST CLINICS */}
-        <div className="bg-white border-[1.5px] border-border-teal rounded-[28px] p-5 shadow-sm">
-          <div className="flex justify-between items-center mb-5">
-            <h3 className="text-dark-teal font-extrabold text-[16px] flex items-center gap-2">
-              <MapPin size={18} className="text-primary-teal" />
-              Nearest Clinics
-            </h3>
-            <span className="text-primary-teal text-[10px] font-extrabold uppercase tracking-widest">VIEW ALL</span>
-          </div>
-          
+        {/* 6. CLINICS */}
+        <div className="bg-white border border-[#F0F0F0] rounded-[28px] p-5 shadow-sm">
+          <h3 className="text-dark-teal font-extrabold text-[16px] flex items-center gap-2 mb-4">
+            <MapPin size={18} className="text-primary-teal" /> Nearby Clinics
+          </h3>
           <div className="space-y-3">
-            {clinics.slice(0, 3).map((clinic, idx) => (
-              <div key={`${clinic.name}-${idx}`} className="border border-border-teal rounded-[16px] p-3 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full border border-border-teal flex items-center justify-center shrink-0">
-                    {idx % 2 === 0 ? (
-                      <Activity size={18} className="text-primary-teal" />
-                    ) : (
-                      <Heart size={18} className="text-primary-teal" />
-                    )}
-                  </div>
-                  <div>
-                    <h4 className="text-dark-teal font-extrabold text-[13px]">{clinic.name}</h4>
-                    <p className="text-muted-teal text-[10px] font-medium leading-tight">{clinic.type}</p>
-                  </div>
+            {clinics.slice(0, 3).map((c, i) => (
+              <div key={i} className="flex justify-between items-center p-3 border border-gray-50 rounded-xl bg-gray-50/50">
+                <div>
+                  <p className="text-dark-teal font-extrabold text-[13px]">{c.name}</p>
+                  <p className="text-muted-teal text-[10px]">{c.type}</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-primary-teal text-[11px] font-extrabold mb-1">{clinic.distance || 'Nearby'}</p>
-                  <button className="bg-primary-teal text-white text-[10px] font-bold px-3 py-1.5 rounded-[6px]">Book</button>
+                  <p className="text-primary-teal text-[11px] font-bold">{c.distance || 'Nearby'}</p>
+                  <button className="bg-primary-teal text-white text-[10px] px-3 py-1 rounded-md mt-1">Book</button>
                 </div>
               </div>
             ))}
-            {clinics.length === 0 && (
-              <p className="text-muted-teal text-[12px] font-medium">No nearby clinics available right now.</p>
-            )}
           </div>
         </div>
-
-        {/* 6. REDEEM REWARDS */}
-        <div className="pt-2">
-          <h3 className="text-primary-teal text-[11px] font-extrabold uppercase tracking-widest mb-4">REDEEM REWARDS</h3>
-          <div className="flex gap-4 overflow-x-auto pb-4 no-scrollbar -mx-5 px-5 snap-x">
-            
-            <div className="bg-white border border-border-teal rounded-[20px] p-3 min-w-[140px] shrink-0 shadow-sm snap-start">
-              <div className="w-full h-24 bg-gray-200 rounded-[12px] mb-3 overflow-hidden">
-                <img src="https://images.unsplash.com/photo-1542281286-9e0a16bb7366?w=400&h=300&fit=crop" alt="Pharmacy" className="w-full h-full object-cover" />
-              </div>
-              <h4 className="text-dark-teal font-extrabold text-[12px] mb-2">Pharmacy 15% Off</h4>
-              <div className="flex justify-between items-center">
-                <div className="flex items-center gap-1">
-                  <div className="w-2 h-2 bg-[#FFD700] rounded-full" />
-                  <span className="text-[#D4AF37] font-extrabold text-[11px]">500</span>
-                </div>
-                <span className="text-primary-teal text-[10px] font-bold">REDEEM</span>
-              </div>
-            </div>
-
-            <div className="bg-white border border-border-teal rounded-[20px] p-3 min-w-[140px] shrink-0 shadow-sm snap-start">
-              <div className="w-full h-24 bg-gray-200 rounded-[12px] mb-3 overflow-hidden">
-                <img src="https://images.unsplash.com/photo-1506126613408-eca07ce68773?w=400&h=300&fit=crop" alt="Checkup" className="w-full h-full object-cover" />
-              </div>
-              <h4 className="text-dark-teal font-extrabold text-[12px] mb-2">Health Checkup</h4>
-              <div className="flex justify-between items-center">
-                <div className="flex items-center gap-1">
-                  <div className="w-2 h-2 bg-[#FFD700] rounded-full" />
-                  <span className="text-[#D4AF37] font-extrabold text-[11px]">1200</span>
-                </div>
-                <span className="text-primary-teal text-[10px] font-bold">REDEEM</span>
-              </div>
-            </div>
-
-          </div>
-        </div>
-
-        {/* 7. YOUR NEXT STEPS TIMELINE (Removed per request) */}
 
       </div>
-
     </motion.div>
   );
 }

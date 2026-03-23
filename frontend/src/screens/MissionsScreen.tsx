@@ -1,13 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { CheckCircle2, Award, Heart, Footprints, Wind, Droplet, Pill, Utensils, Flame, Circle } from 'lucide-react';
+import { CheckCircle2, Award, Heart, Footprints, Wind, Droplet, Pill, Utensils, Flame, Circle, Activity } from 'lucide-react';
 import { tasksAPI, coinsAPI } from '../services/api.ts';
 
 const TASK_ICONS: Record<string, React.ReactNode> = {
-  LOG_BP: <Heart size={18} />, MORNING_WALK: <Footprints size={18} />,
-  DEEP_BREATHING: <Wind size={18} />, WATER_INTAKE: <Droplet size={18} />,
-  DIET_MEAL: <Utensils size={18} />, MEDICATION: <Pill size={18} />,
+  LOG_BP: <Heart size={18} />, 
+  MORNING_WALK: <Footprints size={18} />,
+  DEEP_BREATHING: <Wind size={18} />, 
+  WATER_INTAKE: <Droplet size={18} />,
+  DIET_MEAL: <Utensils size={18} />, 
+  MEDICATION: <Pill size={18} />,
   LOG_SUGAR: <Flame size={18} />,
+  IRON_RICH_MEAL: <Utensils size={18} />,
+  EAT_PAPAYA: <Activity size={18} />,
+  POST_MEAL_WALK: <Footprints size={18} />,
+  PORTION_CONTROL: <Utensils size={18} />,
 };
 
 export default function MissionsScreen() {

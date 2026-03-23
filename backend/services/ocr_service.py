@@ -65,11 +65,10 @@ async def extract_report_values(file_path: str) -> dict:
         model = genai.GenerativeModel("gemini-1.5-flash")
         
         base_prompt = """
-You are extracting values from an Indian medical lab report.
-The report may be from Drlogy, Redcliffe, Healthians, Apollo,
-Bio Rad, or any Indian government or private hospital lab.
+You are a highly precise medical data extraction AI. Extract values from this Indian medical lab report.
+The report is likely from Drlogy, Metropolis, SRL, Dr Lal PathLabs, Apollo, or a local hospital.
 
-Extract ONLY these values (use null if not present):
+Extract ONLY these specific values. If a value is not present or unsure, use null.
 {
   "hemoglobin": number,
   "rbc_count": number,
@@ -94,21 +93,13 @@ Extract ONLY these values (use null if not present):
   "lab_interpretation": string
 }
 
-Handle all label variants:
-  hemoglobin: Hb, HGB, HAEMOGLOBIN, Haemoglobin, Hemoglobin
-  wbc_count: TLC, WBC COUNT, Total WBC count, Total Leucocyte Count
-  platelet_count: PLT, Platelet Count, PLATELET COUNT, Platelets
-  fasting_glucose: FBS, Fasting Blood Sugar, Fasting Glucose,
-                   GLUCOSE FASTING, Blood Glucose
-  random_glucose: RBS, Random Blood Sugar, GLUCOSE RANDOM
-  pcv: HCT, Hematocrit, Packed Cell Volume, PCV
+Extraction Rules:
+1. Hemoglobin: Look for Hb, HGB, Haemoglobin. Units are usually g/dL. Value like 12.5.
+2. Platelets: Look for PLT, Platelet Count. If the report says 1.5, it likely means 1.5 Lakhs. Convert to 150000 cells/cumm.
+3. Glucose: fasting_glucose is FBS, random_glucose is RBS.
+4. If the report says 'Anemia' or 'Low hemoglobin', ensure value is captured.
 
-Convert all values to standard units:
-  WBC: if given as 10^3/uL multiply by 1000 to get /cumm
-  RBC: if given as 10^6/uL keep as-is in millions
-  Platelets: if given as 10^3/uL multiply by 1000
-
-Return ONLY valid JSON, no explanation, no markdown.
+Return ONLY valid JSON. No markdown, no triple backticks, no explanation.
 """
         
         if media_type == "application/pdf":

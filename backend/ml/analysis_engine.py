@@ -295,8 +295,10 @@ def calculate_health_index(features: dict) -> int:
 
 def generate_preventive_care(features: dict) -> list[dict]:
     """
-    POSITIVE FARMING approach:
-    - Lead with what's going well
+    Generate NEW care items based on fused data.
+    RULES:
+    - POSITIVE framing for ALL insights
+    - Use 'ideal' instead of 'normal' for better psychology
     - Frame risks as opportunities
     - Every message ends with empowerment
     """
@@ -328,13 +330,13 @@ def generate_preventive_care(features: dict) -> list[dict]:
                 ],
                 "risk_horizon": "You're in the safe zone 🎯"
             })
-        elif bp_avg < 130:
+        elif bp_val < 130:
             care_items.append({
                 "category": "blood_pressure",
                 "urgency": "watch",
-                "current_status": f"BP slightly elevated — {bp_avg:.0f} mmHg avg",
+                "current_status": f"BP slightly elevated — {bp_val:.0f} mmHg",
                 "future_risk_message": (
-                    f"Your BP is slightly above ideal (trend: {bp_trend}). "
+                    f"Your BP is slightly above ideal ({bp_val:.0f} mmHg). "
                     "Great news — this is the easiest stage to bring it back to normal! "
                     "Simple changes like a 30-minute walk and cutting extra salt "
                     "can drop it 5-8 mmHg in just 2 weeks."
@@ -347,11 +349,11 @@ def generate_preventive_care(features: dict) -> list[dict]:
                 ],
                 "risk_horizon": "2-3 weeks of simple changes can fix this"
             })
-        elif bp_avg < 140:
+        elif bp_val < 140:
             care_items.append({
                 "category": "blood_pressure",
                 "urgency": "focus",
-                "current_status": f"BP needs attention — {bp_avg:.0f} mmHg avg",
+                "current_status": f"BP needs attention — {bp_val:.0f} mmHg",
                 "future_risk_message": (
                     "Your BP needs some focus, but here's the encouraging part: "
                     "at this level, lifestyle changes ALONE can bring it back to normal. "
@@ -369,7 +371,7 @@ def generate_preventive_care(features: dict) -> list[dict]:
             care_items.append({
                 "category": "blood_pressure",
                 "urgency": "act_now",
-                "current_status": f"BP elevated — {bp_avg:.0f} mmHg avg",
+                "current_status": f"High BP — {bp_val:.0f} mmHg",
                 "future_risk_message": (
                     "Your BP is higher than ideal, but you're already taking the right steps "
                     "by tracking it. Many people bring their BP down significantly with "
@@ -385,16 +387,16 @@ def generate_preventive_care(features: dict) -> list[dict]:
                 "risk_horizon": "Doctor guidance + lifestyle = fast results"
             })
     
-    # ── Sugar Care ──
-    sugar_avg = features.get("sugar_avg")
-    if sugar_avg is not None:
+    # ── Blood Sugar Care (Use latest for immediate feedback) ──
+    sugar_val = features.get("sugar_latest") or features.get("sugar_avg")
+    if sugar_val is not None:
         sugar_trend = features.get("sugar_trend", "steady")
         
-        if sugar_avg < 100:
+        if sugar_val < 100:
             care_items.append({
                 "category": "blood_sugar",
                 "urgency": "great",
-                "current_status": f"Healthy sugar — {sugar_avg:.0f} mg/dL avg 💚",
+                "current_status": f"Healthy sugar — {sugar_val:.0f} mg/dL 💚",
                 "future_risk_message": (
                     "Your fasting sugar is in the healthy zone! "
                     "This means your body is managing glucose efficiently. "
@@ -407,13 +409,13 @@ def generate_preventive_care(features: dict) -> list[dict]:
                 ],
                 "risk_horizon": "You're in the safe zone 🎯"
             })
-        elif sugar_avg < 126:
+        elif sugar_val < 126:
             care_items.append({
                 "category": "blood_sugar",
                 "urgency": "watch",
-                "current_status": f"Sugar slightly elevated — {sugar_avg:.0f} mg/dL avg",
+                "current_status": f"Sugar slightly elevated — {sugar_val:.0f} mg/dL",
                 "future_risk_message": (
-                    f"Your sugar is slightly above the ideal range (trend: {sugar_trend}). "
+                    f"Your sugar is slightly above the ideal range. "
                     "The fantastic news? Research shows that at this stage, "
                     "lifestyle changes can fully reverse the trend in 8-12 weeks. "
                     "You have complete control here."
@@ -430,7 +432,7 @@ def generate_preventive_care(features: dict) -> list[dict]:
             care_items.append({
                 "category": "blood_sugar",
                 "urgency": "focus",
-                "current_status": f"Sugar needs focus — {sugar_avg:.0f} mg/dL avg",
+                "current_status": f"Sugar needs focus — {sugar_val:.0f} mg/dL",
                 "future_risk_message": (
                     "Your sugar is above the ideal range, but you're already tracking it — "
                     "that's the most important step. Many people in this range bring their "
@@ -601,7 +603,7 @@ def generate_preventive_care(features: dict) -> list[dict]:
                 "risk_horizon": "Doctor visit recommended soon"
             })
     
-    # ── Creatinine/Kidney Care (from Report) ──
+    # ── Kidney Care ──
     creatinine = features.get("creatinine")
     if creatinine is not None and creatinine > 1.2:
         care_items.append({
@@ -609,42 +611,28 @@ def generate_preventive_care(features: dict) -> list[dict]:
             "urgency": "watch",
             "current_status": f"Creatinine slightly elevated — {creatinine} mg/dL",
             "future_risk_message": (
-                "Your creatinine is slightly above normal, which means your kidneys "
-                "are working a bit harder. Stay well hydrated and reduce protein-heavy "
-                "meals. A doctor can guide you on monitoring this."
+                "Your creatinine is slightly above normal. Stay well hydrated and "
+                "reduce protein-heavy meals. A doctor can guide you further."
             ),
             "prevention_steps": [
-                "Drink 10+ glasses of water daily — your kidneys will thank you",
+                "Drink 10+ glasses of water daily",
                 "Reduce red meat and heavy protein meals",
-                "A follow-up kidney function test in 3 months is wise",
-                "Control BP and sugar — they directly protect kidneys"
+                "A follow-up test in 3 months is wise"
             ],
-            "risk_horizon": "3-month follow-up retest"
+            "risk_horizon": "3-month follow-up"
         })
     
-    # ── Post-process: add risk_score (%) and top_action ──
-    urgency_to_score = {
-        "great": lambda: 15,   # Low risk
-        "watch": lambda: 42,   # Moderate
-        "focus": lambda: 65,   # Needs focus
-        "act_now": lambda: 85  # High
-    }
-    
+    # ── Post-process ──
     for item in care_items:
-        base = urgency_to_score.get(item["urgency"], lambda: 30)()
-        
-        # Fine-tune based on actual data
+        # Assign risk scores based on value relative to targets
         cat = item["category"]
         if cat == "blood_pressure":
-            bp_avg = features.get("bp_systolic_avg", 120)
-            if bp_avg and bp_avg > 0:
-                item["risk_score"] = min(95, max(10, int((bp_avg - 90) / 0.8)))
-            else:
-                item["risk_score"] = base
+            val = features.get("bp_systolic_latest") or features.get("bp_systolic_avg", 120)
+            item["risk_score"] = min(95, max(10, int((val - 90) / 0.8)))
         elif cat == "blood_sugar":
-            sugar_avg = features.get("sugar_avg", 90)
-            if sugar_avg and sugar_avg > 0:
-                item["risk_score"] = min(95, max(10, int((sugar_avg - 60) / 1.5)))
+            val = features.get("sugar_latest") or features.get("sugar_avg", 90)
+            if val and val > 0:
+                item["risk_score"] = min(95, max(10, int((val - 60) / 1.5)))
             else:
                 item["risk_score"] = base
         elif cat == "hemoglobin":

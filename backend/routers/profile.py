@@ -65,7 +65,7 @@ async def upload_photo(
     user.profile_photo_url = f"/uploads/profiles/{file_name}"
     await db.commit()
     
-    return {"photo_url": user.profile_photo_url}
+    return {"photo_url": user.profile_photo_url, "profile_photo_url": user.profile_photo_url}
 
 @settings_router.get("/")
 async def get_settings(user_id: str = Depends(get_current_user_id), db: AsyncSession = Depends(get_db)):
