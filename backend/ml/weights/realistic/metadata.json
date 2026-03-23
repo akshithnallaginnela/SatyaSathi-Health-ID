@@ -1,0 +1,220 @@
+{
+  "dataset_size": 3000,
+  "model_accuracies": {
+    "hb_signal": 1.0,
+    "wbc_signal": 0.9967,
+    "platelet_signal": 0.995,
+    "glucose_signal": 0.995,
+    "overall_signal": 0.9967,
+    "diet_focus": 0.9983
+  },
+  "task_accuracies": {
+    "task_morning_walk": 0.9967,
+    "task_iron_rich_diet": 1.0,
+    "task_log_sugar": 0.9967,
+    "task_reduce_sugar_food": 0.9967,
+    "task_hydration_8_glasses": 1.0,
+    "task_stress_management": 1.0,
+    "task_doctor_visit": 0.9983,
+    "task_retest_in_2_weeks": 1.0,
+    "task_light_exercise": 1.0,
+    "task_sleep_7_hours": 1.0
+  },
+  "features": {
+    "cbc_core": [
+      "hemoglobin",
+      "rbc_count",
+      "pcv",
+      "mcv",
+      "mch",
+      "mchc",
+      "rdw",
+      "wbc_count",
+      "neutrophils_pct",
+      "lymphocytes_pct",
+      "platelet_count",
+      "age",
+      "gender_enc",
+      "bmi"
+    ],
+    "glucose": [
+      "fasting_glucose",
+      "random_glucose",
+      "age",
+      "bmi",
+      "waist_cm",
+      "activity_level",
+      "family_hx_diabetes",
+      "stress_level",
+      "smoking"
+    ],
+    "kidney": [
+      "urea",
+      "creatinine",
+      "age",
+      "bmi",
+      "gender_enc"
+    ],
+    "overall": [
+      "hemoglobin",
+      "rbc_count",
+      "pcv",
+      "mcv",
+      "mch",
+      "mchc",
+      "rdw",
+      "wbc_count",
+      "neutrophils_pct",
+      "lymphocytes_pct",
+      "platelet_count",
+      "age",
+      "gender_enc",
+      "bmi",
+      "fasting_glucose",
+      "random_glucose",
+      "waist_cm",
+      "activity_level",
+      "family_hx_diabetes",
+      "stress_level",
+      "smoking",
+      "urea",
+      "creatinine",
+      "sleep_hours_avg",
+      "water_avg_glasses",
+      "alcohol",
+      "family_hx_heart",
+      "urgency_score"
+    ],
+    "task": [
+      "hemoglobin",
+      "wbc_count",
+      "platelet_count",
+      "fasting_glucose",
+      "urea",
+      "creatinine",
+      "bmi",
+      "age",
+      "gender_enc",
+      "smoking",
+      "activity_level",
+      "stress_level",
+      "water_avg_glasses",
+      "sleep_hours_avg",
+      "urgency_score",
+      "family_hx_diabetes"
+    ],
+    "diet": [
+      "hemoglobin",
+      "fasting_glucose",
+      "random_glucose",
+      "bmi",
+      "age",
+      "gender_enc",
+      "activity_level",
+      "wbc_count",
+      "platelet_count",
+      "urgency_score"
+    ]
+  },
+  "signal_classes": [
+    "good",
+    "suggest_visit",
+    "watch"
+  ],
+  "diet_classes": [
+    "balanced",
+    "diabetic_friendly",
+    "energy_boosting",
+    "iron_and_low_sugar",
+    "iron_rich",
+    "weight_management"
+  ],
+  "task_labels": [
+    "task_morning_walk",
+    "task_iron_rich_diet",
+    "task_log_sugar",
+    "task_reduce_sugar_food",
+    "task_hydration_8_glasses",
+    "task_stress_management",
+    "task_doctor_visit",
+    "task_retest_in_2_weeks",
+    "task_light_exercise",
+    "task_sleep_7_hours"
+  ],
+  "lab_formats_supported": [
+    "drlogy",
+    "redcliffe",
+    "healthians",
+    "apollo",
+    "bio_rad",
+    "generic"
+  ],
+  "ocr_field_mapping": {
+    "hemoglobin": [
+      "HAEMOGLOBIN",
+      "Hemoglobin",
+      "Hb",
+      "HGB",
+      "HEMOGLOBIN",
+      "Haemoglobin"
+    ],
+    "wbc_count": [
+      "Total WBC count",
+      "TLC",
+      "Total Leucocyte Count",
+      "WBC COUNT",
+      "Total WBC COUNT"
+    ],
+    "platelet_count": [
+      "Platelet Count",
+      "PLATELET COUNT",
+      "Platelets",
+      "PLT"
+    ],
+    "fasting_glucose": [
+      "GLUCOSE, RANDOM",
+      "Fasting Blood Sugar",
+      "Blood Glucose",
+      "FBS",
+      "Glucose Fasting"
+    ],
+    "rbc_count": [
+      "RBC Count",
+      "Total RBC count",
+      "RBC COUNT"
+    ],
+    "pcv": [
+      "PCV",
+      "Packed Cell Volume",
+      "HCT",
+      "Hematocrit"
+    ],
+    "mcv": [
+      "MCV",
+      "Mean Corpuscular Volume"
+    ],
+    "mch": [
+      "MCH"
+    ],
+    "mchc": [
+      "MCHC"
+    ],
+    "rdw": [
+      "RDW",
+      "RDW CV",
+      "RDW-CV",
+      "RDW (CV)"
+    ],
+    "urea": [
+      "UREA, SERUM",
+      "Blood Urea",
+      "BUN",
+      "Urea"
+    ],
+    "creatinine": [
+      "CREATININE, SERUM",
+      "Creatinine",
+      "S.Creatinine"
+    ]
+  }
+}

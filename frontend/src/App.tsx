@@ -80,7 +80,7 @@ function App() {
             {activeTab === 'dashboard' && <DashboardScreen key="dash" />}
             {activeTab === 'missions' && <MissionsScreen key="miss" />}
             {activeTab === 'vitals' && <VitalsScreen key="vit" />}
-            {activeTab === 'myid' && <MyIDScreen key="id" user={user} onLogout={handleLogout} />}
+            {activeTab === 'myid' && <MyIDScreen key="id" user={user} onLogout={handleLogout} onReportUploaded={() => setActiveTab('dashboard')} />}
           </AnimatePresence>
         </div>
 

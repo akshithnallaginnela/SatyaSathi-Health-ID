@@ -1,18 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import { 
-  Flame, 
-  CheckCircle2, 
-  MapPin, 
-  Activity, 
-  Heart,
-  UploadCloud,
-  X,
-  AlertTriangle,
-  ShieldCheck,
-  AlertCircle
-} from 'lucide-react';
-import { dashboardAPI, mlAPI, clinicsAPI } from '../services/api.ts';
+import { motion } from 'motion/react';
+import { Flame, CheckCircle2, MapPin, Activity, Heart } from 'lucide-react';
+import { dashboardAPI, clinicsAPI, tasksAPI } from '../services/api.ts';
 
 // ── Score theme helper ─────────────────────────────────────────────────────
 
@@ -49,68 +38,39 @@ function getScoreTheme(score: number) {
   };
 }
 
-// ── Risk badge for ML results ──────────────────────────────────────────────
-
-function RiskBadge({ level }: { level: 'low' | 'moderate' | 'high' }) {
-  const config = {
-    low: { icon: ShieldCheck, bg: '#DCFCE7', text: '#15803D', label: 'Low Risk' },
-    moderate: { icon: AlertCircle, bg: '#FEF3C7', text: '#D97706', label: 'Moderate Risk' },
-    high: { icon: AlertTriangle, bg: '#FEE2E2', text: '#DC2626', label: 'High Risk' },
-  }[level];
-  const Icon = config.icon;
-  return (
-    <div className="flex items-center gap-2 px-4 py-2 rounded-full font-extrabold text-sm" style={{ background: config.bg, color: config.text }}>
-      <Icon size={16} />
-      {config.label}
-    </div>
-  );
-}
-
 export default function DashboardScreen() {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [clinics, setClinics] = useState<any[]>([]);
+  const lastFetchRef = React.useRef<number>(0);
 
-  const [showOcrModal, setShowOcrModal] = useState(false);
-  const [ocrLoading, setOcrLoading] = useState(false);
-  const [ocrResult, setOcrResult] = useState<any>(null);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-
-  const handleOcrUpload = async () => {
-    if (!selectedFile) return;
-    if (selectedFile.size > 10 * 1024 * 1024) {
-      setOcrResult({ error: 'File too large. Please upload an image under 10 MB.' });
-      return;
-    }
-    const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/bmp'];
-    if (!validTypes.includes(selectedFile.type)) {
-      setOcrResult({ error: 'Unsupported file type. Use JPEG, PNG, WebP, or BMP.' });
-      return;
-    }
-    setOcrLoading(true);
-    setOcrResult(null);
+  const fetchDashboard = async () => {
     try {
-      const res = await mlAPI.analyzeReport(selectedFile);
-      setOcrResult(res);
+      const res = await dashboardAPI.getSummary();
+      setData(res);
+      lastFetchRef.current = Date.now();
     } catch (e) {
-      console.error(e);
-      setOcrResult({ error: 'Failed to process document. Ensure GEMINI_API_KEY is set in backend .env.' });
+      console.error("Dashboard fetch error", e);
     } finally {
-      setOcrLoading(false);
+      setLoading(false);
     }
   };
 
   useEffect(() => {
-    (async () => {
-      try {
-        const res = await dashboardAPI.getSummary();
-        setData(res);
-      } catch (e) {
-        console.error("Dashboard fetch error", e);
-      } finally {
-        setLoading(false);
+    // Check if data was updated from another screen while Dashboard was unmounted
+    const updatedAt = localStorage.getItem('vitalid_data_updated');
+    if (updatedAt) {
+      const updateTime = parseInt(updatedAt, 10);
+      // If the update happened after our last fetch, force refetch
+      if (updateTime > lastFetchRef.current) {
+        console.log('📊 Data updated while away — refetching dashboard');
       }
-    })();
+      // Always clear the flag
+      localStorage.removeItem('vitalid_data_updated');
+    }
+    
+    // Always fetch fresh data on mount
+    fetchDashboard();
 
     const loadClinics = async (lat: number, lng: number) => {
       try {
@@ -130,21 +90,50 @@ export default function DashboardScreen() {
     } else {
       loadClinics(12.9716, 77.5946);
     }
+
+    // Listen for live updates (when Dashboard stays mounted)
+    const handleDataUpdate = () => {
+      fetchDashboard();
+    };
+
+    window.addEventListener('report-uploaded', handleDataUpdate);
+    window.addEventListener('vitals-logged', handleDataUpdate);
+    return () => {
+      window.removeEventListener('report-uploaded', handleDataUpdate);
+      window.removeEventListener('vitals-logged', handleDataUpdate);
+    };
   }, []);
+
+  const completeTask = async (taskId: string, coinsReward: number) => {
+    // Optimistic update
+    const newTasks = data.todays_tasks.map((t: any) => t.id === taskId ? { ...t, completed: true } : t);
+    setData({ ...data, todays_tasks: newTasks, coin_balance: (data.coin_balance || 0) + coinsReward });
+    try {
+      await tasksAPI.completeTask(taskId);
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   if (loading) {
     return <div className="flex justify-center items-center h-full"><p className="text-muted-teal text-sm">Loading...</p></div>;
   }
 
   const user = data?.user || { name: 'Arjun Kumar', initials: 'AK', profile_photo_url: null };
-  const score = data?.wellness_score || 72;
-  const coins = data?.coin_balance || 1240;
+  const coins = data?.coin_balance || 0;
   const streakDays = data?.streak_days || 0;
   const todaysTasks = data?.todays_tasks || [];
-  const tasksDone = todaysTasks.filter((t: any) => t.completed).length;
-  const tasksPending = Math.max(todaysTasks.length - tasksDone, 0);
+  const displayTasks = todaysTasks; // Show all model tasks
+  const tasksDone = displayTasks.filter((t: any) => t.completed).length;
+  const tasksPending = Math.max(displayTasks.length - tasksDone, 0);
   const weekCompletion = data?.week_completion || [false, false, false, false, false, false, false];
+  const preventive = data?.preventive_analytics || {};
+  const dietPlan = preventive?.diet_plan || null;
+
   const todayIndex = new Date().getDay() === 0 ? 6 : new Date().getDay() - 1;
+  const hasReport = !!preventive.report_type;
+  const hasData = !!data?.has_data;
+  const score = data?.wellness_score || 0;
   const theme = getScoreTheme(score);
 
   return (
@@ -211,7 +200,7 @@ export default function DashboardScreen() {
           </div>
           <div>
             <h2 className="text-white font-extrabold text-[15px] mb-0.5">Health Index</h2>
-            <p className="text-[#C8F0EC] text-xs font-semibold mb-2">Mostly stable. {tasksPending} tasks pending.</p>
+            <p className="text-[#C8F0EC] text-xs font-semibold mb-2">{data?.health_subtitle || 'Log vitals to see your score.'}</p>
             <div
               className="text-[10px] font-extrabold px-3 py-1.5 rounded-full inline-block shadow-sm"
               style={{ background: theme.badgeBg, color: theme.badgeText }}
@@ -224,6 +213,25 @@ export default function DashboardScreen() {
 
       <div className="px-5 relative z-20 -mt-6 space-y-5">
         
+        {/* 1.5 EMPTY STATE CARD (ONLY IF NO DATA) */}
+        {!data?.has_data && (
+          <div className="bg-[#F2FDFB] border-[1.5px] border-dashed border-primary-teal/40 rounded-[28px] p-8 text-center shadow-inner">
+            <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm">
+              <Activity size={32} className="text-primary-teal" />
+            </div>
+            <h3 className="text-dark-teal font-extrabold text-[18px] mb-2">Welcome to VitalID</h3>
+            <p className="text-muted-teal text-[13px] leading-relaxed mb-6">
+              Log your first Blood Pressure, Sugar or upload a Blood Report 
+              to see your AI health insights and daily tasks.
+            </p>
+            <div className="flex flex-col gap-3">
+              <button onClick={() => window.location.hash = '#/vitals'} className="bg-primary-teal text-white font-extrabold py-3 rounded-2xl shadow-md active:scale-95 transition-all">
+                Log Vitals Now
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* 2. STREAK CARD */}
         <div className="bg-white border-[1.5px] border-[#FFE2C8] rounded-[24px] p-5 shadow-[0_4px_16px_-8px_rgba(255,122,0,0.15)]">
           <div className="flex items-center gap-4 mb-5">
@@ -251,63 +259,172 @@ export default function DashboardScreen() {
           </div>
         </div>
 
-        {/* 3. DAILY TASKS */}
-        <div className="bg-white border-[1.5px] border-border-teal rounded-[28px] p-5 shadow-sm">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-dark-teal font-extrabold text-lg">Daily Tasks</h3>
-            <span className="text-primary-teal text-[10px] font-extrabold uppercase tracking-widest">{tasksDone}/{todaysTasks.length} DONE</span>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            {todaysTasks.slice(0, 4).map((task: any, idx: number) => (
-              <div key={idx} className={`p-4 rounded-[20px] flex flex-col justify-between aspect-square border-[1.5px] transition-all bg-white shadow-sm ${task.completed ? 'border-primary-teal' : 'border-[#E8F1F1]'}`}>
-                <div className="flex justify-between items-start">
-                  <div className={`w-[26px] h-[26px] rounded-full flex items-center justify-center shrink-0 ${task.completed ? 'bg-primary-teal' : 'border-[1.5px] border-[#E0E0E0]'}`}>
-                    {task.completed && <CheckCircle2 size={16} className="text-white" />}
+        {/* 3. ML-DRIVEN DAILY TASKS */}
+        {hasData && displayTasks.length > 0 && (
+          <div className="bg-white border-[1.5px] border-border-teal rounded-[28px] p-5 shadow-sm">
+            <div className="flex justify-between items-center mb-4">
+              <div>
+                <h3 className="text-dark-teal font-extrabold text-[17px]">Daily Care Plan</h3>
+                <p className="text-muted-teal text-[11px] font-medium leading-tight">Generated from your vitals & health data</p>
+              </div>
+              <span className="bg-[#E0F7F4] text-primary-teal text-[10px] px-2 py-1 rounded-lg font-extrabold tracking-widest">{tasksDone}/{displayTasks.length} DONE</span>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              {displayTasks.map((task: any, idx: number) => {
+                const reward = task.coins_reward ?? task.coins ?? 15;
+                return (
+                <div key={idx} 
+                     onClick={() => !task.completed && completeTask(task.id, reward)}
+                     className={`p-4 rounded-[20px] flex flex-col justify-between aspect-square border-[1.5px] transition-all bg-white relative cursor-pointer ${
+                      task.completed ? 'border-[#E8F1F1] opacity-50 blur-[0.5px]' : 'border-border-teal shadow-sm hover:border-[#48D0C9]'
+                     }`}>
+                  <div className="flex justify-between items-start relative z-10">
+                    <div className={`w-[26px] h-[26px] rounded-full flex items-center justify-center shrink-0 ${task.completed ? 'bg-primary-teal' : 'border-[1.5px] border-[#E0E0E0] bg-white'}`}>
+                      {task.completed && <CheckCircle2 size={16} className="text-white" />}
+                    </div>
+                    <div className="bg-white shadow-[0_2px_8px_rgba(0,0,0,0.06)] text-[9px] font-extrabold text-[#D4AF37] border border-[#F4E3A0] px-2 py-1 rounded-full flex items-center gap-1">
+                      <div className="w-1.5 h-1.5 bg-[#FFD700] rounded-full" />
+                      +{reward}
+                    </div>
                   </div>
-                  <div className="bg-white shadow-[0_2px_8px_rgba(0,0,0,0.06)] text-[9px] font-extrabold text-[#D4AF37] border border-[#F4E3A0] px-2 py-1 rounded-full flex items-center gap-1">
-                    <div className="w-1.5 h-1.5 bg-[#FFD700] rounded-full" />
-                    +{task.coins_reward ?? task.coins ?? 0}
-                  </div>
+                  <h4 className={`font-extrabold text-[13px] leading-snug mt-3 relative z-10 ${task.completed ? 'text-[#A0A0A0] line-through' : 'text-dark-teal'}`}>{task.task_name ?? task.name ?? 'Task'}</h4>
                 </div>
-                <h4 className={`font-extrabold text-sm leading-snug mt-3 ${task.completed ? 'text-primary-teal opacity-60 line-through' : 'text-dark-teal'}`}>{task.task_name ?? task.name ?? 'Task'}</h4>
-              </div>
-            ))}
+              )})}
+            </div>
           </div>
-        </div>
+        )}
 
-        {/* 4. FORECAST/RISK BARS */}
+        {/* 4. PREVENTIVE CARE ANALYSIS — Clean card matching reference UI */}
         <div className="bg-white border-[1.5px] border-border-teal rounded-[28px] p-5 shadow-sm">
-          <h3 className="text-dark-teal font-extrabold text-[17px] leading-tight mb-1">What your body is telling you</h3>
-          <p className="text-muted-teal text-[11px] font-semibold italic mb-5">Trends only — not a diagnosis.</p>
+          <h3 className="text-dark-teal font-extrabold text-[17px] leading-tight mb-0.5">What your body is telling you</h3>
+          <p className="text-[#A0A0A0] text-[11px] font-semibold italic mb-5">Trends only — not a diagnosis.</p>
 
-          <div className="mb-5 relative">
-            <div className="flex justify-between items-end mb-1">
-              <div>
-                <h4 className="text-dark-teal font-bold text-[14px]">Hypertension</h4>
-                <p className="text-muted-teal text-[11px] font-medium">BP has crept up 3 days in a row.</p>
-              </div>
-              <span className="text-primary-teal font-extrabold text-[15px]">42%</span>
+          {!hasData ? (
+            <div className="bg-[#F2FDFB] border border-border-teal rounded-2xl p-4 text-center">
+              <p className="text-dark-teal text-[13px] font-bold">No health data yet.</p>
+              <p className="text-muted-teal text-[11px] mt-1">Log your BP, Sugar, or upload a report to see insights.</p>
             </div>
-            <div className="w-full bg-[#E0F7F4] h-2 rounded-full overflow-hidden mb-3">
-              <div className="bg-primary-teal h-full rounded-full" style={{ width: '42%' }}></div>
+          ) : (
+            <div className="space-y-0">
+              {(preventive.all_care_items || []).map((item: any, idx: number) => {
+                const barColor = 
+                  item.urgency === 'act_now' ? '#EF4444' :
+                  item.urgency === 'focus' ? '#F97316' :
+                  item.urgency === 'watch' ? '#F59E0B' :
+                  '#22C55E';
+                
+                const categoryLabel: Record<string, string> = {
+                  blood_pressure: 'Hypertension',
+                  blood_sugar: 'Blood Sugar',
+                  weight_bmi: 'Weight Management',
+                  hemoglobin: 'Hemoglobin',
+                  platelets: 'Platelets',
+                  kidney_health: 'Kidney Health',
+                  lifestyle_compound: 'Lifestyle',
+                  genetic_risk: 'Genetic Risk'
+                };
+                
+                return (
+                  <div key={idx} className={`py-4 ${idx > 0 ? 'border-t border-[#F0F0F0]' : ''}`}>
+                    {/* Category Title + Score */}
+                    <div className="flex justify-between items-baseline">
+                      <h4 className="text-dark-teal font-extrabold text-[15px]">
+                        {categoryLabel[item.category] || item.category.replace(/_/g, ' ')}
+                      </h4>
+                      <span className="font-extrabold text-[18px]" style={{ color: barColor }}>
+                        {item.risk_score || 30}%
+                      </span>
+                    </div>
+                    
+                    {/* Description */}
+                    <p className="text-muted-teal text-[12px] font-medium mt-0.5 leading-snug">
+                      {item.status}
+                    </p>
+                    
+                    {/* Progress Bar */}
+                    <div className="w-full bg-[#E8F1F1] h-[6px] rounded-full mt-2.5 overflow-hidden">
+                      <div 
+                        className="h-full rounded-full transition-all duration-1000 ease-out" 
+                        style={{ 
+                          width: `${item.risk_score || 30}%`,
+                          backgroundColor: barColor 
+                        }} 
+                      />
+                    </div>
+                    
+                    {/* Action Button */}
+                    {item.top_action && (
+                      <div className="mt-2.5 inline-block bg-[#E0F7F4] text-primary-teal text-[11px] font-extrabold px-3.5 py-2 rounded-xl">
+                        → {item.top_action}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+              
+              {/* Fallback if no care items */}
+              {(!preventive.all_care_items || preventive.all_care_items.length === 0) && (
+                <div className="py-4 text-center">
+                  <p className="text-muted-teal text-[12px] font-semibold">
+                    {preventive.summary || 'Your health data is being analyzed.'}
+                  </p>
+                </div>
+              )}
             </div>
-            <div className="bg-[#E0F7F4] text-primary-teal text-[11px] font-bold px-3 py-1.5 rounded-full inline-block">→ Walk 20 min today</div>
-          </div>
-
-          <div className="relative">
-            <div className="flex justify-between items-end mb-1">
-              <div>
-                <h4 className="text-dark-teal font-bold text-[14px]">Cardiovascular</h4>
-                <p className="text-muted-teal text-[11px] font-medium">Stress + low activity combining.</p>
-              </div>
-              <span className="text-primary-teal font-extrabold text-[15px]">61%</span>
-            </div>
-            <div className="w-full bg-[#E0F7F4] h-2 rounded-full overflow-hidden mb-3">
-              <div className="bg-primary-teal h-full rounded-full" style={{ width: '61%' }}></div>
-            </div>
-            <div className="bg-[#E0F7F4] text-primary-teal text-[11px] font-bold px-3 py-1.5 rounded-full inline-block">→ Try 5-min deep breathing</div>
-          </div>
+          )}
         </div>
+
+        {/* 4.5 PERSONALIZED DIET PLAN */}
+        {hasData && dietPlan && (
+          <div className="pt-2">
+            <h3 className="text-dark-teal font-extrabold text-[17px] leading-tight mb-1">Diet Focus</h3>
+            <p className="text-[#A0A0A0] text-[11px] font-semibold italic mb-4 capitalize">Personalized for: {dietPlan.focus?.replace(/_/g, ' ')}</p>
+
+            <div className="flex gap-4 overflow-x-auto pb-4 no-scrollbar -mx-5 px-5 snap-x">
+              
+              <div className="bg-white border-[1.5px] border-[#E8F1F1] border-l-4 border-l-[#26C6BF] rounded-[24px] p-5 min-w-[220px] shrink-0 shadow-sm snap-start">
+                <span className="bg-[#26C6BF] text-white text-[10px] font-extrabold px-3 py-1 rounded-full inline-block mb-3">Eat more</span>
+                <h4 className="text-dark-teal font-extrabold text-[15px] mb-3">Recommended Foods</h4>
+                <ul className="space-y-1">
+                  {(dietPlan.eat_more || [])
+                    .slice(0, 5).map((item: string, i: number) => (
+                    <li key={i} className="text-dark-teal text-[12px] font-medium flex items-center gap-2">
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#26C6BF] shrink-0" /> <span className="leading-tight">{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              {dietPlan.reduce && dietPlan.reduce.length > 0 && (
+                <div className="bg-white border-[1.5px] border-[#E8F1F1] border-l-4 border-l-[#F59E0B] rounded-[24px] p-5 min-w-[220px] shrink-0 shadow-sm snap-start">
+                  <span className="bg-[#FEF3C7] text-[#D97706] text-[10px] font-extrabold px-3 py-1 rounded-full inline-block mb-3">Reduce</span>
+                  <h4 className="text-dark-teal font-extrabold text-[15px] mb-3">Limit These</h4>
+                  <ul className="space-y-1">
+                    {dietPlan.reduce.slice(0, 4).map((item: string, i: number) => (
+                      <li key={i} className="text-dark-teal text-[12px] font-medium flex items-center gap-2">
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#F59E0B] shrink-0" /> <span className="leading-tight">{item}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {dietPlan.avoid && dietPlan.avoid.length > 0 && (
+                <div className="bg-white border-[1.5px] border-[#E8F1F1] border-l-4 border-l-[#FF4D4D] rounded-[24px] p-5 min-w-[220px] shrink-0 shadow-sm snap-start">
+                  <span className="bg-[#FEE2E2] text-[#DC2626] text-[10px] font-extrabold px-3 py-1 rounded-full inline-block mb-3">Avoid</span>
+                  <h4 className="text-dark-teal font-extrabold text-[15px] mb-3">Foods to Avoid</h4>
+                  <ul className="space-y-1">
+                    {dietPlan.avoid.slice(0, 4).map((item: string, i: number) => (
+                      <li key={i} className="text-dark-teal text-[12px] font-medium flex items-center gap-2">
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#FF4D4D] shrink-0" /> <span className="leading-tight">{item}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* 5. NEAREST CLINICS */}
         <div className="bg-white border-[1.5px] border-border-teal rounded-[28px] p-5 shadow-sm">
@@ -383,142 +500,9 @@ export default function DashboardScreen() {
           </div>
         </div>
 
-        {/* 7. YOUR NEXT STEPS TIMELINE */}
-        <div className="pt-2 pb-4">
-          <h3 className="text-primary-teal text-[11px] font-extrabold uppercase tracking-widest mb-5">YOUR NEXT STEPS</h3>
-          <div className="relative pl-[14px] border-l-[1.5px] border-border-teal ml-2 space-y-6">
-            
-            <div className="relative">
-              <div className="absolute left-[-21px] top-1 w-3.5 h-3.5 bg-primary-teal rounded-full border-2 border-[#FAFAFA]" />
-              <div className="flex justify-between items-center">
-                <div>
-                  <h4 className="text-dark-teal font-bold text-[14px]">Log today's BP</h4>
-                  <p className="text-muted-teal text-[11px] font-medium">Today</p>
-                </div>
-                <div className="bg-[#E0F7F4] text-[#1A9E98] font-bold text-[11px] px-3 py-1.5 rounded-full">+15 coins</div>
-              </div>
-            </div>
-
-            <div className="relative">
-              <div className="absolute left-[-21px] top-1 w-3.5 h-3.5 bg-primary-teal rounded-full border-2 border-[#FAFAFA]" />
-              <div className="flex justify-between items-center">
-                <div>
-                  <h4 className="text-dark-teal font-bold text-[14px]">Clinic checkup (QR scan)</h4>
-                  <p className="text-muted-teal text-[11px] font-medium">This week</p>
-                </div>
-                <div className="bg-[#E0F7F4] text-[#1A9E98] font-bold text-[11px] px-3 py-1.5 rounded-full">+50 coins</div>
-              </div>
-            </div>
-
-            <div className="relative cursor-pointer hover:bg-light-teal-surface rounded-xl p-2 -ml-2 transition-colors" onClick={() => setShowOcrModal(true)}>
-              <div className="absolute left-[-13px] top-3 w-3.5 h-3.5 bg-primary-teal rounded-full border-2 border-[#FAFAFA]" />
-              <div className="flex justify-between items-center">
-                <div>
-                  <h4 className="text-dark-teal font-bold text-[14px]">Upload blood report</h4>
-                  <p className="text-muted-teal text-[11px] font-medium">This week (Tap to scan)</p>
-                </div>
-                <div className="bg-[#E0F7F4] text-[#1A9E98] font-bold text-[11px] px-3 py-1.5 rounded-full">+25 coins</div>
-              </div>
-            </div>
-
-          </div>
-        </div>
+        {/* 7. YOUR NEXT STEPS TIMELINE (Removed per request) */}
 
       </div>
-
-      {/* ML + OCR Scan Modal */}
-      <AnimatePresence>
-        {showOcrModal && (
-          <div className="fixed inset-0 bg-[#1A3A38]/40 backdrop-blur-sm flex items-end justify-center z-[100] p-4 pb-24">
-            <motion.div initial={{ y: 300, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 300, opacity: 0 }}
-              className="bg-white w-full max-w-[400px] rounded-[32px] p-6 shadow-2xl relative max-h-[85vh] overflow-y-auto no-scrollbar">
-              <button onClick={() => { setShowOcrModal(false); setOcrResult(null); setSelectedFile(null); }} className="absolute top-6 right-6 text-[#7ECCC7] bg-[#F2FDFB] p-2 rounded-full">
-                <X size={20} />
-              </button>
-              
-              <h2 className="text-[#1A3A38] font-extrabold text-xl mb-1">Scan Medical Report</h2>
-              <p className="text-[#7ECCC7] text-xs font-semibold mb-6">OCR + AI Risk Analysis</p>
-
-              {!ocrResult && (
-                <>
-                  <label className="border-2 border-dashed border-[#C8F0EC] bg-[#F2FDFB] rounded-[24px] p-8 flex flex-col items-center justify-center cursor-pointer transition-colors mt-4">
-                    <UploadCloud size={40} className="text-[#26C6BF] mb-3" />
-                    <span className="text-[#1A3A38] font-extrabold text-sm mb-1">{selectedFile ? selectedFile.name : 'Choose an image'}</span>
-                    <span className="text-[#7ECCC7] text-[10px] font-bold uppercase tracking-wider">JPEG, PNG or WebP</span>
-                    <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(e) => setSelectedFile(e.target.files?.[0] || null)} />
-                  </label>
-
-                  <button onClick={handleOcrUpload} disabled={!selectedFile || ocrLoading}
-                    className="w-full mt-6 bg-[#26C6BF] text-white font-extrabold text-[15px] py-4 rounded-[16px] shadow-sm disabled:opacity-50 transition-all">
-                    {ocrLoading ? '🔍 Analyzing with AI...' : 'Scan & Analyze Report'}
-                  </button>
-                </>
-              )}
-
-              {ocrResult && !ocrResult.error && (
-                <div className="mt-2 space-y-4">
-
-                  {/* ML Risk Assessment */}
-                  {ocrResult.ml_analysis && (
-                    <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm">
-                      <h3 className="text-[#1A3A38] font-extrabold text-sm mb-3">AI Risk Assessment</h3>
-                      <RiskBadge level={ocrResult.ml_analysis.risk_level} />
-                      {ocrResult.needs_review && (
-                        <div className="mt-3 bg-[#FEF3C7] border border-[#FCD34D] text-[#92400E] text-[11px] font-semibold rounded-lg px-3 py-2">
-                          OCR confidence is low. Please review extracted fields manually or upload a clearer image.
-                        </div>
-                      )}
-                      <p className="text-[#1A3A38] text-[12px] font-medium mt-3 leading-relaxed">{ocrResult.ml_analysis.summary}</p>
-                      {ocrResult.ml_analysis.flags?.length > 0 && (
-                        <div className="mt-3 space-y-1.5">
-                          <p className="text-muted-teal text-[10px] font-extrabold uppercase tracking-widest">Detected Markers</p>
-                          {ocrResult.ml_analysis.flags.map((flag: string, i: number) => (
-                            <div key={i} className="text-[11px] font-semibold text-[#1A3A38] bg-gray-50 rounded-lg px-3 py-1.5">{flag}</div>
-                          ))}
-                        </div>
-                      )}
-                      <div className="mt-2 text-[10px] text-muted-teal font-medium">
-                        Confidence: {Math.round((ocrResult.ml_analysis.confidence || 0) * 100)}%
-                      </div>
-                      <div className="mt-1 text-[10px] text-muted-teal font-medium">
-                        OCR Quality: {Math.round(((ocrResult.ocr_quality?.confidence || 0) as number) * 100)}%
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Raw OCR Data */}
-                  <div className="bg-gray-50 rounded-xl p-4 max-h-[220px] overflow-y-auto border border-gray-100">
-                    <p className="text-muted-teal text-[10px] font-extrabold uppercase tracking-widest mb-3">Extracted Data</p>
-                    {Object.entries(ocrResult.ocr_data || ocrResult.data || {}).map(([key, val]) => (
-                      <div key={key} className="mb-3 last:mb-0">
-                        <span className="text-[#7ECCC7] text-[10px] font-extrabold uppercase tracking-wider block mb-0.5">{key.replace(/_/g, ' ')}</span>
-                        {typeof val === 'object' ? (
-                          <pre className="text-[#1A3A38] text-[11px] font-mono bg-white p-2 rounded-lg border border-gray-100">{JSON.stringify(val, null, 2)}</pre>
-                        ) : (
-                          <span className="text-[#1A3A38] font-bold text-[13px]">{val as string}</span>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-
-                  <button onClick={() => { setShowOcrModal(false); setOcrResult(null); setSelectedFile(null); }}
-                    className="w-full bg-[#1A3A38] text-white font-extrabold text-[15px] py-4 rounded-[16px] shadow-sm">
-                    Save to Profile
-                  </button>
-                </div>
-              )}
-
-              {ocrResult?.error && (
-                <div className="mt-4 bg-[#FFF0F0] border border-[#FF4D4D] rounded-xl p-4 mb-4">
-                  <h3 className="text-[#FF4D4D] font-extrabold text-sm mb-1">Error analyzing</h3>
-                  <p className="text-[#1A3A38] text-[11px] font-medium">{ocrResult.error}</p>
-                  <button onClick={() => setOcrResult(null)} className="mt-3 text-[#FF4D4D] text-[11px] font-extrabold underline">Try again</button>
-                </div>
-              )}
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
 
     </motion.div>
   );
