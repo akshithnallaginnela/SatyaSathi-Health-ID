@@ -50,6 +50,7 @@ async def log_bp(
     
     # Trigger AI analysis
     analysis = await run_full_analysis(user_id, db)
+    await db.commit()
     
     return {
         "message": "BP logged and analysis updated",
@@ -78,6 +79,7 @@ async def log_sugar(
     
     # Trigger AI analysis
     analysis = await run_full_analysis(user_id, db)
+    await db.commit()
     
     return {
         "message": "Sugar logged and analysis updated",

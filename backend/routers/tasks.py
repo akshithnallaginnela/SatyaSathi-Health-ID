@@ -60,6 +60,7 @@ async def complete_task(
         select(func.sum(CoinLedger.amount)).where(CoinLedger.user_id == user_id)
     )
     new_balance = balance_res.scalar() or 0
+    await db.commit()
 
     return {
         "message": "Task completed successfully",
