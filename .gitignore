@@ -8,3 +8,25 @@ coverage/
 !.env.example
 __pycache__
 backend/__pycache__
+
+# Python artifacts
+__pycache__/
+*.pyc
+*.pyo
+*.py[cod]
+
+# Local runtime data
+*.db
+*.sqlite
+*.sqlite3
+backend/vitalid.db
+
+# Machine Learning models & Cache
+*.pkl
+*.joblib
+.pytest_cache/
+.vite/
+
+# Uploads directory (user-generated content)
+backend/uploads/*
+!backend/uploads/.gitkeep
