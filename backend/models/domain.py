@@ -194,3 +194,80 @@ class AuditLog(Base):
     action = Column(String(50))
     detail = Column(Text)
     created_at = Column(DateTime, default=datetime.utcnow)
+from pydantic import BaseModel, Field, field_validator, ConfigDict
+from typing import Optional, List
+import re
+
+# ─── Pydantic Schemas ───
+
+class UserCreate(BaseModel):
+    full_name: str = Field(..., min_length=2, max_length=100)
+    phone_number: str = Field(..., min_length=10, max_length=15)
+    password: str = Field(..., min_length=8)
+    date_of_birth: Optional[date] = None
+    gender: Optional[str] = None
+    weight_kg: Optional[float] = None
+    height_cm: Optional[float] = None
+    waist_cm: Optional[float] = None
+    smoking: bool = False
+    alcohol: bool = False
+    activity_level: int = 1
+    stress_level: int = 5
+    family_hx_diabetes: bool = False
+    family_hx_heart: bool = False
+    medications: Optional[List[str]] = []
+
+    @field_validator("phone_number")
+    @classmethod
+    def validate_phone(cls, v):
+        if not re.match(r"^\+?\d{10,15}$", v):
+            raise ValueError("Invalid phone number format.")
+        return v
+
+class UserLogin(BaseModel):
+    phone_number: str
+    password: str
+
+class AadhaarSubmit(BaseModel):
+    aadhaar_number: str = Field(..., min_length=12, max_length=12)
+
+    @field_validator("aadhaar_number")
+    @classmethod
+    def validate_aadhaar(cls, v):
+        if not re.match(r"^\d{12}$", v):
+            raise ValueError("Aadhaar must be exactly 12 digits.")
+        return v
+
+class OTPVerify(BaseModel):
+    phone_number: str
+    otp: str = Field(..., min_length=6, max_length=6)
+
+class UserResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: uuid.UUID
+    full_name: str
+    phone_number: str
+    health_id: str
+    gender: Optional[str] = None
+    date_of_birth: Optional[date] = None
+    weight_kg: Optional[float] = None
+    height_cm: Optional[float] = None
+    bmi: Optional[float] = None
+    aadhaar_verified: bool = False
+    aadhaar_last4: Optional[str] = None
+    created_at: datetime
+
+class TokenResponse(BaseModel):
+    access_token: str
+    refresh_token: str
+    token_type: str = "bearer"
+    user: UserResponse
+
+class BPCreate(BaseModel):
+    systolic: int
+    diastolic: int
+    pulse: Optional[int] = None
+    time_of_day: str = "morning"
+
+class SugarCreate(BaseModel):
+    fasting_glucose: float

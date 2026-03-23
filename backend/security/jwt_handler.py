@@ -20,19 +20,29 @@ REFRESH_EXPIRE_DAYS = int(os.getenv("JWT_REFRESH_EXPIRE_DAYS", "30"))
 security = HTTPBearer()
 
 
-def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
-    """Create a JWT access token."""
-    to_encode = data.copy()
+def create_access_token(user_id: str, phone_last4: str, aadhaar_verified: bool, expires_delta: Optional[timedelta] = None) -> str:
+    """Create a JWT access token with full payload required by spec."""
+    to_encode = {
+        "user_id": str(user_id),
+        "phone_last4": phone_last4,
+        "aadhaar_verified": aadhaar_verified,
+        "type": "access"
+    }
     expire = datetime.now(timezone.utc) + (expires_delta or timedelta(days=ACCESS_EXPIRE_DAYS))
-    to_encode.update({"exp": expire, "type": "access"})
+    to_encode.update({"exp": expire})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 
-def create_refresh_token(data: dict) -> str:
-    """Create a JWT refresh token with longer expiry."""
-    to_encode = data.copy()
+def create_refresh_token(user_id: str, phone_last4: str, aadhaar_verified: bool) -> str:
+    """Create a JWT refresh token with full payload."""
+    to_encode = {
+        "user_id": str(user_id),
+        "phone_last4": phone_last4,
+        "aadhaar_verified": aadhaar_verified,
+        "type": "refresh"
+    }
     expire = datetime.now(timezone.utc) + timedelta(days=REFRESH_EXPIRE_DAYS)
-    to_encode.update({"exp": expire, "type": "refresh"})
+    to_encode.update({"exp": expire})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 
@@ -64,5 +74,5 @@ def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)) 
 
 
 def get_current_user_id(payload: dict = Depends(verify_token)) -> str:
-    """Extract just the user_id from the verified token."""
+    """Extract user_id from token payload."""
     return payload["user_id"]
