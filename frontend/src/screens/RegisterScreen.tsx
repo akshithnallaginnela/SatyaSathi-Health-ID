@@ -13,7 +13,7 @@ export default function RegisterScreen({ onRegister, onSwitchToLogin }: {
   onSwitchToLogin: () => void;
 }) {
   const [step, setStep] = useState<Step>('form');
-  const [form, setForm] = useState({ full_name: '', phone_number: '', password: '', date_of_birth: '', gender: 'male' });
+  const [form, setForm] = useState({ full_name: '', phone_number: '', password: '', date_of_birth: '', gender: 'male', weight: '', height: '' });
   const [otp, setOtp] = useState('');
   const [aadhaar, setAadhaar] = useState('');
   const [tempToken, setTempToken] = useState('');
@@ -32,9 +32,22 @@ export default function RegisterScreen({ onRegister, onSwitchToLogin }: {
     if (!form.full_name.trim()) { setError('Enter your full name'); return; }
     if (!/^[6-9]\d{9}$/.test(form.phone_number)) { setError('Enter valid 10-digit phone'); return; }
     if (form.password.length < 8) { setError('Password needs 8+ characters'); return; }
+    if (!form.weight || !form.height) { setError('Enter weight and height'); return; }
     setLoading(true);
     try {
-      const res = await authAPI.register(form);
+      const payload: any = {
+        full_name: form.full_name,
+        phone_number: form.phone_number,
+        password: form.password,
+        gender: form.gender || undefined,
+        weight_kg: form.weight ? parseFloat(form.weight) : undefined,
+        height_cm: form.height ? parseFloat(form.height) : undefined,
+      };
+      // Only send date_of_birth if it's a valid non-empty string
+      if (form.date_of_birth && form.date_of_birth.trim()) {
+        payload.date_of_birth = form.date_of_birth;
+      }
+      const res = await authAPI.register(payload);
       setDevOtp(res.dev_otp || '');
       setStep('otp');
     } catch (e: any) { setError(e.message); }
@@ -60,6 +73,21 @@ export default function RegisterScreen({ onRegister, onSwitchToLogin }: {
       const res = await authAPI.aadhaarVerify(aadhaar, tempToken);
       setTokens(res.access_token, res.refresh_token);
       setRegisteredUser(res.user);
+      
+      // Log BMI with the newly active token
+      try {
+        await fetch('http://localhost:8000/api/vitals/bmi', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${res.access_token}`
+          },
+          body: JSON.stringify({ weight_kg: Number(form.weight), height_cm: Number(form.height) })
+        });
+      } catch (err) {
+        console.error("Failed to log BMI", err);
+      }
+
       setStep('photo');
     } catch (e: any) { setError(e.message || 'Verification failed'); }
     finally { setLoading(false); }
@@ -134,6 +162,16 @@ export default function RegisterScreen({ onRegister, onSwitchToLogin }: {
                 <input type="tel" placeholder="9876543210" maxLength={10} value={form.phone_number} onChange={e => setForm({...form, phone_number: e.target.value.replace(/\D/g,'')})} className={inputClass}/></div>
               <div><label className={labelClass}>Password</label>
                 <input type="password" placeholder="Min 8 characters" value={form.password} onChange={e => setForm({...form, password: e.target.value})} className={inputClass}/></div>
+              <div className="flex gap-2">
+                <div className="flex-1">
+                  <label className={labelClass}>Weight (kg)</label>
+                  <input type="number" placeholder="72" value={form.weight} onChange={e => setForm({...form, weight: e.target.value})} className={inputClass}/>
+                </div>
+                <div className="flex-1">
+                  <label className={labelClass}>Height (cm)</label>
+                  <input type="number" placeholder="175" value={form.height} onChange={e => setForm({...form, height: e.target.value})} className={inputClass}/>
+                </div>
+              </div>
               <div><label className={labelClass}>Date of Birth</label>
                 <input type="date" value={form.date_of_birth} onChange={e => setForm({...form, date_of_birth: e.target.value})} className={inputClass}/></div>
               <div><label className={labelClass}>Gender</label>

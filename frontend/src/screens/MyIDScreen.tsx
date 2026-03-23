@@ -6,7 +6,7 @@ import { motion } from 'motion/react';
 import { Shield, CreditCard, Activity, LogOut, ChevronRight, Bell, Settings, UploadCloud } from 'lucide-react';
 import { profileAPI, coinsAPI, clearTokens, notificationsAPI, settingsAPI, mlAPI } from '../services/api.ts';
 
-export default function MyIDScreen({ user, onLogout }: { user: any; onLogout: () => void; key?: string | number }) {
+export default function MyIDScreen({ user, onLogout, onReportUploaded }: { user: any; onLogout: () => void; onReportUploaded?: () => void; key?: string | number }) {
   const [profile, setProfile] = useState<any>(user);
   const [coins, setCoins] = useState(0);
   const [activity, setActivity] = useState<any>({ coin_transactions: [], completed_tasks: [] });
@@ -60,7 +60,7 @@ export default function MyIDScreen({ user, onLogout }: { user: any; onLogout: ()
 
   const uploadReport = async () => {
     if (!reportFile) {
-      setNoticeMsg('Please choose a report image first.');
+      setNoticeMsg('Please choose a report document first.');
       return;
     }
     setUploadingReport(true);
@@ -70,8 +70,21 @@ export default function MyIDScreen({ user, onLogout }: { user: any; onLogout: ()
       const res = await mlAPI.analyzeReport(reportFile, reportType);
       setReportResult(res);
       setNoticeMsg('Report uploaded and analyzed successfully.');
+      
+      // Set flag so Dashboard knows to refetch when it mounts
+      localStorage.setItem('vitalid_data_updated', Date.now().toString());
+      
+      // Show confirmation FIRST, then navigate
+      alert('✅ Upload Successful!\n\nYour Health Dashboard and Daily Tasks have been updated with insights from your report.');
+      
+      // Navigate to dashboard AFTER user dismisses alert
+      window.dispatchEvent(new Event('report-uploaded'));
+      if (onReportUploaded) {
+        onReportUploaded();
+      }
     } catch (e: any) {
       setNoticeMsg(e?.message || 'Failed to upload report.');
+      alert('❌ Upload Failed:\n\n' + (e?.message || 'Unknown network error.'));
     } finally {
       setUploadingReport(false);
     }
@@ -90,16 +103,33 @@ export default function MyIDScreen({ user, onLogout }: { user: any; onLogout: ()
       <div className="px-6 -mt-8 relative z-20">
         <div className="bg-white border-[1.5px] border-teal-border rounded-[24px] p-6 shadow-lg">
           <div className="flex items-center gap-4 mb-4">
-            <div className="w-16 h-16 bg-primary-teal rounded-full flex items-center justify-center text-white font-extrabold text-xl shadow-md overflow-hidden">
-              {profile?.profile_photo_url ? (
-                <img
-                  src={profile.profile_photo_url.startsWith('/') ? `http://localhost:8000${profile.profile_photo_url}` : profile.profile_photo_url}
-                  alt={profile?.full_name || 'Profile'}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                initials
-              )}
+            <div className="relative group w-16 h-16 rounded-full overflow-hidden shrink-0 shadow-md">
+              <label className="cursor-pointer w-full h-full block">
+                <div className="w-full h-full bg-primary-teal flex items-center justify-center text-white font-extrabold text-xl">
+                  {profile?.profile_photo_url ? (
+                    <img
+                      src={profile.profile_photo_url.startsWith('/') ? `http://localhost:8000${profile.profile_photo_url}` : profile.profile_photo_url}
+                      alt={profile?.full_name || 'Profile'}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : initials}
+                </div>
+                <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                  <span className="text-[9px] text-white font-bold">Edit</span>
+                </div>
+                <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  setNoticeMsg('Uploading photo...');
+                  try {
+                    const updated = await profileAPI.uploadPhoto(file);
+                    setProfile({ ...profile, profile_photo_url: updated.profile_photo_url });
+                    setNoticeMsg('Photo updated successfully.');
+                  } catch (err: any) {
+                    setNoticeMsg('Failed to upload photo.');
+                  }
+                }} />
+              </label>
             </div>
             <div className="flex-1">
               <h2 className="text-dark-teal font-extrabold text-lg">{profile?.full_name || 'User'}</h2>
@@ -153,8 +183,12 @@ export default function MyIDScreen({ user, onLogout }: { user: any; onLogout: ()
       <div className="px-6 mt-4">
         <h3 className="text-primary-teal text-[10px] font-extrabold uppercase tracking-widest mb-3">Recent Activity</h3>
         <div className="space-y-2">
-          {activity.completed_tasks.slice(0, 5).map((t: any) => (
-            <div key={t.id} className="bg-white border border-teal-border rounded-2xl p-3 flex items-center justify-between">
+          {/* Deduplicate by task id */}
+          {activity.completed_tasks
+            .filter((t: any, idx: number, arr: any[]) => arr.findIndex(item => item.id === t.id) === idx)
+            .slice(0, 5)
+            .map((t: any) => (
+            <div key={`task-${t.id}`} className="bg-white border border-teal-border rounded-2xl p-3 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Activity size={14} className="text-primary-teal" />
                 <span className="text-dark-teal text-xs font-semibold">{t.name}</span>
@@ -164,24 +198,6 @@ export default function MyIDScreen({ user, onLogout }: { user: any; onLogout: ()
           ))}
           {activity.completed_tasks.length === 0 && (
             <p className="text-muted-teal text-xs text-center py-4">No activity yet. Complete some missions!</p>
-          )}
-        </div>
-      </div>
-
-      {/* Activity Log */}
-      <div className="px-6 mt-4">
-        <h3 className="text-primary-teal text-[10px] font-extrabold uppercase tracking-widest mb-3">Activity Log</h3>
-        <div className="bg-white border border-teal-border rounded-2xl p-3 max-h-52 overflow-y-auto space-y-2">
-          {activity.coin_transactions.slice(0, 10).map((tx: any) => (
-            <div key={tx.id} className="flex items-center justify-between bg-light-teal-surface rounded-xl px-3 py-2">
-              <span className="text-dark-teal text-xs font-semibold">{tx.type}</span>
-              <span className={`text-xs font-extrabold ${tx.amount >= 0 ? 'text-primary-teal' : 'text-red-500'}`}>
-                {tx.amount >= 0 ? `+${tx.amount}` : tx.amount}
-              </span>
-            </div>
-          ))}
-          {activity.coin_transactions.length === 0 && (
-            <p className="text-muted-teal text-xs text-center py-2">No transactions yet.</p>
           )}
         </div>
       </div>
@@ -246,10 +262,10 @@ export default function MyIDScreen({ user, onLogout }: { user: any; onLogout: ()
 
           <label className="border-2 border-dashed border-teal-border rounded-xl p-4 flex flex-col items-center justify-center cursor-pointer bg-light-teal-surface">
             <UploadCloud size={24} className="text-primary-teal mb-2" />
-            <span className="text-xs font-semibold text-dark-teal">{reportFile ? reportFile.name : 'Choose report image'}</span>
+            <span className="text-xs font-semibold text-dark-teal text-center px-2">{reportFile ? reportFile.name : 'Choose report image or PDF'}</span>
             <input
               type="file"
-              accept="image/jpeg,image/png,image/webp,image/bmp"
+              accept="image/jpeg,image/png,image/webp,image/bmp,application/pdf"
               className="hidden"
               onChange={(e) => setReportFile(e.target.files?.[0] || null)}
             />

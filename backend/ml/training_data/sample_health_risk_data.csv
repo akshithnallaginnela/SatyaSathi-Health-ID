@@ -1,0 +1,41 @@
+text,label
+"hba1c 10.2 fasting glucose 310 diabetic ketoacidosis symptoms urgent insulin advised",high
+"acute myocardial infarction with st elevation and chest pain emergency admission",high
+"blood pressure 198 over 122 hypertensive crisis severe headache vision changes",high
+"creatinine 6.1 acute kidney injury with low urine output and edema",high
+"spo2 86 respiratory failure suspected pulmonary embolism immediate oxygen",high
+"hemoglobin 6.5 severe anemia fatigue breathlessness urgent transfusion",high
+"stroke symptoms facial droop slurred speech right arm weakness emergency",high
+"unstable angina troponin positive ventricular arrhythmia cardiology icu",high
+"ejection fraction 35 with pulmonary edema heart failure exacerbation",high
+"dka with ketones positive vomiting dehydration glucose 420",high
+"hba1c 7.4 fasting sugar 165 advised diet control and metformin",moderate
+"blood pressure 152 over 96 stage 2 hypertension with headache",moderate
+"ldl 182 triglycerides 260 hyperlipidemia start statin",moderate
+"bmi 32 obesity with elevated blood sugar and fatty liver",moderate
+"creatinine 1.8 mild renal dysfunction proteinuria present",moderate
+"atrial fibrillation intermittent palpitations on anticoagulant followup",moderate
+"anemia with hemoglobin 10.4 iron deficiency oral supplements started",moderate
+"hypothyroidism tsh elevated fatigue weight gain levothyroxine started",moderate
+"prediabetes fasting glucose 118 advised exercise and low sugar diet",moderate
+"persistent high bp around 145 over 92 with dizziness",moderate
+"routine health check all vitals normal no acute complaints",low
+"fasting glucose 92 hba1c 5.4 normal diabetic markers",low
+"blood pressure 118 over 76 pulse regular no edema",low
+"lipid profile within normal range ldl 92 triglycerides 120",low
+"hemoglobin 13.8 no signs of anemia healthy diet maintained",low
+"thyroid profile normal tsh and t3 t4 within limits",low
+"ecg normal sinus rhythm no ischemic changes",low
+"kidney function normal creatinine 0.9 no protein in urine",low
+"oxygen saturation 98 lungs clear no respiratory distress",low
+"annual wellness report indicates stable health and active lifestyle",low
+"metformin 500 continued sugar improved no complications",moderate
+"insulin started due to recurrent hyperglycemia and ketones",high
+"atorvastatin prescribed for high cholesterol with ldl 170",moderate
+"aspirin once daily with mild hypertension monitoring",moderate
+"no medication currently asymptomatic and physically active",low
+"bp 110 over 70 glucose 88 sleeping well and hydrated",low
+"chest pain with elevated troponin and stemi diagnosis",high
+"recurrent vomiting high ketones dehydration and glucose 360",high
+"afib with controlled rate and periodic cardiology review",moderate
+"normal cbc normal renal profile normal liver enzymes",low
