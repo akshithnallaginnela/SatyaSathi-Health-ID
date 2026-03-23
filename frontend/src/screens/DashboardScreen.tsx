@@ -128,11 +128,8 @@ export default function DashboardScreen() {
   const tasksPending = Math.max(displayTasks.length - tasksDone, 0);
   const weekCompletion = data?.week_completion || [false, false, false, false, false, false, false];
   const preventive = data?.preventive_analytics || {};
-  const preventiveTips: string[] = preventive?.positive_precautions || [];
   const dietPlan = preventive?.diet_plan || null;
 
-  // Deduplicate preventive tips
-  const uniquePreventiveTips = Array.from(new Map(preventiveTips.map(tip => [tip, tip])).values());
   const todayIndex = new Date().getDay() === 0 ? 6 : new Date().getDay() - 1;
   const hasReport = !!preventive.report_type;
   const hasData = !!data?.has_data;
