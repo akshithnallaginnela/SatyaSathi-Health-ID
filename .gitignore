@@ -1,10 +1,42 @@
+# Python cache files
+__pycache__/
+*.py[cod]
+*$py.class
+backend/__pycache__/
+
+# Node.js
 node_modules/
 build/
 dist/
 coverage/
-.DS_Store
-*.log
+
+# Environment
 .env*
 !.env.example
-__pycache__
-backend/__pycache__
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Model files
+*.pkl
+*.joblib
+*.h5
+*.pb
+
+# Uploads (if they shouldn't be committed)
+backend/uploads/
+!backend/uploads/.gitkeep
+
+# ML weights (if large)
+backend/ml/weights/
