@@ -105,3 +105,51 @@ async def get_vitals_history(
         "bp_history": bp_rows.scalars().all(),
         "sugar_history": sugar_rows.scalars().all()
     }
+
+@router.post("/bmi")
+async def log_bmi(
+    data: dict,
+    user_id: str = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """Update BMI and trigger analysis."""
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+        
+    user.weight_kg = data.get("weight_kg")
+    user.height_cm = data.get("height_cm")
+    user.waist_cm = data.get("waist_cm")
+    
+    if user.weight_kg and user.height_cm:
+        user.bmi = round(user.weight_kg / ((user.height_cm / 100) ** 2), 2)
+    
+    # Trigger AI analysis
+    await run_full_analysis(user_id, db)
+    await db.commit()
+    
+    return {
+        "message": "BMI updated",
+        "bmi": user.bmi,
+        "weight_kg": user.weight_kg,
+        "height_cm": user.height_cm
+    }
+
+@router.get("/bmi/latest")
+async def get_latest_bmi(
+    user_id: str = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get most recent BMI/metrics."""
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+        
+    return {
+        "bmi": user.bmi or 0,
+        "weight_kg": user.weight_kg or 0,
+        "height_cm": user.height_cm or 0,
+        "waist_cm": user.waist_cm or 0
+    }

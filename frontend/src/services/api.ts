@@ -90,11 +90,15 @@ export const authAPI = {
   verifyOTP: (phone_number: string, otp: string) =>
     apiFetch('/auth/verify-otp', { method: 'POST', body: JSON.stringify({ phone_number, otp }) }),
 
-  aadhaarVerify: (aadhaar_number: string) =>
-    apiFetch('/auth/aadhaar-submit', { 
-      method: 'POST', 
-      body: JSON.stringify({ aadhaar_number }) 
-    }),
+  aadhaarVerify: (aadhaar_number: string, tempToken: string) =>
+    fetch(`${API_BASE}/auth/aadhaar-submit`, {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json', 
+        'Authorization': `Bearer ${tempToken}` 
+      },
+      body: JSON.stringify({ aadhaar_number }),
+    }).then(r => { if (!r.ok) throw r; return r.json(); }),
 
   login: (phone_number: string, password: string) =>
     apiFetch('/auth/login', { method: 'POST', body: JSON.stringify({ phone_number, password }) }),
