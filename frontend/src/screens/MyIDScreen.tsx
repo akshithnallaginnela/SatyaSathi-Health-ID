@@ -6,7 +6,7 @@ import { motion } from 'motion/react';
 import { Shield, CreditCard, Activity, LogOut, ChevronRight, Bell, Settings, UploadCloud } from 'lucide-react';
 import { profileAPI, coinsAPI, clearTokens, notificationsAPI, settingsAPI, mlAPI } from '../services/api.ts';
 
-export default function MyIDScreen({ user, onLogout }: { user: any; onLogout: () => void; key?: string | number }) {
+export default function MyIDScreen({ user, onLogout, onReportUploaded }: { user: any; onLogout: () => void; onReportUploaded?: () => void; key?: string | number }) {
   const [profile, setProfile] = useState<any>(user);
   const [coins, setCoins] = useState(0);
   const [activity, setActivity] = useState<any>({ coin_transactions: [], completed_tasks: [] });
@@ -73,6 +73,9 @@ export default function MyIDScreen({ user, onLogout }: { user: any; onLogout: ()
       
       // Trigger dashboard refresh
       window.dispatchEvent(new Event('report-uploaded'));
+      if (onReportUploaded) {
+        onReportUploaded();
+      }
       
       alert('✅ Upload Successful!\n\nYour Health Dashboard and Daily Tasks have been dynamically updated with insights from your report.');
     } catch (e: any) {
@@ -191,28 +194,6 @@ export default function MyIDScreen({ user, onLogout }: { user: any; onLogout: ()
           ))}
           {activity.completed_tasks.length === 0 && (
             <p className="text-muted-teal text-xs text-center py-4">No activity yet. Complete some missions!</p>
-          )}
-        </div>
-      </div>
-
-      {/* Activity Log */}
-      <div className="px-6 mt-4">
-        <h3 className="text-primary-teal text-[10px] font-extrabold uppercase tracking-widest mb-3">Activity Log</h3>
-        <div className="bg-white border border-teal-border rounded-2xl p-3 max-h-52 overflow-y-auto space-y-2">
-          {/* Deduplicate by transaction id */}
-          {activity.coin_transactions
-            .filter((tx: any, idx: number, arr: any[]) => arr.findIndex(item => item.id === tx.id) === idx)
-            .slice(0, 10)
-            .map((tx: any) => (
-            <div key={`tx-${tx.id}`} className="flex items-center justify-between bg-light-teal-surface rounded-xl px-3 py-2">
-              <span className="text-dark-teal text-xs font-semibold">{tx.type}</span>
-              <span className={`text-xs font-extrabold ${tx.amount >= 0 ? 'text-primary-teal' : 'text-red-500'}`}>
-                {tx.amount >= 0 ? `+${tx.amount}` : tx.amount}
-              </span>
-            </div>
-          ))}
-          {activity.coin_transactions.length === 0 && (
-            <p className="text-muted-teal text-xs text-center py-2">No transactions yet.</p>
           )}
         </div>
       </div>
