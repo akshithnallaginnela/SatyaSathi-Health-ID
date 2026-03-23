@@ -184,82 +184,91 @@ export default function VitalsScreen() {
         <div className="px-6 space-y-4">
           <h3 className="text-[#26C6BF] text-[11px] font-extrabold uppercase tracking-widest mb-0">TRENDS — LAST 7 DAYS</h3>
           
-          {/* Blood Pressure Chart */}
-          <div className="bg-white border-[1.5px] border-[#E8F1F1] rounded-[28px] p-5 shadow-sm">
-            <h3 className="text-[#1A3A38] font-extrabold text-[16px] mb-4">Blood Pressure</h3>
-            <div className="w-full h-[120px] relative mb-2">
-              <div className="absolute top-[20px] left-0 w-full h-[25px] bg-[#E0F7F4] opacity-50" />
-              <svg viewBox="0 0 320 100" className="w-full h-full overflow-visible">
-                <line x1="30" y1="15" x2="300" y2="15" stroke="#E8F1F1" strokeWidth="1" strokeDasharray="3" />
-                <line x1="30" y1="50" x2="300" y2="50" stroke="#E8F1F1" strokeWidth="1" strokeDasharray="3" />
-                <line x1="30" y1="85" x2="300" y2="85" stroke="#E8F1F1" strokeWidth="1" />
-                <text x="0" y="18" fill="#A0A0A0" fontSize="8" fontWeight="bold">200</text>
-                <text x="0" y="53" fill="#A0A0A0" fontSize="8" fontWeight="bold">100</text>
-                <text x="0" y="88" fill="#A0A0A0" fontSize="8" fontWeight="bold">0</text>
-
-                <polyline points={sysPolyline} fill="none" stroke="#FF6B6B" strokeWidth="2.5" strokeLinejoin="round" />
-                <polyline points={diaPolyline} fill="none" stroke="#26C6BF" strokeWidth="2.5" strokeLinejoin="round" />
-
-                {bpPoints.map((pt, i) => (
-                  <g key={`sys-${i}`}>
-                    <circle cx={pt.x} cy={mapY(pt.sys, 200)} r="3.5" fill="#FFF" stroke="#FF6B6B" strokeWidth="2" />
-                    {pt.sys > 0 && <text x={pt.x} y={mapY(pt.sys, 200) - 8} fill="#FF6B6B" fontSize="8" fontWeight="bold" textAnchor="middle">{pt.sys}</text>}
-                  </g>
-                ))}
-                {bpPoints.map((pt, i) => (
-                  <g key={`dia-${i}`}>
-                    <circle cx={pt.x} cy={mapY(pt.dia, 200)} r="3.5" fill="#FFF" stroke="#26C6BF" strokeWidth="2" />
-                    {pt.dia > 0 && <text x={pt.x} y={mapY(pt.dia, 200) + 12} fill="#26C6BF" fontSize="8" fontWeight="bold" textAnchor="middle">{pt.dia}</text>}
-                  </g>
-                ))}
-                {days.map((day, i) => (
-                  <text key={`day-${i}`} x={35 + i * 42} y="100" fill="#A0A0A0" fontSize="8" fontWeight="bold" textAnchor="middle">{day.label}</text>
-                ))}
-              </svg>
+          {history.length === 0 ? (
+            <div className="bg-[#F2FDFB] border-[1.5px] border-dashed border-primary-teal/40 rounded-[28px] p-10 text-center shadow-inner">
+               <p className="text-dark-teal text-[14px] font-bold">No trends to show yet</p>
+               <p className="text-muted-teal text-[11px] mt-1">Log your first reading to see trends appear here.</p>
             </div>
-            <div className="flex justify-between items-center mt-3 px-1">
-              <div className="flex items-center gap-1.5">
-                <div className="w-2.5 h-2.5 rounded-full bg-[#26C6BF]" />
-                <span className="text-[#7ECCC7] text-[11px] font-bold">Systolic</span>
+          ) : (
+            <>
+              {/* Blood Pressure Chart */}
+              <div className="bg-white border-[1.5px] border-[#E8F1F1] rounded-[28px] p-5 shadow-sm">
+                <h3 className="text-[#1A3A38] font-extrabold text-[16px] mb-4">Blood Pressure</h3>
+                <div className="w-full h-[120px] relative mb-2">
+                  <div className="absolute top-[20px] left-0 w-full h-[25px] bg-[#E0F7F4] opacity-50" />
+                  <svg viewBox="0 0 320 100" className="w-full h-full overflow-visible">
+                    <line x1="30" y1="15" x2="300" y2="15" stroke="#E8F1F1" strokeWidth="1" strokeDasharray="3" />
+                    <line x1="30" y1="50" x2="300" y2="50" stroke="#E8F1F1" strokeWidth="1" strokeDasharray="3" />
+                    <line x1="30" y1="85" x2="300" y2="85" stroke="#E8F1F1" strokeWidth="1" />
+                    <text x="0" y="18" fill="#A0A0A0" fontSize="8" fontWeight="bold">200</text>
+                    <text x="0" y="53" fill="#A0A0A0" fontSize="8" fontWeight="bold">100</text>
+                    <text x="0" y="88" fill="#A0A0A0" fontSize="8" fontWeight="bold">0</text>
+    
+                    <polyline points={sysPolyline} fill="none" stroke="#FF6B6B" strokeWidth="2.5" strokeLinejoin="round" />
+                    <polyline points={diaPolyline} fill="none" stroke="#26C6BF" strokeWidth="2.5" strokeLinejoin="round" />
+    
+                    {bpPoints.map((pt, i) => (
+                      <g key={`sys-${i}`}>
+                        <circle cx={pt.x} cy={mapY(pt.sys, 200)} r="3.5" fill="#FFF" stroke="#FF6B6B" strokeWidth="2" />
+                        {pt.sys > 0 && <text x={pt.x} y={mapY(pt.sys, 200) - 8} fill="#FF6B6B" fontSize="8" fontWeight="bold" textAnchor="middle">{pt.sys}</text>}
+                      </g>
+                    ))}
+                    {bpPoints.map((pt, i) => (
+                      <g key={`dia-${i}`}>
+                        <circle cx={pt.x} cy={mapY(pt.dia, 200)} r="3.5" fill="#FFF" stroke="#26C6BF" strokeWidth="2" />
+                        {pt.dia > 0 && <text x={pt.x} y={mapY(pt.dia, 200) + 12} fill="#26C6BF" fontSize="8" fontWeight="bold" textAnchor="middle">{pt.dia}</text>}
+                      </g>
+                    ))}
+                    {days.map((day, i) => (
+                      <text key={`day-${i}`} x={35 + i * 42} y="100" fill="#A0A0A0" fontSize="8" fontWeight="bold" textAnchor="middle">{day.label}</text>
+                    ))}
+                  </svg>
+                </div>
+                <div className="flex justify-between items-center mt-3 px-1">
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-2.5 h-2.5 rounded-full bg-[#26C6BF]" />
+                    <span className="text-[#7ECCC7] text-[11px] font-bold">Systolic</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-2.5 h-2.5 rounded-full bg-[#B2EFEB]" />
+                    <span className="text-[#7ECCC7] text-[11px] font-bold">Diastolic</span>
+                  </div>
+                </div>
               </div>
-              <div className="flex items-center gap-1.5">
-                <div className="w-2.5 h-2.5 rounded-full bg-[#B2EFEB]" />
-                <span className="text-[#7ECCC7] text-[11px] font-bold">Diastolic</span>
+    
+              {/* Fasting Blood Sugar Chart */}
+              <div className="bg-white border-[1.5px] border-[#E8F1F1] rounded-[28px] p-5 shadow-sm">
+                <h3 className="text-[#1A3A38] font-extrabold text-[16px] mb-4">Fasting Blood Sugar</h3>
+                <div className="w-full h-[120px] relative mb-2">
+                  <div className="absolute top-[35px] left-0 w-full h-[50px] bg-[#E0F7F4] opacity-50" />
+                  <svg viewBox="0 0 320 100" className="w-full h-full overflow-visible">
+                    <line x1="30" y1="15" x2="300" y2="15" stroke="#E8F1F1" strokeWidth="1" strokeDasharray="3" />
+                    <line x1="30" y1="50" x2="300" y2="50" stroke="#E8F1F1" strokeWidth="1" strokeDasharray="3" />
+                    <line x1="30" y1="85" x2="300" y2="85" stroke="#E8F1F1" strokeWidth="1" />
+                    <text x="0" y="18" fill="#A0A0A0" fontSize="8" fontWeight="bold">200</text>
+                    <text x="0" y="53" fill="#A0A0A0" fontSize="8" fontWeight="bold">100</text>
+                    <text x="0" y="88" fill="#A0A0A0" fontSize="8" fontWeight="bold">0</text>
+    
+                    <polyline points={sugarPolyline} fill="none" stroke="#26C6BF" strokeWidth="2.5" strokeLinejoin="round" />
+    
+                    {sugarPoints.map((pt, i) => (
+                      <g key={`sug-${i}`}>
+                        <circle cx={pt.x} cy={mapY(pt.val, 200)} r="3.5" fill="#FFF" stroke="#26C6BF" strokeWidth="2" />
+                        {pt.val > 0 && <text x={pt.x} y={mapY(pt.val, 200) - 8} fill="#26C6BF" fontSize="8" fontWeight="bold" textAnchor="middle">{pt.val}</text>}
+                      </g>
+                    ))}
+                    {days.map((day, i) => (
+                      <text key={`day-${i}`} x={35 + i * 42} y="100" fill="#A0A0A0" fontSize="8" fontWeight="bold" textAnchor="middle">{day.label}</text>
+                    ))}
+                  </svg>
+                </div>
+                <div className="flex items-center gap-1.5 mt-3 px-1">
+                  <div className="w-2.5 h-2.5 rounded-full bg-[#26C6BF]" />
+                  <span className="text-[#7ECCC7] text-[11px] font-bold">Blood Sugar (mg/dL)</span>
+                </div>
               </div>
-            </div>
-          </div>
-
-          {/* Fasting Blood Sugar Chart */}
-          <div className="bg-white border-[1.5px] border-[#E8F1F1] rounded-[28px] p-5 shadow-sm">
-            <h3 className="text-[#1A3A38] font-extrabold text-[16px] mb-4">Fasting Blood Sugar</h3>
-            <div className="w-full h-[120px] relative mb-2">
-              <div className="absolute top-[35px] left-0 w-full h-[50px] bg-[#E0F7F4] opacity-50" />
-              <svg viewBox="0 0 320 100" className="w-full h-full overflow-visible">
-                <line x1="30" y1="15" x2="300" y2="15" stroke="#E8F1F1" strokeWidth="1" strokeDasharray="3" />
-                <line x1="30" y1="50" x2="300" y2="50" stroke="#E8F1F1" strokeWidth="1" strokeDasharray="3" />
-                <line x1="30" y1="85" x2="300" y2="85" stroke="#E8F1F1" strokeWidth="1" />
-                <text x="0" y="18" fill="#A0A0A0" fontSize="8" fontWeight="bold">200</text>
-                <text x="0" y="53" fill="#A0A0A0" fontSize="8" fontWeight="bold">100</text>
-                <text x="0" y="88" fill="#A0A0A0" fontSize="8" fontWeight="bold">0</text>
-
-                <polyline points={sugarPolyline} fill="none" stroke="#26C6BF" strokeWidth="2.5" strokeLinejoin="round" />
-
-                {sugarPoints.map((pt, i) => (
-                  <g key={`sug-${i}`}>
-                    <circle cx={pt.x} cy={mapY(pt.val, 200)} r="3.5" fill="#FFF" stroke="#26C6BF" strokeWidth="2" />
-                    {pt.val > 0 && <text x={pt.x} y={mapY(pt.val, 200) - 8} fill="#26C6BF" fontSize="8" fontWeight="bold" textAnchor="middle">{pt.val}</text>}
-                  </g>
-                ))}
-                {days.map((day, i) => (
-                  <text key={`day-${i}`} x={35 + i * 42} y="100" fill="#A0A0A0" fontSize="8" fontWeight="bold" textAnchor="middle">{day.label}</text>
-                ))}
-              </svg>
-            </div>
-            <div className="flex items-center gap-1.5 mt-3 px-1">
-              <div className="w-2.5 h-2.5 rounded-full bg-[#26C6BF]" />
-              <span className="text-[#7ECCC7] text-[11px] font-bold">Blood Sugar (mg/dL)</span>
-            </div>
-          </div>
+            </>
+          )}
         </div>
 
         {/* CONDITIONAL LAB RESULTS & DIET FOCUS */}
