@@ -35,13 +35,19 @@ export default function RegisterScreen({ onRegister, onSwitchToLogin }: {
     if (!form.weight || !form.height) { setError('Enter weight and height'); return; }
     setLoading(true);
     try {
-      const res = await authAPI.register({
+      const payload: any = {
         full_name: form.full_name,
         phone_number: form.phone_number,
         password: form.password,
-        date_of_birth: form.date_of_birth,
-        gender: form.gender
-      });
+        gender: form.gender || undefined,
+        weight_kg: form.weight ? parseFloat(form.weight) : undefined,
+        height_cm: form.height ? parseFloat(form.height) : undefined,
+      };
+      // Only send date_of_birth if it's a valid non-empty string
+      if (form.date_of_birth && form.date_of_birth.trim()) {
+        payload.date_of_birth = form.date_of_birth;
+      }
+      const res = await authAPI.register(payload);
       setDevOtp(res.dev_otp || '');
       setStep('otp');
     } catch (e: any) { setError(e.message); }
