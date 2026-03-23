@@ -97,7 +97,7 @@ export default function MissionsScreen() {
                   <div>
                     <h4 className="text-[#1A3A38] font-extrabold text-[15px]">{task.task_name}</h4>
                     <span className="text-[#7ECCC7] text-[12px] font-semibold block capitalize">
-                      {task.completed ? 'Completed at 8:00 AM' : task.time_slot.replace('_', ' ')}
+                      {task.completed ? 'Completed' : (task.time_slot || task.time_of_day || 'Anytime').replace(/_/g, ' ')}
                     </span>
                   </div>
                 </div>
