@@ -116,7 +116,8 @@ export default function DashboardScreen() {
   const uniquePreventiveTips = Array.from(new Map(preventiveTips.map(tip => [tip, tip])).values());
   const todayIndex = new Date().getDay() === 0 ? 6 : new Date().getDay() - 1;
   const hasReport = !!preventive.report_type;
-  const score = hasReport ? (data?.wellness_score || 72) : 0;
+  const hasData = !!data?.has_data;
+  const score = data?.wellness_score || 0;
   const theme = getScoreTheme(score);
 
   return (
@@ -183,7 +184,7 @@ export default function DashboardScreen() {
           </div>
           <div>
             <h2 className="text-white font-extrabold text-[15px] mb-0.5">Health Index</h2>
-            <p className="text-[#C8F0EC] text-xs font-semibold mb-2">Mostly stable and healthy.</p>
+            <p className="text-[#C8F0EC] text-xs font-semibold mb-2">{data?.health_subtitle || 'Log vitals to see your score.'}</p>
             <div
               className="text-[10px] font-extrabold px-3 py-1.5 rounded-full inline-block shadow-sm"
               style={{ background: theme.badgeBg, color: theme.badgeText }}
@@ -243,12 +244,12 @@ export default function DashboardScreen() {
         </div>
 
         {/* 3. ML-DRIVEN DAILY TASKS */}
-        {hasReport && displayTasks.length > 0 && (
+        {hasData && displayTasks.length > 0 && (
           <div className="bg-white border-[1.5px] border-border-teal rounded-[28px] p-5 shadow-sm">
             <div className="flex justify-between items-center mb-4">
               <div>
                 <h3 className="text-dark-teal font-extrabold text-[17px]">Daily Care Plan</h3>
-                <p className="text-muted-teal text-[11px] font-medium leading-tight">Generated from your latest report</p>
+                <p className="text-muted-teal text-[11px] font-medium leading-tight">Generated from your vitals & health data</p>
               </div>
               <span className="bg-[#E0F7F4] text-primary-teal text-[10px] px-2 py-1 rounded-lg font-extrabold tracking-widest">{tasksDone}/{displayTasks.length} DONE</span>
             </div>
@@ -282,39 +283,65 @@ export default function DashboardScreen() {
           <h3 className="text-dark-teal font-extrabold text-[17px] leading-tight mb-1">What your body is telling you</h3>
           <p className="text-[#A0A0A0] text-[11px] font-semibold italic mb-4">Trends only — not a diagnosis.</p>
 
-          {!hasReport ? (
+          {!hasData ? (
             <div className="bg-[#F2FDFB] border border-border-teal rounded-2xl p-4 text-center">
-              <p className="text-dark-teal text-[13px] font-bold">No report uploaded yet.</p>
-              <p className="text-muted-teal text-[11px] mt-1">Upload a report in My ID to see your health insights.</p>
+              <p className="text-dark-teal text-[13px] font-bold">No health data yet.</p>
+              <p className="text-muted-teal text-[11px] mt-1">Log your BP, Sugar, or upload a report to see insights.</p>
             </div>
           ) : (
             <div className="space-y-5">
               <div>
-                <h3 className="text-dark-teal font-extrabold text-[15px] capitalize">
-                  ML Analysis
-                </h3>
                 <div className="flex justify-between items-center mt-0.5">
                   <p className="text-muted-teal text-[12px] font-medium leading-tight pr-4">
-                    {preventive.summary || `Model analyzed your report. Risk level: ${preventive.risk_level || 'low'}.`}
+                    {preventive.summary || 'Your health data is being analyzed.'}
                   </p>
-                  <span className="text-primary-teal font-extrabold text-[15px] capitalize">
-                    {preventive.risk_level} Risk
+                  <span className={`font-extrabold text-[13px] capitalize px-3 py-1 rounded-full ${
+                    preventive.risk_level === 'act_now' ? 'bg-[#FEE2E2] text-[#DC2626]' :
+                    preventive.risk_level === 'watch' ? 'bg-[#FEF3C7] text-[#D97706]' :
+                    'bg-[#DCFCE7] text-[#15803D]'
+                  }`}>
+                    {preventive.risk_level === 'act_now' ? '⚠️ Act Now' :
+                     preventive.risk_level === 'watch' ? '👀 Watch' :
+                     '✅ Good'}
                   </span>
                 </div>
-                <div className="w-full bg-[#E0F7F4] h-2.5 rounded-full mt-2 overflow-hidden flex">
-                  <div className={`h-full rounded-full transition-all duration-1000 ${
-                    preventive.risk_level === 'high' ? 'bg-[#EF4444]' : 
-                    preventive.risk_level === 'moderate' ? 'bg-[#F59E0B]' : 'bg-primary-teal'
-                  }`} 
-                  style={{ width: preventive.risk_level === 'high' ? '90%' : preventive.risk_level === 'moderate' ? '60%' : '30%' }} />
-                </div>
+                {preventive.data_sources_used && preventive.data_sources_used.length > 0 && (
+                  <p className="text-muted-teal text-[10px] font-semibold mt-1">
+                    Based on: {preventive.data_sources_used.join(', ')}
+                  </p>
+                )}
               </div>
+
+              {/* Individual care item cards */}
+              {(preventive.all_care_items || []).slice(0, 4).map((item: any, idx: number) => (
+                <div key={idx} className={`border-l-4 rounded-xl p-3 ${
+                  item.urgency === 'act_now' ? 'border-l-[#EF4444] bg-[#FEF2F2]' :
+                  item.urgency === 'watch' ? 'border-l-[#F59E0B] bg-[#FFFBEB]' :
+                  'border-l-[#22C55E] bg-[#F0FDF4]'
+                }`}>
+                  <div className="flex justify-between items-start">
+                    <h4 className="text-dark-teal font-extrabold text-[12px] capitalize flex items-center gap-1">
+                      {item.category === 'blood_pressure' ? '🫀' :
+                       item.category === 'blood_sugar' ? '🩸' :
+                       item.category === 'weight_bmi' ? '⚖️' :
+                       item.category === 'hemoglobin' ? '💉' :
+                       item.category === 'platelets' ? '🔬' :
+                       item.category === 'lifestyle_compound' ? '🚭' :
+                       item.category === 'genetic_risk' ? '🧬' : '📋'}
+                      {' '}{item.category.replace(/_/g, ' ')}
+                    </h4>
+                    <span className="text-[9px] font-bold text-muted-teal">{item.horizon}</span>
+                  </div>
+                  <p className="text-dark-teal text-[11px] font-semibold mt-1">{item.status}</p>
+                  <p className="text-muted-teal text-[10px] mt-1 leading-relaxed">{item.risk}</p>
+                </div>
+              ))}
 
               {uniquePreventiveTips.length > 0 && (
                 <div>
                   <h3 className="text-dark-teal font-extrabold text-[13px] mb-2">Recommended Actions</h3>
                   <div className="flex flex-col gap-2">
-                    {uniquePreventiveTips.map((tip: string, idx: number) => (
+                    {uniquePreventiveTips.slice(0, 6).map((tip: string, idx: number) => (
                       <div key={`tip-${idx}`} className="bg-[#E0F7F4] text-left flex items-start gap-2 text-primary-teal text-[12px] font-extrabold px-4 py-3 rounded-xl">
                         <span className="pt-[1px]">→</span>
                         <span>{tip}</span>
@@ -328,7 +355,7 @@ export default function DashboardScreen() {
         </div>
 
         {/* 4.5 PERSONALIZED DIET PLAN */}
-        {hasReport && dietPlan && (
+        {hasData && dietPlan && (
           <div className="pt-2">
             <h3 className="text-dark-teal font-extrabold text-[17px] leading-tight mb-1">Diet Focus</h3>
             <p className="text-[#A0A0A0] text-[11px] font-semibold italic mb-4 capitalize">Personalized for: {dietPlan.focus?.replace(/_/g, ' ')}</p>
@@ -339,8 +366,8 @@ export default function DashboardScreen() {
                 <span className="bg-[#26C6BF] text-white text-[10px] font-extrabold px-3 py-1 rounded-full inline-block mb-3">Eat more</span>
                 <h4 className="text-dark-teal font-extrabold text-[15px] mb-3">Recommended Foods</h4>
                 <ul className="space-y-1">
-                  {[...(dietPlan.breakfast || []), ...(dietPlan.lunch || []), ...(dietPlan.dinner || [])]
-                    .slice(0, 4).map((item: string, i: number) => (
+                  {(dietPlan.eat_more || [])
+                    .slice(0, 5).map((item: string, i: number) => (
                     <li key={i} className="text-dark-teal text-[12px] font-medium flex items-center gap-2">
                       <span className="w-1.5 h-1.5 rounded-full bg-[#26C6BF] shrink-0" /> <span className="leading-tight">{item}</span>
                     </li>
@@ -348,9 +375,23 @@ export default function DashboardScreen() {
                 </ul>
               </div>
 
+              {dietPlan.reduce && dietPlan.reduce.length > 0 && (
+                <div className="bg-white border-[1.5px] border-[#E8F1F1] border-l-4 border-l-[#F59E0B] rounded-[24px] p-5 min-w-[220px] shrink-0 shadow-sm snap-start">
+                  <span className="bg-[#FEF3C7] text-[#D97706] text-[10px] font-extrabold px-3 py-1 rounded-full inline-block mb-3">Reduce</span>
+                  <h4 className="text-dark-teal font-extrabold text-[15px] mb-3">Limit These</h4>
+                  <ul className="space-y-1">
+                    {dietPlan.reduce.slice(0, 4).map((item: string, i: number) => (
+                      <li key={i} className="text-dark-teal text-[12px] font-medium flex items-center gap-2">
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#F59E0B] shrink-0" /> <span className="leading-tight">{item}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
               {dietPlan.avoid && dietPlan.avoid.length > 0 && (
                 <div className="bg-white border-[1.5px] border-[#E8F1F1] border-l-4 border-l-[#FF4D4D] rounded-[24px] p-5 min-w-[220px] shrink-0 shadow-sm snap-start">
-                  <span className="bg-[#E0F7F4] text-dark-teal text-[10px] font-extrabold px-3 py-1 rounded-full inline-block mb-3">Reduce</span>
+                  <span className="bg-[#FEE2E2] text-[#DC2626] text-[10px] font-extrabold px-3 py-1 rounded-full inline-block mb-3">Avoid</span>
                   <h4 className="text-dark-teal font-extrabold text-[15px] mb-3">Foods to Avoid</h4>
                   <ul className="space-y-1">
                     {dietPlan.avoid.slice(0, 4).map((item: string, i: number) => (
@@ -361,7 +402,6 @@ export default function DashboardScreen() {
                   </ul>
                 </div>
               )}
-
             </div>
           </div>
         )}
