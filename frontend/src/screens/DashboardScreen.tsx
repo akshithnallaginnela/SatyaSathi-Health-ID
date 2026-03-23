@@ -42,7 +42,6 @@ export default function DashboardScreen() {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [clinics, setClinics] = useState<any[]>([]);
-  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   const fetchDashboard = async () => {
     try {
@@ -79,13 +78,12 @@ export default function DashboardScreen() {
 
     // Listen for report upload events to refresh dashboard
     const handleReportUpload = () => {
-      setRefreshTrigger(prev => prev + 1);
       fetchDashboard();
     };
 
     window.addEventListener('report-uploaded', handleReportUpload);
     return () => window.removeEventListener('report-uploaded', handleReportUpload);
-  }, [refreshTrigger]);
+  }, []);
 
   const completeTask = async (taskId: string, coinsReward: number) => {
     // Optimistic update
@@ -110,15 +108,15 @@ export default function DashboardScreen() {
   const tasksDone = displayTasks.filter((t: any) => t.completed).length;
   const tasksPending = Math.max(displayTasks.length - tasksDone, 0);
   const weekCompletion = data?.week_completion || [false, false, false, false, false, false, false];
+  const preventive = data?.preventive_analytics || {};
+  const preventiveTips: string[] = preventive?.positive_precautions || [];
 
   // Deduplicate preventive tips
   const uniquePreventiveTips = Array.from(new Map(preventiveTips.map(tip => [tip, tip])).values());
   const todayIndex = new Date().getDay() === 0 ? 6 : new Date().getDay() - 1;
-  const preventive = data?.preventive_analytics || {};
   const hasReport = !!preventive.report_type;
   const score = hasReport ? (data?.wellness_score || 72) : 0;
   const theme = getScoreTheme(score);
-  const preventiveTips: string[] = preventive?.positive_precautions || [];
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="relative bg-[#FAFAFA] min-h-full pb-32">
