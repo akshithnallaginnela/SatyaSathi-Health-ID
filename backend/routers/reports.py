@@ -51,9 +51,12 @@ async def analyze_report(
     # 3. Run Gemini OCR
     try:
         extracted = await extract_report_values(file_path)
+        if not extracted:
+            raise ValueError("Gemini returned empty result")
     except Exception as e:
-        print(f"OCR Error: {e}")
-        raise HTTPException(status_code=500, detail="Failed to analyze report via Gemini.")
+        print(f"❌ Gemini OCR ERROR: {str(e)}")
+        # Fallback empty result so we don't 500
+        extracted = {"lab_name": "Extraction Failed", "message": f"Could not extract details: {str(e)}"}
 
     # 4. Save to DB
     report = BloodReport(

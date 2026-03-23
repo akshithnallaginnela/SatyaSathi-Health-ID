@@ -48,14 +48,24 @@ async def get_latest_report(user_id: str, db: AsyncSession):
 
 def build_features(user, bp_readings, sugar_readings, report):
     f = {}
-    f["age"] = 30 # Simplified
+    
+    # Calculate actual age
+    if user.date_of_birth:
+        today = datetime.date.today()
+        dob = user.date_of_birth
+        f["age"] = today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
+    else:
+        f["age"] = 35 # Fallback
+        
     f["gender_enc"] = 1 if user.gender == "male" else 0
-    f["bmi"] = user.bmi or 0
-    f["waist_cm"] = user.waist_cm or 0
+    f["bmi"] = float(user.bmi or 23.0)
+    f["height_cm"] = float(user.height_cm or 170.0)
+    f["weight_kg"] = float(user.weight_kg or 70.0)
+    f["waist_cm"] = float(user.waist_cm or 85.0)
     f["smoking"] = int(user.smoking or 0)
     f["alcohol"] = int(user.alcohol or 0)
-    f["activity_level"] = user.activity_level or 1
-    f["stress_level"] = user.stress_level or 5
+    f["activity_level"] = user.activity_level or 1.0
+    f["stress_level"] = user.stress_level or 3.0
     f["family_hx_diabetes"] = int(user.family_hx_diabetes or 0)
     f["family_hx_heart"] = int(user.family_hx_heart or 0)
 
