@@ -70,6 +70,10 @@ export default function MyIDScreen({ user, onLogout }: { user: any; onLogout: ()
       const res = await mlAPI.analyzeReport(reportFile, reportType);
       setReportResult(res);
       setNoticeMsg('Report uploaded and analyzed successfully.');
+      
+      // Trigger dashboard refresh
+      window.dispatchEvent(new Event('report-uploaded'));
+      
       alert('✅ Upload Successful!\n\nYour Health Dashboard and Daily Tasks have been dynamically updated with insights from your report.');
     } catch (e: any) {
       setNoticeMsg(e?.message || 'Failed to upload report.');
@@ -172,8 +176,12 @@ export default function MyIDScreen({ user, onLogout }: { user: any; onLogout: ()
       <div className="px-6 mt-4">
         <h3 className="text-primary-teal text-[10px] font-extrabold uppercase tracking-widest mb-3">Recent Activity</h3>
         <div className="space-y-2">
-          {activity.completed_tasks.slice(0, 5).map((t: any) => (
-            <div key={t.id} className="bg-white border border-teal-border rounded-2xl p-3 flex items-center justify-between">
+          {/* Deduplicate by task id */}
+          {activity.completed_tasks
+            .filter((t: any, idx: number, arr: any[]) => arr.findIndex(item => item.id === t.id) === idx)
+            .slice(0, 5)
+            .map((t: any) => (
+            <div key={`task-${t.id}`} className="bg-white border border-teal-border rounded-2xl p-3 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Activity size={14} className="text-primary-teal" />
                 <span className="text-dark-teal text-xs font-semibold">{t.name}</span>
@@ -191,8 +199,12 @@ export default function MyIDScreen({ user, onLogout }: { user: any; onLogout: ()
       <div className="px-6 mt-4">
         <h3 className="text-primary-teal text-[10px] font-extrabold uppercase tracking-widest mb-3">Activity Log</h3>
         <div className="bg-white border border-teal-border rounded-2xl p-3 max-h-52 overflow-y-auto space-y-2">
-          {activity.coin_transactions.slice(0, 10).map((tx: any) => (
-            <div key={tx.id} className="flex items-center justify-between bg-light-teal-surface rounded-xl px-3 py-2">
+          {/* Deduplicate by transaction id */}
+          {activity.coin_transactions
+            .filter((tx: any, idx: number, arr: any[]) => arr.findIndex(item => item.id === tx.id) === idx)
+            .slice(0, 10)
+            .map((tx: any) => (
+            <div key={`tx-${tx.id}`} className="flex items-center justify-between bg-light-teal-surface rounded-xl px-3 py-2">
               <span className="text-dark-teal text-xs font-semibold">{tx.type}</span>
               <span className={`text-xs font-extrabold ${tx.amount >= 0 ? 'text-primary-teal' : 'text-red-500'}`}>
                 {tx.amount >= 0 ? `+${tx.amount}` : tx.amount}

@@ -42,18 +42,21 @@ export default function DashboardScreen() {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [clinics, setClinics] = useState<any[]>([]);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+  const fetchDashboard = async () => {
+    try {
+      const res = await dashboardAPI.getSummary();
+      setData(res);
+    } catch (e) {
+      console.error("Dashboard fetch error", e);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    (async () => {
-      try {
-        const res = await dashboardAPI.getSummary();
-        setData(res);
-      } catch (e) {
-        console.error("Dashboard fetch error", e);
-      } finally {
-        setLoading(false);
-      }
-    })();
+    fetchDashboard();
 
     const loadClinics = async (lat: number, lng: number) => {
       try {
@@ -73,7 +76,16 @@ export default function DashboardScreen() {
     } else {
       loadClinics(12.9716, 77.5946);
     }
-  }, []);
+
+    // Listen for report upload events to refresh dashboard
+    const handleReportUpload = () => {
+      setRefreshTrigger(prev => prev + 1);
+      fetchDashboard();
+    };
+
+    window.addEventListener('report-uploaded', handleReportUpload);
+    return () => window.removeEventListener('report-uploaded', handleReportUpload);
+  }, [refreshTrigger]);
 
   const completeTask = async (taskId: string, coinsReward: number) => {
     // Optimistic update
@@ -98,6 +110,9 @@ export default function DashboardScreen() {
   const tasksDone = displayTasks.filter((t: any) => t.completed).length;
   const tasksPending = Math.max(displayTasks.length - tasksDone, 0);
   const weekCompletion = data?.week_completion || [false, false, false, false, false, false, false];
+
+  // Deduplicate preventive tips
+  const uniquePreventiveTips = Array.from(new Map(preventiveTips.map(tip => [tip, tip])).values());
   const todayIndex = new Date().getDay() === 0 ? 6 : new Date().getDay() - 1;
   const preventive = data?.preventive_analytics || {};
   const hasReport = !!preventive.report_type;
@@ -269,12 +284,12 @@ export default function DashboardScreen() {
                 </div>
               </div>
 
-              {preventiveTips.length > 0 && (
+              {uniquePreventiveTips.length > 0 && (
                 <div>
                   <h3 className="text-dark-teal font-extrabold text-[13px] mb-2">Recommended Actions</h3>
                   <div className="flex flex-col gap-2">
-                    {preventiveTips.slice(0, 3).map((tip: string, idx: number) => (
-                      <button key={idx} className="bg-[#E0F7F4] text-left text-primary-teal text-[11px] font-extrabold px-4 py-2 rounded-xl">
+                    {uniquePreventiveTips.slice(0, 3).map((tip: string, idx: number) => (
+                      <button key={`tip-${idx}`} className="bg-[#E0F7F4] text-left text-primary-teal text-[11px] font-extrabold px-4 py-2 rounded-xl">
                         → {tip}
                       </button>
                     ))}
