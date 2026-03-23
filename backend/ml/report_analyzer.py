@@ -129,6 +129,35 @@ def _rule_based_assessment(ocr_data: dict[str, Any]) -> dict[str, Any]:
     high_med_hits = _scan_text(full_text, HIGH_RISK_MEDICATIONS)
     moderate_med_hits = _scan_text(full_text, MODERATE_RISK_MEDICATIONS)
 
+    import re
+    lab_results = ocr_data.get("lab_results") or {}
+    if isinstance(lab_results, dict):
+        # Numeric Hemoglobin Check
+        hb_str = str(lab_results.get("hemoglobin") or "")
+        match = re.search(r"(\d+(\.\d+)?)", hb_str)
+        if match:
+            try:
+                hb_val = float(match.group(1))
+                if hb_val < 7.0:
+                    high_hits.append("severe anemia")
+                elif hb_val < 13.0:
+                    moderate_hits.append("low hemoglobin")
+            except ValueError:
+                pass
+                
+        # Numeric Glucose Check
+        fs_str = str(lab_results.get("fasting_sugar") or lab_results.get("glucose") or "")
+        match = re.search(r"(\d+(\.\d+)?)", fs_str)
+        if match:
+            try:
+                fs_val = float(match.group(1))
+                if fs_val > 250:
+                    high_hits.append("fasting glucose > 250")
+                elif fs_val > 100:
+                    moderate_hits.append("glucose elevated")
+            except ValueError:
+                pass
+
     flags: list[str] = []
     for hit in high_hits:
         flags.append(f"High-risk finding: {hit.title()}")
