@@ -1008,13 +1008,29 @@ async def save_preventive_care(user_id: str, care_items: list[dict], db: AsyncSe
         db.add(obj)
 
 async def replace_todays_tasks(user_id: str, task_list: list[dict], db: AsyncSession):
-    # Delete ALL tasks for today — fresh analysis replaces everything
+    # 1. Fetch completed tasks for today so we don't recreate them
+    result = await db.execute(
+        select(DailyTask)
+        .where(DailyTask.user_id == user_id)
+        .where(DailyTask.task_date == datetime.date.today())
+        .where(DailyTask.completed == True)
+    )
+    completed_tasks = result.scalars().all()
+    completed_types = {t.task_type for t in completed_tasks}
+
+    # 2. Delete all INCOMPLETE tasks for today
     await db.execute(
         delete(DailyTask)
         .where(DailyTask.user_id == user_id)
         .where(DailyTask.task_date == datetime.date.today())
+        .where(DailyTask.completed == False)
     )
+    
+    # 3. Add new tasks ONLY if they haven't been completed today
     for t in task_list:
+        if t["task_type"] in completed_types:
+            continue
+            
         obj = DailyTask(
             user_id=user_id,
             task_type=t["task_type"],
