@@ -196,6 +196,25 @@ export default function DashboardScreen() {
 
       <div className="px-5 relative z-20 -mt-6 space-y-5">
         
+        {/* 1.5 EMPTY STATE CARD (ONLY IF NO DATA) */}
+        {!data?.has_data && (
+          <div className="bg-[#F2FDFB] border-[1.5px] border-dashed border-primary-teal/40 rounded-[28px] p-8 text-center shadow-inner">
+            <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm">
+              <Activity size={32} className="text-primary-teal" />
+            </div>
+            <h3 className="text-dark-teal font-extrabold text-[18px] mb-2">Welcome to VitalID</h3>
+            <p className="text-muted-teal text-[13px] leading-relaxed mb-6">
+              Log your first Blood Pressure, Sugar or upload a Blood Report 
+              to see your AI health insights and daily tasks.
+            </p>
+            <div className="flex flex-col gap-3">
+              <button onClick={() => window.location.hash = '#/vitals'} className="bg-primary-teal text-white font-extrabold py-3 rounded-2xl shadow-md active:scale-95 transition-all">
+                Log Vitals Now
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* 2. STREAK CARD */}
         <div className="bg-white border-[1.5px] border-[#FFE2C8] rounded-[24px] p-5 shadow-[0_4px_16px_-8px_rgba(255,122,0,0.15)]">
           <div className="flex items-center gap-4 mb-5">
