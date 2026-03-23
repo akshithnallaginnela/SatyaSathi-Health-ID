@@ -90,12 +90,11 @@ export const authAPI = {
   verifyOTP: (phone_number: string, otp: string) =>
     apiFetch('/auth/verify-otp', { method: 'POST', body: JSON.stringify({ phone_number, otp }) }),
 
-  aadhaarVerify: (aadhaar_number: string, tempToken: string) =>
-    fetch(`${API_BASE}/auth/aadhaar-verify`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${tempToken}` },
-      body: JSON.stringify({ aadhaar_number }),
-    }).then(r => { if (!r.ok) throw r; return r.json(); }),
+  aadhaarVerify: (aadhaar_number: string) =>
+    apiFetch('/auth/aadhaar-submit', { 
+      method: 'POST', 
+      body: JSON.stringify({ aadhaar_number }) 
+    }),
 
   login: (phone_number: string, password: string) =>
     apiFetch('/auth/login', { method: 'POST', body: JSON.stringify({ phone_number, password }) }),
@@ -116,7 +115,7 @@ export const vitalsAPI = {
     apiFetch('/vitals/bp', { method: 'POST', body: JSON.stringify({ systolic, diastolic, pulse }) }),
 
   logGlucose: (fasting_glucose: number) =>
-    apiFetch('/vitals/glucose', { method: 'POST', body: JSON.stringify({ fasting_glucose }) }),
+    apiFetch('/vitals/sugar', { method: 'POST', body: JSON.stringify({ fasting_glucose }) }),
 
   logBMI: (weight_kg: number, height_cm: number, waist_cm?: number) =>
     apiFetch('/vitals/bmi', { method: 'POST', body: JSON.stringify({ weight_kg, height_cm, waist_cm }) }),
@@ -149,7 +148,7 @@ export const ocrAPI = {
     const headers: any = {};
     if (token) headers['Authorization'] = `Bearer ${token}`;
 
-    const response = await fetch(`${API_BASE}/ocr/analyze`, {
+    const response = await fetch(`${API_BASE}/reports/analyze`, {
       method: 'POST',
       headers,
       body: formData,
