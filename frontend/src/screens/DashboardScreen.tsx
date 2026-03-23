@@ -297,10 +297,10 @@ export default function DashboardScreen() {
           </div>
         )}
 
-        {/* 4. PREVENTIVE CARE ANALYSIS */}
+        {/* 4. PREVENTIVE CARE ANALYSIS — Clean card matching reference UI */}
         <div className="bg-white border-[1.5px] border-border-teal rounded-[28px] p-5 shadow-sm">
-          <h3 className="text-dark-teal font-extrabold text-[17px] leading-tight mb-1">What your body is telling you</h3>
-          <p className="text-[#A0A0A0] text-[11px] font-semibold italic mb-4">Trends only — not a diagnosis.</p>
+          <h3 className="text-dark-teal font-extrabold text-[17px] leading-tight mb-0.5">What your body is telling you</h3>
+          <p className="text-[#A0A0A0] text-[11px] font-semibold italic mb-5">Trends only — not a diagnosis.</p>
 
           {!hasData ? (
             <div className="bg-[#F2FDFB] border border-border-teal rounded-2xl p-4 text-center">
@@ -308,69 +308,69 @@ export default function DashboardScreen() {
               <p className="text-muted-teal text-[11px] mt-1">Log your BP, Sugar, or upload a report to see insights.</p>
             </div>
           ) : (
-            <div className="space-y-5">
-              <div>
-                <div className="flex justify-between items-center mt-0.5">
-                  <p className="text-muted-teal text-[12px] font-medium leading-tight pr-4">
+            <div className="space-y-0">
+              {(preventive.all_care_items || []).map((item: any, idx: number) => {
+                const barColor = 
+                  item.urgency === 'act_now' ? '#EF4444' :
+                  item.urgency === 'focus' ? '#F97316' :
+                  item.urgency === 'watch' ? '#F59E0B' :
+                  '#22C55E';
+                
+                const categoryLabel: Record<string, string> = {
+                  blood_pressure: 'Hypertension',
+                  blood_sugar: 'Blood Sugar',
+                  weight_bmi: 'Weight Management',
+                  hemoglobin: 'Hemoglobin',
+                  platelets: 'Platelets',
+                  kidney_health: 'Kidney Health',
+                  lifestyle_compound: 'Lifestyle',
+                  genetic_risk: 'Genetic Risk'
+                };
+                
+                return (
+                  <div key={idx} className={`py-4 ${idx > 0 ? 'border-t border-[#F0F0F0]' : ''}`}>
+                    {/* Category Title + Score */}
+                    <div className="flex justify-between items-baseline">
+                      <h4 className="text-dark-teal font-extrabold text-[15px]">
+                        {categoryLabel[item.category] || item.category.replace(/_/g, ' ')}
+                      </h4>
+                      <span className="font-extrabold text-[18px]" style={{ color: barColor }}>
+                        {item.risk_score || 30}%
+                      </span>
+                    </div>
+                    
+                    {/* Description */}
+                    <p className="text-muted-teal text-[12px] font-medium mt-0.5 leading-snug">
+                      {item.status}
+                    </p>
+                    
+                    {/* Progress Bar */}
+                    <div className="w-full bg-[#E8F1F1] h-[6px] rounded-full mt-2.5 overflow-hidden">
+                      <div 
+                        className="h-full rounded-full transition-all duration-1000 ease-out" 
+                        style={{ 
+                          width: `${item.risk_score || 30}%`,
+                          backgroundColor: barColor 
+                        }} 
+                      />
+                    </div>
+                    
+                    {/* Action Button */}
+                    {item.top_action && (
+                      <div className="mt-2.5 inline-block bg-[#E0F7F4] text-primary-teal text-[11px] font-extrabold px-3.5 py-2 rounded-xl">
+                        → {item.top_action}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+              
+              {/* Fallback if no care items */}
+              {(!preventive.all_care_items || preventive.all_care_items.length === 0) && (
+                <div className="py-4 text-center">
+                  <p className="text-muted-teal text-[12px] font-semibold">
                     {preventive.summary || 'Your health data is being analyzed.'}
                   </p>
-                  <span className={`font-extrabold text-[13px] capitalize px-3 py-1 rounded-full ${
-                    preventive.risk_level === 'act_now' ? 'bg-[#FEE2E2] text-[#DC2626]' :
-                    preventive.risk_level === 'focus' ? 'bg-[#FFF7ED] text-[#EA580C]' :
-                    preventive.risk_level === 'watch' ? 'bg-[#FEF3C7] text-[#D97706]' :
-                    'bg-[#DCFCE7] text-[#15803D]'
-                  }`}>
-                    {preventive.risk_level === 'act_now' ? '⚠️ Needs Action' :
-                     preventive.risk_level === 'focus' ? '🔍 Focus Area' :
-                     preventive.risk_level === 'watch' ? '👀 Monitor' :
-                     '💚 Looking Good'}
-                  </span>
-                </div>
-                {preventive.data_sources_used && preventive.data_sources_used.length > 0 && (
-                  <p className="text-muted-teal text-[10px] font-semibold mt-1">
-                    Based on: {preventive.data_sources_used.join(', ')}
-                  </p>
-                )}
-              </div>
-
-              {/* Individual care item cards */}
-              {(preventive.all_care_items || []).slice(0, 4).map((item: any, idx: number) => (
-                <div key={idx} className={`border-l-4 rounded-xl p-3 ${
-                  item.urgency === 'act_now' ? 'border-l-[#EF4444] bg-[#FEF2F2]' :
-                  item.urgency === 'focus' ? 'border-l-[#EA580C] bg-[#FFF7ED]' :
-                  item.urgency === 'watch' ? 'border-l-[#F59E0B] bg-[#FFFBEB]' :
-                  'border-l-[#22C55E] bg-[#F0FDF4]'
-                }`}>
-                  <div className="flex justify-between items-start">
-                    <h4 className="text-dark-teal font-extrabold text-[12px] capitalize flex items-center gap-1">
-                      {item.category === 'blood_pressure' ? '🫀' :
-                       item.category === 'blood_sugar' ? '🩸' :
-                       item.category === 'weight_bmi' ? '⚖️' :
-                       item.category === 'hemoglobin' ? '💉' :
-                       item.category === 'platelets' ? '🔬' :
-                       item.category === 'kidney_health' ? '🫘' :
-                       item.category === 'lifestyle_compound' ? '🚭' :
-                       item.category === 'genetic_risk' ? '🧬' : '📋'}
-                      {' '}{item.category.replace(/_/g, ' ')}
-                    </h4>
-                    <span className="text-[9px] font-bold text-muted-teal">{item.horizon}</span>
-                  </div>
-                  <p className="text-dark-teal text-[11px] font-semibold mt-1">{item.status}</p>
-                  <p className="text-muted-teal text-[10px] mt-1 leading-relaxed">{item.risk}</p>
-                </div>
-              ))}
-
-              {uniquePreventiveTips.length > 0 && (
-                <div>
-                  <h3 className="text-dark-teal font-extrabold text-[13px] mb-2">Recommended Actions</h3>
-                  <div className="flex flex-col gap-2">
-                    {uniquePreventiveTips.slice(0, 6).map((tip: string, idx: number) => (
-                      <div key={`tip-${idx}`} className="bg-[#E0F7F4] text-left flex items-start gap-2 text-primary-teal text-[12px] font-extrabold px-4 py-3 rounded-xl">
-                        <span className="pt-[1px]">→</span>
-                        <span>{tip}</span>
-                      </div>
-                    ))}
-                  </div>
                 </div>
               )}
             </div>
