@@ -19,6 +19,8 @@ from routers.tasks import router as tasks_router
 from routers.reports import router as reports_router
 from routers.profile import router as profile_router, settings_router
 from routers.clinics import router as clinics_router
+from routers.coins import router as coins_router
+from routers.notifications import router as notifications_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -56,6 +58,7 @@ app.include_router(reports_router)
 app.include_router(profile_router)
 app.include_router(settings_router)
 app.include_router(clinics_router)
+app.include_router(coins_router)
 
 # Legacy compatibility for /api/ml/analyze-report
 from routers.reports import analyze_report

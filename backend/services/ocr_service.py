@@ -30,12 +30,15 @@ class OCRPayload(BaseModel):
 
 def _clean_json_text(text: str) -> str:
     cleaned = text.strip()
-    if cleaned.startswith("" * 3 + "json"):
+    # Remove markdown code block markers
+    if cleaned.startswith("```json"):
         cleaned = cleaned[7:]
-    elif cleaned.startswith("" * 3):
+    elif cleaned.startswith("```"):
         cleaned = cleaned[3:]
-    if cleaned.endswith("" * 3):
+    
+    if cleaned.endswith("```"):
         cleaned = cleaned[:-3]
+    
     return cleaned.strip()
 
 async def extract_report_values(file_path: str) -> dict:
