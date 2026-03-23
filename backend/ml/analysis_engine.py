@@ -214,16 +214,16 @@ def calculate_health_index(features: dict) -> int:
     
     score = 100.0
     
-    # ── BP Score ──
-    bp_avg = features.get("bp_systolic_avg")
-    if bp_avg is not None:
-        if bp_avg < 120:
+    # ── BP Score (Use latest for immediate feedback) ──
+    bp_val = features.get("bp_systolic_latest") or features.get("bp_systolic_avg")
+    if bp_val is not None:
+        if bp_val < 120:
             pass
-        elif bp_avg < 130:
+        elif bp_val < 130:
             score -= 8
-        elif bp_avg < 140:
+        elif bp_val < 140:
             score -= 18
-        elif bp_avg < 160:
+        elif bp_val < 160:
             score -= 28
         else:
             score -= 35
@@ -231,13 +231,13 @@ def calculate_health_index(features: dict) -> int:
             score -= 5
     
     # ── Sugar Score ──
-    sugar_avg = features.get("sugar_avg")
-    if sugar_avg is not None:
-        if sugar_avg < 100:
+    sugar_val = features.get("sugar_latest") or features.get("sugar_avg")
+    if sugar_val is not None:
+        if sugar_val < 100:
             pass
-        elif sugar_avg < 126:
+        elif sugar_val < 126:
             score -= 12
-        elif sugar_avg < 200:
+        elif sugar_val < 200:
             score -= 25
         else:
             score -= 35
@@ -306,16 +306,16 @@ def generate_preventive_care(features: dict) -> list[dict]:
     if not features.get("has_vitals_data"):
         return care_items
     
-    # ── BP Care ──
-    bp_avg = features.get("bp_systolic_avg")
-    if bp_avg is not None:
+    # ── BP Care (Use latest for immediate feedback) ──
+    bp_val = features.get("bp_systolic_latest") or features.get("bp_systolic_avg")
+    if bp_val is not None:
         bp_trend = features.get("bp_trend", "steady")
         
-        if bp_avg < 120:
+        if bp_val < 120:
             care_items.append({
                 "category": "blood_pressure",
                 "urgency": "great",
-                "current_status": f"Healthy BP — {bp_avg:.0f} mmHg avg 💚",
+                "current_status": f"Healthy BP — {bp_val:.0f} mmHg 💚",
                 "future_risk_message": (
                     "Your blood pressure is in an excellent range! "
                     "You're doing something right — keep up the active lifestyle. "
@@ -687,16 +687,16 @@ def generate_daily_tasks(features: dict, user) -> list[dict]:
     if not features.get("has_vitals_data"):
         return tasks  # Empty — dashboard will show the empty state card
     
-    # ── BP-Based Tasks (ONLY if user has logged BP) ──
+    # ── BP-Based Tasks (Use latest for immediate feedback) ──
     if features.get("has_bp_data"):
-        bp_avg = features.get("bp_systolic_avg", 120)
+        bp_val = features.get("bp_systolic_latest") or features.get("bp_systolic_avg", 120)
         
-        if bp_avg >= 130:
+        if bp_val >= 130:
             tasks.append({
                 "task_type": "MORNING_WALK",
                 "task_name": "Walk 10,000 steps today",
                 "description": "A brisk morning walk — your best BP medicine",
-                "why_this_task": f"Your BP avg is {bp_avg:.0f}. Walking for 30 min can reduce it by 5-8 mmHg naturally",
+                "why_this_task": f"Your current BP is {bp_val:.0f}. Walking for 30 min can reduce it by 5-8 mmHg naturally",
                 "category": "exercise",
                 "time_of_day": "morning",
                 "duration_or_quantity": "30 min / 10,000 steps",
@@ -735,16 +735,16 @@ def generate_daily_tasks(features: dict, user) -> list[dict]:
                 "coins_reward": 12
             })
     
-    # ── Sugar-Based Tasks (ONLY if user has logged sugar) ──
+    # ── Sugar-Based Tasks ──
     if features.get("has_sugar_data"):
-        sugar_avg = features.get("sugar_avg", 100)
+        sugar_val = features.get("sugar_latest") or features.get("sugar_avg", 100)
         
-        if sugar_avg >= 100:
+        if sugar_val >= 100:
             tasks.append({
                 "task_type": "POST_MEAL_WALK",
                 "task_name": "Walk 10 min after lunch",
                 "description": "This one habit reduces sugar spikes by 22%",
-                "why_this_task": f"Sugar at {sugar_avg:.0f} mg/dL — post-meal walking is the #1 natural sugar control",
+                "why_this_task": f"Current sugar at {sugar_val:.0f} mg/dL — post-meal walking is the #1 natural sugar control",
                 "category": "exercise",
                 "time_of_day": "afternoon",
                 "duration_or_quantity": "10 minutes after eating",
