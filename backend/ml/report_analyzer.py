@@ -79,7 +79,7 @@ MODERATE_RISK_MEDICATIONS = [
     "levothyroxine", "aspirin",
 ]
 
-MODEL_ARTIFACT_PATH = Path(__file__).resolve().parent / "models" / "risk_model.joblib"
+MODEL_ARTIFACT_PATH = Path(__file__).resolve().parent / "weights" / "risk_model.joblib"
 
 
 @lru_cache(maxsize=1)

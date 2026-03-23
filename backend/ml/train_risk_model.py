@@ -120,7 +120,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--output",
         type=Path,
-        default=Path("ml/models/risk_model.joblib"),
+        default=Path("ml/weights/risk_model.joblib"),
         help="Path to save model artifact",
     )
     parser.add_argument("--test-size", type=float, default=0.25, help="Holdout ratio")
