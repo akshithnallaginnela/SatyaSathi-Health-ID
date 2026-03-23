@@ -35,15 +35,26 @@ def _normalize_report_type(value: str | None) -> str:
     return alias.get(v, v)
 
 
-def _build_positive_precautions(risk_level: str, report_type: str) -> list[str]:
+def _build_positive_precautions(risk_level: str, report_type: str, flags: list[str] = []) -> list[str]:
     base = [
         "Try a 20-minute brisk walk after meals on most days.",
         "Drink enough water through the day and keep sleep consistent.",
         "Track one small habit daily instead of changing everything at once.",
     ]
+    
+    # Blood Sugar Specific
     if report_type == "blood_sugar_report":
         base[0] = "Add a 15-20 minute post-meal walk to support steady sugar levels."
         base.append("Use high-fiber meals and reduce refined sugar portions gradually.")
+
+    # Anemia Specific
+    flags_text = " ".join(flags).lower()
+    if "anemia" in flags_text or "hemoglobin" in flags_text:
+        base[0] = "Increase dietary iron: focus on spinach, nuts, lentils, and jaggery."
+        base[1] = "Pair iron-rich foods with Vitamin C (like lemon/orange) for better absorption."
+        base.append("Avoid tea or coffee immediately after meals as they block iron absorption.")
+
+    # General Risk
     if risk_level == "high":
         base.insert(0, "Book a doctor follow-up this week and carry this report for review.")
     elif risk_level == "moderate":
@@ -156,7 +167,7 @@ async def analyze_report(
             "needs_review": needs_review,
             "selected_report_type": selected_report_type,
             "inferred_report_type": inferred_report_type,
-            "positive_precautions": _build_positive_precautions(ml_result.get("risk_level", "low"), selected_report_type),
+            "positive_precautions": _build_positive_precautions(ml_result.get("risk_level", "low"), selected_report_type, ml_result.get("flags", [])),
             "original_filename": file.filename,
         },
         upload_status="needs_review" if needs_review else "processed",
@@ -174,11 +185,18 @@ async def analyze_report(
     # We only generate extra tasks if the report detects risks.
     # Routine vitals tracking (like LOG_BP) is strictly managed by tasks.py based on past values.
     risk = ml_result.get("risk_level", "low")
+    flags_text = " ".join(ml_result.get("flags", [])).lower()
+    
     if risk in ["moderate", "high"]:
         if selected_report_type == "blood_sugar_report":
             new_tasks = [
                 {"type": "POST_MEAL_WALK", "name": "15 Min Post-Meal Walk", "coins": 20, "time_slot": "afternoon"},
                 {"type": "AVOID_SUGAR", "name": "Zero Added Sugar Today", "coins": 25, "time_slot": "evening"}
+            ]
+        elif "anemia" in flags_text or "hemoglobin" in flags_text:
+            new_tasks = [
+                {"type": "IRON_DIET", "name": "Eat Iron-Rich Meal (Spinach/Lentils)", "coins": 25, "time_slot": "afternoon"},
+                {"type": "VITAMIN_C", "name": "Take Vitamin C (Lemon/Orange)", "coins": 15, "time_slot": "morning"}
             ]
         else:
             new_tasks = [
@@ -215,5 +233,5 @@ async def analyze_report(
         "needs_review": needs_review,
         "ocr_data": ocr_data,
         "ml_analysis": ml_result,
-        "positive_precautions": _build_positive_precautions(ml_result.get("risk_level", "low"), selected_report_type),
+        "positive_precautions": _build_positive_precautions(ml_result.get("risk_level", "low"), selected_report_type, ml_result.get("flags", [])),
     }
