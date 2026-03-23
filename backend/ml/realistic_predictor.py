@@ -16,7 +16,7 @@ from typing import Any
 import pickle
 import re
 
-MODEL_DIR = Path(__file__).resolve().parent / "models" / "realistic"
+MODEL_DIR = Path(__file__).resolve().parent / "weights" / "realistic"
 
 
 @dataclass
