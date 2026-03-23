@@ -97,6 +97,7 @@ async def analyze_report(
 
     # 6. Trigger Full ML Analysis
     analysis = await run_full_analysis(user_id, db)
+    await db.commit()
     
     return {
         "message": "Report analyzed successfully",
