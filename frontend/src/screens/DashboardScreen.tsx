@@ -42,11 +42,13 @@ export default function DashboardScreen() {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [clinics, setClinics] = useState<any[]>([]);
+  const lastFetchRef = React.useRef<number>(0);
 
   const fetchDashboard = async () => {
     try {
       const res = await dashboardAPI.getSummary();
       setData(res);
+      lastFetchRef.current = Date.now();
     } catch (e) {
       console.error("Dashboard fetch error", e);
     } finally {
@@ -55,6 +57,19 @@ export default function DashboardScreen() {
   };
 
   useEffect(() => {
+    // Check if data was updated from another screen while Dashboard was unmounted
+    const updatedAt = localStorage.getItem('vitalid_data_updated');
+    if (updatedAt) {
+      const updateTime = parseInt(updatedAt, 10);
+      // If the update happened after our last fetch, force refetch
+      if (updateTime > lastFetchRef.current) {
+        console.log('📊 Data updated while away — refetching dashboard');
+      }
+      // Always clear the flag
+      localStorage.removeItem('vitalid_data_updated');
+    }
+    
+    // Always fetch fresh data on mount
     fetchDashboard();
 
     const loadClinics = async (lat: number, lng: number) => {
@@ -76,13 +91,17 @@ export default function DashboardScreen() {
       loadClinics(12.9716, 77.5946);
     }
 
-    // Listen for report upload events to refresh dashboard
-    const handleReportUpload = () => {
+    // Listen for live updates (when Dashboard stays mounted)
+    const handleDataUpdate = () => {
       fetchDashboard();
     };
 
-    window.addEventListener('report-uploaded', handleReportUpload);
-    return () => window.removeEventListener('report-uploaded', handleReportUpload);
+    window.addEventListener('report-uploaded', handleDataUpdate);
+    window.addEventListener('vitals-logged', handleDataUpdate);
+    return () => {
+      window.removeEventListener('report-uploaded', handleDataUpdate);
+      window.removeEventListener('vitals-logged', handleDataUpdate);
+    };
   }, []);
 
   const completeTask = async (taskId: string, coinsReward: number) => {
@@ -101,7 +120,7 @@ export default function DashboardScreen() {
   }
 
   const user = data?.user || { name: 'Arjun Kumar', initials: 'AK', profile_photo_url: null };
-  const coins = data?.coin_balance || 1240;
+  const coins = data?.coin_balance || 0;
   const streakDays = data?.streak_days || 0;
   const todaysTasks = data?.todays_tasks || [];
   const displayTasks = todaysTasks; // Show all model tasks
@@ -297,12 +316,14 @@ export default function DashboardScreen() {
                   </p>
                   <span className={`font-extrabold text-[13px] capitalize px-3 py-1 rounded-full ${
                     preventive.risk_level === 'act_now' ? 'bg-[#FEE2E2] text-[#DC2626]' :
+                    preventive.risk_level === 'focus' ? 'bg-[#FFF7ED] text-[#EA580C]' :
                     preventive.risk_level === 'watch' ? 'bg-[#FEF3C7] text-[#D97706]' :
                     'bg-[#DCFCE7] text-[#15803D]'
                   }`}>
-                    {preventive.risk_level === 'act_now' ? '⚠️ Act Now' :
-                     preventive.risk_level === 'watch' ? '👀 Watch' :
-                     '✅ Good'}
+                    {preventive.risk_level === 'act_now' ? '⚠️ Needs Action' :
+                     preventive.risk_level === 'focus' ? '🔍 Focus Area' :
+                     preventive.risk_level === 'watch' ? '👀 Monitor' :
+                     '💚 Looking Good'}
                   </span>
                 </div>
                 {preventive.data_sources_used && preventive.data_sources_used.length > 0 && (
@@ -316,6 +337,7 @@ export default function DashboardScreen() {
               {(preventive.all_care_items || []).slice(0, 4).map((item: any, idx: number) => (
                 <div key={idx} className={`border-l-4 rounded-xl p-3 ${
                   item.urgency === 'act_now' ? 'border-l-[#EF4444] bg-[#FEF2F2]' :
+                  item.urgency === 'focus' ? 'border-l-[#EA580C] bg-[#FFF7ED]' :
                   item.urgency === 'watch' ? 'border-l-[#F59E0B] bg-[#FFFBEB]' :
                   'border-l-[#22C55E] bg-[#F0FDF4]'
                 }`}>
@@ -326,6 +348,7 @@ export default function DashboardScreen() {
                        item.category === 'weight_bmi' ? '⚖️' :
                        item.category === 'hemoglobin' ? '💉' :
                        item.category === 'platelets' ? '🔬' :
+                       item.category === 'kidney_health' ? '🫘' :
                        item.category === 'lifestyle_compound' ? '🚭' :
                        item.category === 'genetic_risk' ? '🧬' : '📋'}
                       {' '}{item.category.replace(/_/g, ' ')}

@@ -21,7 +21,6 @@ UPLOAD_DIR = os.path.join(os.getcwd(), "uploads")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 @router.post("/analyze")
-@router.post("/ml/analyze-report")  # For legacy frontend compatibility
 async def analyze_report(
     file: UploadFile = File(...),
     user_id: str = Depends(get_current_user_id),
@@ -53,8 +52,25 @@ async def analyze_report(
         extracted = await extract_report_values(file_path)
         if not extracted:
             raise ValueError("Gemini returned empty result")
+        
+        # Log every extracted value
+        print(f"\n{'='*50}")
+        print(f"📋 OCR EXTRACTION RESULTS:")
+        for key, val in extracted.items():
+            if val is not None:
+                print(f"   ✅ {key}: {val}")
+        
+        # Count how many actual health values were extracted
+        health_keys = ["hemoglobin", "rbc_count", "wbc_count", "platelet_count", 
+                       "fasting_glucose", "random_glucose", "creatinine", "urea"]
+        extracted_count = sum(1 for k in health_keys if extracted.get(k) is not None)
+        print(f"   📊 Extracted {extracted_count} health values out of {len(health_keys)}")
+        print(f"{'='*50}\n")
+        
     except Exception as e:
         print(f"❌ Gemini OCR ERROR: {str(e)}")
+        import traceback
+        traceback.print_exc()
         # Fallback empty result so we don't 500
         extracted = {"lab_name": "Extraction Failed", "message": f"Could not extract details: {str(e)}"}
 
@@ -63,7 +79,7 @@ async def analyze_report(
         user_id=user_id,
         file_path=file_path,
         lab_name=extracted.get("lab_name"),
-        report_date=datetime.date.today(), # Or parse from extracted["report_date"]
+        report_date=datetime.date.today(),
         
         hemoglobin=extracted.get("hemoglobin"),
         rbc_count=extracted.get("rbc_count"),
@@ -85,21 +101,38 @@ async def analyze_report(
         creatinine=extracted.get("creatinine"),
         
         lab_interpretation=extracted.get("lab_interpretation"),
-        ocr_raw=json.dumps(extracted) # Simplified raw store
+        ocr_raw=json.dumps(extracted)
     )
     db.add(report)
     
-    # 5. Update Status
+    # 5. Update Status — create if missing
     result = await db.execute(select(UserDataStatus).where(UserDataStatus.user_id == user_id))
     status = result.scalar_one_or_none()
-    if status:
-        status.has_report = True
-        status.report_count += 1
+    if not status:
+        status = UserDataStatus(user_id=user_id)
+        db.add(status)
+    status.has_report = True
+    status.report_count += 1
     
     await db.flush()
+    
+    print(f"📋 Report saved for user {user_id}")
+    print(f"📊 Extracted values: hemoglobin={extracted.get('hemoglobin')}, "
+          f"platelets={extracted.get('platelet_count')}, "
+          f"glucose={extracted.get('fasting_glucose')}")
 
     # 6. Trigger Full ML Analysis
-    analysis = await run_full_analysis(user_id, db)
+    try:
+        analysis = await run_full_analysis(user_id, db)
+        print(f"✅ Analysis complete: health_index={analysis.get('health_index') if analysis else 'None'}, "
+              f"tasks={len(analysis.get('tasks', [])) if analysis else 0}, "
+              f"care_items={len(analysis.get('preventive_care', [])) if analysis else 0}")
+    except Exception as e:
+        print(f"❌ Analysis pipeline error: {e}")
+        import traceback
+        traceback.print_exc()
+        analysis = None
+    
     await db.commit()
     
     return {

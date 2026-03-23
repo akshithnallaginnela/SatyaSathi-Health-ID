@@ -49,7 +49,12 @@ async def log_bp(
     await _update_status(user_id, "bp", db)
     
     # Trigger AI analysis
-    analysis = await run_full_analysis(user_id, db)
+    try:
+        analysis = await run_full_analysis(user_id, db)
+        print(f"✅ BP logged + analysis: health_index={analysis.get('health_index') if analysis else 'N/A'}, tasks={len(analysis.get('tasks',[])) if analysis else 0}")
+    except Exception as e:
+        print(f"⚠️ Analysis error after BP log: {e}")
+        analysis = None
     await db.commit()
     
     return {
@@ -59,7 +64,7 @@ async def log_bp(
             "diastolic": new_reading.diastolic,
             "date": str(new_reading.date)
         },
-        "analysis_summary": analysis
+        "analysis_updated": analysis is not None
     }
 
 @router.post("/sugar")
@@ -78,7 +83,12 @@ async def log_sugar(
     await _update_status(user_id, "sugar", db)
     
     # Trigger AI analysis
-    analysis = await run_full_analysis(user_id, db)
+    try:
+        analysis = await run_full_analysis(user_id, db)
+        print(f"✅ Sugar logged + analysis: health_index={analysis.get('health_index') if analysis else 'N/A'}, tasks={len(analysis.get('tasks',[])) if analysis else 0}")
+    except Exception as e:
+        print(f"⚠️ Analysis error after Sugar log: {e}")
+        analysis = None
     await db.commit()
     
     return {
@@ -87,7 +97,7 @@ async def log_sugar(
             "fasting_glucose": new_reading.fasting_glucose,
             "date": str(new_reading.date)
         },
-        "analysis_summary": analysis
+        "analysis_updated": analysis is not None
     }
 
 @router.get("/history")
