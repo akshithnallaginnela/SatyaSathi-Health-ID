@@ -256,6 +256,7 @@ class UserResponse(BaseModel):
     bmi: Optional[float] = None
     aadhaar_verified: bool = False
     aadhaar_last4: Optional[str] = None
+    profile_photo_url: Optional[str] = None
     created_at: datetime
 
 class TokenResponse(BaseModel):

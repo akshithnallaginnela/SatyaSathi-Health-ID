@@ -20,9 +20,9 @@ Write-Host "Cleaning up existing processes..." -ForegroundColor Yellow
 Get-Process | Where-Object {$_.ProcessName -match "python|node"} | Stop-Process -Force -ErrorAction SilentlyContinue
 Start-Sleep 2
 
-# Delete old SQLite database files to force fresh migration
-Write-Host "Resetting database for clean migration..." -ForegroundColor Yellow
-Get-ChildItem -Path "$backendDir\*.db" | Remove-Item -Force -ErrorAction SilentlyContinue
+# Keep existing database for data persistence
+# Only delete if you want a fresh start: Remove-Item "$backendDir\*.db" -Force
+Write-Host "Using existing database (data persists)..." -ForegroundColor Yellow
 
 # Clear old incomplete tasks from database
 Write-Host "Clearing old tasks from database..." -ForegroundColor Yellow

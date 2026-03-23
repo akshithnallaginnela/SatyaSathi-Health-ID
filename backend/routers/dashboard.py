@@ -86,6 +86,8 @@ async def get_dashboard_summary(
         formatted_care.append({
             "category": c.category,
             "urgency": c.urgency,
+            "current_status": c.current_value,
+            "future_risk_message": c.future_risk_message,
             "status": c.current_value,
             "risk": c.future_risk_message,
             "steps": steps,
@@ -158,18 +160,21 @@ async def get_dashboard_summary(
         health_subtitle = "Some vitals need focus — the good news is, you're tracking them."
     else:
         health_subtitle = "Log your first reading to see your health score."
+    tasksDone = len([t for t in tasks if t.completed])
 
-    return {
+    result = {
         "user": {
             "name": user.full_name if user else "User",
+            "full_name": user.full_name if user else "User",
             "initials": initials,
             "health_id": user.health_id if user else None,
+            "profile_photo_url": getattr(user, 'profile_photo_url', None) if user else None,
         },
         "health_index": health_index,
         "wellness_score": health_index,
         "health_subtitle": health_subtitle,
         "has_report": status.has_report if status else False,
-        "has_data": has_vitals,  # TRUE only when user has logged actual vitals
+        "has_data": has_vitals,
         "data_sources": data_sources,
         "coin_balance": int(coin_balance),
         "vitals_snapshot": {
@@ -188,5 +193,39 @@ async def get_dashboard_summary(
             "report_type": "Blood Test" if status and status.has_report else None,
             "diet_plan": formatted_diet
         },
-        "streak_days": 3
+        "streak_days": 0,
+        "week_completion": [False, False, False, False, False, False, False],
     }
+
+    # Calculate week completion from actual task data  
+    try:
+        monday = today - timedelta(days=today.weekday())
+        week_completion = []
+        for i in range(7):
+            day = monday + timedelta(days=i)
+            day_tasks_res = await db.execute(
+                select(DailyTask).where(
+                    DailyTask.user_id == user_id,
+                    DailyTask.task_date == day
+                )
+            )
+            day_tasks = day_tasks_res.scalars().all()
+            if day_tasks:
+                all_done = all(t.completed for t in day_tasks)
+                week_completion.append(all_done)
+            else:
+                week_completion.append(False)
+
+        streak = 0
+        for i in range(6, -1, -1):
+            if week_completion[i]:
+                streak += 1
+            else:
+                break
+        
+        result["week_completion"] = week_completion
+        result["streak_days"] = max(streak, 1 if tasksDone > 0 else 0)
+    except Exception:
+        pass
+    
+    return result
