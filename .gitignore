@@ -6,6 +6,8 @@ coverage/
 *.log
 .env*
 !.env.example
+__pycache__
+backend/__pycache__
 
 # Python artifacts
 __pycache__/
