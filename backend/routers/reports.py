@@ -21,6 +21,7 @@ UPLOAD_DIR = os.path.join(os.getcwd(), "uploads")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 @router.post("/analyze")
+@router.post("/ml/analyze-report")  # For legacy frontend compatibility
 async def analyze_report(
     file: UploadFile = File(...),
     user_id: str = Depends(get_current_user_id),
