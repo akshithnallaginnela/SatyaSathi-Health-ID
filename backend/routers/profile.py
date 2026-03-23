@@ -35,7 +35,7 @@ async def get_activity(user_id: str = Depends(get_current_user_id), db: AsyncSes
     )
     return result.scalars().all()
 
-@router.post("/photo")
+@router.post("/upload-photo")
 async def upload_photo(
     file: UploadFile = File(...),
     user_id: str = Depends(get_current_user_id),
