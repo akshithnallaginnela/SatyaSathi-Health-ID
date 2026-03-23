@@ -65,6 +65,8 @@ async def register(data: UserCreate, db: AsyncSession = Depends(get_db)):
     # 4. Initialize Data Status
     status_entry = UserDataStatus(user_id=user.id)
     db.add(status_entry)
+    
+    await db.commit()
 
     # 5. Save and send OTP (Mock)
     otp = "123456" # Fixed mock OTP
@@ -108,6 +110,8 @@ async def aadhaar_submit(data: AadhaarSubmit, db: AsyncSession = Depends(get_db)
 
     user.aadhaar_last4 = data.aadhaar_number[-4:]
     user.aadhaar_verified = True
+    
+    await db.commit()
     
     # Return full tokens after Aadhaar
     access_token = create_access_token(user.id, user.phone_number[-4:], user.aadhaar_verified)
