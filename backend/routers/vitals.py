@@ -1,110 +1,107 @@
-"""
-Vitals router — log BP, glucose, BMI, and retrieve vitals history.
-"""
-
-from datetime import datetime
-from typing import Optional
+from datetime import date, datetime
+from typing import Optional, List
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc
 
 from database import get_db
-from models.health_record import (
-    VitalsLog, BodyMetrics,
-    BPReading, GlucoseReading, BMIEntry,
-    VitalsResponse, BodyMetricsResponse,
+from models.domain import (
+    BPReading, SugarReading, UserDataStatus, 
+    BPCreate, SugarCreate, User
 )
 from security.jwt_handler import get_current_user_id
+from ml.analysis_engine import run_full_analysis
 
 router = APIRouter(prefix="/api/vitals", tags=["Vitals"])
 
+async def _update_status(user_id: str, metric: str, db: AsyncSession):
+    result = await db.execute(select(UserDataStatus).where(UserDataStatus.user_id == user_id))
+    status = result.scalar_one_or_none()
+    if not status:
+        status = UserDataStatus(user_id=user_id)
+        db.add(status)
+    
+    if metric == "bp":
+        status.has_bp = True
+        status.bp_count += 1
+    elif metric == "sugar":
+        status.has_sugar = True
+        status.sugar_count += 1
+    
+    await db.flush()
 
-@router.post("/bp", response_model=VitalsResponse)
+@router.post("/bp")
 async def log_bp(
-    reading: BPReading,
+    reading: BPCreate,
     user_id: str = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
-    """Log a blood pressure reading."""
-    vitals = VitalsLog(
+    """Log BP and trigger analysis."""
+    new_reading = BPReading(
         user_id=user_id,
         systolic=reading.systolic,
         diastolic=reading.diastolic,
         pulse=reading.pulse,
-        measured_at=reading.measured_at or datetime.utcnow(),
+        time_of_day=reading.time_of_day,
+        date=date.today()
     )
-    db.add(vitals)
-    await db.flush()
-    return VitalsResponse.model_validate(vitals)
+    db.add(new_reading)
+    await _update_status(user_id, "bp", db)
+    
+    # Trigger AI analysis
+    analysis = await run_full_analysis(user_id, db)
+    
+    return {
+        "message": "BP logged and analysis updated",
+        "reading": {
+            "systolic": new_reading.systolic,
+            "diastolic": new_reading.diastolic,
+            "date": str(new_reading.date)
+        },
+        "analysis_summary": analysis
+    }
 
-
-@router.post("/glucose", response_model=VitalsResponse)
-async def log_glucose(
-    reading: GlucoseReading,
+@router.post("/sugar")
+async def log_sugar(
+    reading: SugarCreate,
     user_id: str = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
-    """Log a fasting glucose reading."""
-    vitals = VitalsLog(
+    """Log Sugar and trigger analysis."""
+    new_reading = SugarReading(
         user_id=user_id,
         fasting_glucose=reading.fasting_glucose,
-        measured_at=reading.measured_at or datetime.utcnow(),
+        date=date.today()
     )
-    db.add(vitals)
-    await db.flush()
-    return VitalsResponse.model_validate(vitals)
-
-
-@router.post("/bmi", response_model=BodyMetricsResponse)
-async def log_bmi(
-    entry: BMIEntry,
-    user_id: str = Depends(get_current_user_id),
-    db: AsyncSession = Depends(get_db),
-):
-    """Log body metrics (weight, height → auto-calculates BMI)."""
-    bmi_value = round(entry.weight_kg / ((entry.height_cm / 100) ** 2), 1)
-    metrics = BodyMetrics(
-        user_id=user_id,
-        weight_kg=entry.weight_kg,
-        height_cm=entry.height_cm,
-        bmi=bmi_value,
-        waist_cm=entry.waist_cm,
-    )
-    db.add(metrics)
-    await db.flush()
-    return BodyMetricsResponse.model_validate(metrics)
-
+    db.add(new_reading)
+    await _update_status(user_id, "sugar", db)
+    
+    # Trigger AI analysis
+    analysis = await run_full_analysis(user_id, db)
+    
+    return {
+        "message": "Sugar logged and analysis updated",
+        "reading": {
+            "fasting_glucose": new_reading.fasting_glucose,
+            "date": str(new_reading.date)
+        },
+        "analysis_summary": analysis
+    }
 
 @router.get("/history")
 async def get_vitals_history(
-    limit: int = Query(20, ge=1, le=100),
     user_id: str = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
-    """Get recent vitals readings for the current user."""
-    result = await db.execute(
-        select(VitalsLog)
-        .where(VitalsLog.user_id == user_id)
-        .order_by(desc(VitalsLog.measured_at))
-        .limit(limit)
+    """Get history of BP and Sugar readings."""
+    bp_rows = await db.execute(
+        select(BPReading).where(BPReading.user_id == user_id).order_by(desc(BPReading.date)).limit(10)
     )
-    vitals = result.scalars().all()
-    return [VitalsResponse.model_validate(v) for v in vitals]
-
-
-@router.get("/bmi/latest", response_model=Optional[BodyMetricsResponse])
-async def get_latest_bmi(
-    user_id: str = Depends(get_current_user_id),
-    db: AsyncSession = Depends(get_db),
-):
-    """Get the latest body metrics entry."""
-    result = await db.execute(
-        select(BodyMetrics)
-        .where(BodyMetrics.user_id == user_id)
-        .order_by(desc(BodyMetrics.measured_at))
-        .limit(1)
+    sugar_rows = await db.execute(
+        select(SugarReading).where(SugarReading.user_id == user_id).order_by(desc(SugarReading.date)).limit(10)
     )
-    metrics = result.scalar_one_or_none()
-    if not metrics:
-        return None
-    return BodyMetricsResponse.model_validate(metrics)
+    
+    return {
+        "bp_history": bp_rows.scalars().all(),
+        "sugar_history": sugar_rows.scalars().all()
+    }
