@@ -17,6 +17,8 @@ from routers.vitals import router as vitals_router
 from routers.dashboard import router as dashboard_router
 from routers.tasks import router as tasks_router
 from routers.reports import router as reports_router
+from routers.profile import router as profile_router, settings_router
+from routers.clinics import router as clinics_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -51,9 +53,24 @@ app.include_router(vitals_router)
 app.include_router(dashboard_router)
 app.include_router(tasks_router)
 app.include_router(reports_router)
+app.include_router(profile_router)
+app.include_router(settings_router)
+app.include_router(clinics_router)
 
-# Note: Additional routers like clinics, notifications, profile can be migrated 
-# as needed or kept if they don't break the new domain schema.
+# Legacy compatibility for /api/ml/analyze-report
+from routers.reports import analyze_report
+from fastapi import UploadFile, File, Depends
+from sqlalchemy.ext.asyncio import AsyncSession
+from database import get_db
+from security.jwt_handler import get_current_user_id
+
+@app.post("/api/ml/analyze-report")
+async def legacy_analyze_report(
+    file: UploadFile = File(...),
+    user_id: str = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db)
+):
+    return await analyze_report(file, user_id, db)
 
 _uploads_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "uploads")
 os.makedirs(_uploads_dir, exist_ok=True)
