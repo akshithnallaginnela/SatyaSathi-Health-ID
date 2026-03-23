@@ -41,6 +41,7 @@ from routers.ml import router as ml_router
 from routers.reports import router as reports_router
 from routers.settings import router as settings_router
 from routers.notifications import router as notifications_router
+from routers.diet import router as diet_router
 
 
 @asynccontextmanager
@@ -84,6 +85,7 @@ app.include_router(ml_router)
 app.include_router(reports_router)
 app.include_router(settings_router)
 app.include_router(notifications_router)
+app.include_router(diet_router)
 
 # Serve locally-uploaded profile photos
 _uploads_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "uploads")

@@ -64,6 +64,108 @@ def _build_positive_precautions(risk_level: str, report_type: str, flags: list[s
     return base
 
 
+def _build_diet_plan(diet_focus: str, risk_level: str) -> dict:
+    """Generate personalized diet plan based on ML predictions."""
+    
+    # Base balanced diet
+    plan = {
+        "focus": diet_focus or "balanced",
+        "breakfast": [],
+        "lunch": [],
+        "dinner": [],
+        "snacks": [],
+        "avoid": [],
+        "hydration": "Drink 8-10 glasses of water daily",
+    }
+    
+    if diet_focus == "iron_rich" or diet_focus == "iron_and_low_sugar":
+        plan["breakfast"] = [
+            "Spinach paratha with curd",
+            "Ragi porridge with jaggery",
+            "Moong dal chilla with mint chutney",
+        ]
+        plan["lunch"] = [
+            "Brown rice with dal palak and beetroot salad",
+            "Roti with rajma curry and cucumber raita",
+            "Quinoa pulao with mixed vegetables",
+        ]
+        plan["dinner"] = [
+            "Vegetable khichdi with spinach",
+            "Roti with chana masala and green salad",
+            "Millet roti with palak paneer",
+        ]
+        plan["snacks"] = [
+            "Roasted peanuts and jaggery",
+            "Dates and almonds (4-5 pieces)",
+            "Beetroot and carrot juice",
+        ]
+        plan["avoid"] = [
+            "Tea/coffee immediately after meals",
+            "Excessive calcium supplements with iron-rich meals",
+        ]
+    
+    elif diet_focus == "diabetic_friendly":
+        plan["breakfast"] = [
+            "Oats upma with vegetables",
+            "Moong dal chilla with green chutney",
+            "Vegetable poha (light oil)",
+        ]
+        plan["lunch"] = [
+            "Brown rice (small portion) with dal and salad",
+            "Roti with mixed vegetable curry and curd",
+            "Quinoa with grilled vegetables",
+        ]
+        plan["dinner"] = [
+            "Vegetable soup with 1 roti",
+            "Grilled paneer with sautéed vegetables",
+            "Millet khichdi with cucumber raita",
+        ]
+        plan["snacks"] = [
+            "Roasted chana (chickpeas)",
+            "Cucumber and carrot sticks",
+            "Buttermilk (no sugar)",
+        ]
+        plan["avoid"] = [
+            "White rice, white bread, maida products",
+            "Sugary drinks, sweets, and desserts",
+            "Fried foods and processed snacks",
+        ]
+    
+    elif diet_focus == "balanced" or diet_focus == "general_wellness":
+        plan["breakfast"] = [
+            "Idli with sambar and coconut chutney",
+            "Whole wheat toast with peanut butter",
+            "Vegetable upma with curd",
+        ]
+        plan["lunch"] = [
+            "Rice with dal, vegetable curry, and salad",
+            "Roti with paneer curry and curd",
+            "Mixed vegetable pulao with raita",
+        ]
+        plan["dinner"] = [
+            "Light khichdi with vegetables",
+            "Roti with dal and green vegetables",
+            "Vegetable soup with whole wheat bread",
+        ]
+        plan["snacks"] = [
+            "Fresh fruits (apple, banana, orange)",
+            "Roasted nuts (almonds, walnuts)",
+            "Sprouts salad",
+        ]
+        plan["avoid"] = [
+            "Excessive fried and processed foods",
+            "Too much salt and sugar",
+        ]
+    
+    # Add urgency note for high risk
+    if risk_level == "high":
+        plan["note"] = "⚠️ Consult your doctor before making major dietary changes. This is a general guideline."
+    else:
+        plan["note"] = "💡 This is a personalized suggestion. Adjust portions based on your activity level."
+    
+    return plan
+
+
 def _ocr_quality_score(ocr_data: dict) -> dict:
     """Heuristic OCR confidence from field coverage + content richness."""
     scalar_fields = ["document_type", "patient_name", "date", "doctor"]

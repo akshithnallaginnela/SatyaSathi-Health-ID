@@ -177,10 +177,12 @@ async def get_dashboard_summary(
     report_ml = {}
     report_precautions = []
     report_type = None
+    diet_plan = None
     if latest_report and isinstance(latest_report.extracted_values, dict):
         report_ml = (latest_report.extracted_values or {}).get("ml_analysis") or {}
         report_precautions = (latest_report.extracted_values or {}).get("positive_precautions") or []
         report_type = latest_report.report_type
+        diet_plan = (latest_report.extracted_values or {}).get("diet_plan")
 
     return {
         "user": {
@@ -210,6 +212,7 @@ async def get_dashboard_summary(
             "summary": report_ml.get("summary", "Keep tracking your daily habits to stay on course."),
             "positive_precautions": report_precautions,
             "report_type": report_type,
+            "diet_plan": diet_plan,
         },
         "vitals_snapshot": {
             "bp": f"{latest_vitals.systolic}/{latest_vitals.diastolic}" if latest_vitals and latest_vitals.systolic else None,
