@@ -1,0 +1,569 @@
+warning: in the working copy of 'backend/ml/analysis_engine.py', LF will be replaced by CRLF the next time Git touches it
+[1mdiff --git a/backend/ml/analysis_engine.py b/backend/ml/analysis_engine.py[m
+[1mindex a90b98e..b609494 100644[m
+[1m--- a/backend/ml/analysis_engine.py[m
+[1m+++ b/backend/ml/analysis_engine.py[m
+[36m@@ -1,15 +1,23 @@[m
+[31m-import numpy as np[m
+[32m+[m[32m"""[m
+[32m+[m[32mVitalID Analysis Engine V3 — FULL DATA FUSION[m
+[32m+[m[32mConsiders ALL sources: BP, Sugar, BMI, Weight, Height, Blood Reports, Age,[m[41m [m
+[32m+[m[32mLifestyle (smoking, alcohol, stress, activity), Family history.[m
+[32m+[m[32mGenerates: Preventive Care, Daily Tasks, Diet Plan, Health Index Score.[m
+[32m+[m[32m"""[m
+ import datetime[m
+ import json[m
+[31m-from sqlalchemy import select, desc, delete[m
+[32m+[m[32mimport math[m
+[32m+[m[32mfrom sqlalchemy import select, desc, delete, func[m
+ from sqlalchemy.ext.asyncio import AsyncSession[m
+ from models.domain import ([m
+     User, UserDataStatus, BPReading, SugarReading, BloodReport,[m
+     HealthSignal, PreventiveCare, DailyTask, DietRecommendation[m
+ )[m
+[31m-from ml.preventive_care import generate_preventive_care[m
+[31m-from ml.task_generator import generate_daily_tasks[m
+[31m-from ml.diet_engine import generate_diet_plan[m
+[32m+[m
+[32m+[m
+[32m+[m[32m# ════════════════════════════════════════════════════════════════[m
+[32m+[m[32m# 1. DATA COLLECTION — Gather ALL user health data[m
+[32m+[m[32m# ════════════════════════════════════════════════════════════════[m
+ [m
+ async def get_user(user_id: str, db: AsyncSession):[m
+     row = await db.execute(select(User).where(User.id == user_id))[m
+[36m@@ -19,21 +27,21 @@[m [masync def get_data_status(user_id: str, db: AsyncSession):[m
+     row = await db.execute(select(UserDataStatus).where(UserDataStatus.user_id == user_id))[m
+     return row.scalar_one_or_none()[m
+ [m
+[31m-async def get_bp_readings_7d(user_id: str, db: AsyncSession):[m
+[32m+[m[32masync def get_bp_readings(user_id: str, db: AsyncSession, limit=30):[m
+     row = await db.execute([m
+         select(BPReading)[m
+         .where(BPReading.user_id == user_id)[m
+         .order_by(desc(BPReading.date))[m
+[31m-        .limit(7)[m
+[32m+[m[32m        .limit(limit)[m
+     )[m
+     return row.scalars().all()[m
+ [m
+[31m-async def get_sugar_readings_4w(user_id: str, db: AsyncSession):[m
+[32m+[m[32masync def get_sugar_readings(user_id: str, db: AsyncSession, limit=30):[m
+     row = await db.execute([m
+         select(SugarReading)[m
+         .where(SugarReading.user_id == user_id)[m
+         .order_by(desc(SugarReading.date))[m
+[31m-        .limit(4)[m
+[32m+[m[32m        .limit(limit)[m
+     )[m
+     return row.scalars().all()[m
+ [m
+[36m@@ -46,54 +54,915 @@[m [masync def get_latest_report(user_id: str, db: AsyncSession):[m
+     )[m
+     return row.scalar_one_or_none()[m
+ [m
+[31m-def build_features(user, bp_readings, sugar_readings, report):[m
+[32m+[m
+[32m+[m[32m# ════════════════════════════════════════════════════════════════[m
+[32m+[m[32m# 2. FEATURE EXTRACTION — Build unified health profile[m
+[32m+[m[32m# ════════════════════════════════════════════════════════════════[m
+[32m+[m
+[32m+[m[32mdef build_features(user, bp_readings, sugar_readings, report) -> dict:[m
+[32m+[m[32m    """[m
+[32m+[m[32m    Build a comprehensive feature dictionary from ALL available data.[m
+[32m+[m[32m    Every field defaults to None so downstream engines know what data exists.[m
+[32m+[m[32m    """[m
+     f = {}[m
+     [m
+[31m-    # Calculate actual age[m
+[32m+[m[32m    # ── Demographics ──[m
+     if user.date_of_birth:[m
+         today = datetime.date.today()[m
+         dob = user.date_of_birth[m
+         f["age"] = today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))[m
+     else:[m
+[31m-        f["age"] = 35 # Fallback[m
+[32m+[m[32m        f["age"] = None[m
+[32m+[m[41m    [m
+[32m+[m[32m    f["gender"] = user.gender or "unknown"[m
+[32m+[m[32m    f["gender_enc"] = 1 if f["gender"] == "male" else 0[m
+[32m+[m[41m    [m
+[32m+[m[32m    # ── Anthropometrics (BMI, Weight, Height) ──[m
+[32m+[m[32m    f["weight_kg"] = float(user.weight_kg) if user.weight_kg else None[m
+[32m+[m[32m    f["height_cm"] = float(user.height_cm) if user.height_cm else None[m
+[32m+[m[32m    f["waist_cm"] = float(user.waist_cm) if user.waist_cm else None[m
+[32m+[m[41m    [m
+[32m+[m[32m    if f["weight_kg"] and f["height_cm"] and f["height_cm"] > 0:[m
+[32m+[m[32m        f["bmi"] = round(f["weight_kg"] / ((f["height_cm"] / 100) ** 2), 2)[m
+[32m+[m[32m    else:[m
+[32m+[m[32m        f["bmi"] = float(user.bmi) if user.bmi else None[m
+[32m+[m[41m    [m
+[32m+[m[32m    # BMI classification[m
+[32m+[m[32m    if f["bmi"]:[m
+[32m+[m[32m        if f["bmi"] < 18.5:[m
+[32m+[m[32m            f["bmi_class"] = "underweight"[m
+[32m+[m[32m        elif f["bmi"] < 25:[m
+[32m+[m[32m            f["bmi_class"] = "normal"[m
+[32m+[m[32m        elif f["bmi"] < 30:[m
+[32m+[m[32m            f["bmi_class"] = "overweight"[m
+[32m+[m[32m        else:[m
+[32m+[m[32m            f["bmi_class"] = "obese"[m
+[32m+[m[32m    else:[m
+[32m+[m[32m        f["bmi_class"] = None[m
+[32m+[m[41m    [m
+[32m+[m[32m    # ── Lifestyle Flags ──[m
+[32m+[m[32m    f["smoking"] = bool(user.smoking)[m
+[32m+[m[32m    f["alcohol"] = bool(user.alcohol)[m
+[32m+[m[32m    f["activity_level"] = user.activity_level or 1  # 1-5[m
+[32m+[m[32m    f["stress_level"] = user.stress_level or 5      # 1-10[m
+[32m+[m[32m    f["family_hx_diabetes"] = bool(user.family_hx_diabetes)[m
+[32m+[m[32m    f["family_hx_heart"] = bool(user.family_hx_heart)[m
+[32m+[m[41m    [m
+[32m+[m[32m    # ── Blood Pressure Analysis ──[m
+[32m+[m[32m    if bp_readings and len(bp_readings) > 0:[m
+[32m+[m[32m        sys_vals = [r.systolic for r in bp_readings if r.systolic][m
+[32m+[m[32m        dia_vals = [r.diastolic for r in bp_readings if r.diastolic][m
+         [m
+[31m-    f["gender_enc"] = 1 if user.gender == "male" else 0[m
+[31m-    f["bmi"] = float(user.bmi or 23.0)[m
+[31m-    f["height_cm"] = float(user.height_cm or 170.0)[m
+[31m-    f["weight_kg"] = float(user.weight_kg or 70.0)[m
+[31m-    f["waist_cm"] = float(user.waist_cm or 85.0)[m
+[31m-    f["smoking"] = int(user.smoking or 0)[m
+[31m-    f["alcohol"] = int(user.alcohol or 0)[m
+[31m-    f["activity_level"] = user.activity_level or 1.0[m
+[31m-    f["stress_level"] = user.stress_level or 3.0[m
+[31m-    f["family_hx_diabetes"] = int(user.family_hx_diabetes or 0)[m
+[31m-    f["family_hx_heart"] = int(user.family_hx_heart or 0)[m
+[31m-[m
+[31m-    if bp_readings:[m
+[31m-        sys_vals = [r.systolic for r in bp_readings][m
+[31m-        f["systolic_avg_7d"] = round(sum(sys_vals)/len(sys_vals), 1)[m
+[31m-        f["systolic_trend"] = 0.1 # Simplified[m
+[32m+[m[32m        if sys_vals:[m
+[32m+[m[32m            f["bp_systolic_avg"] = round(sum(sys_vals) / len(sys_vals), 1)[m
+[32m+[m[32m            f["bp_systolic_latest"] = sys_vals[0][m
+[32m+[m[32m            f["bp_systolic_min"] = min(sys_vals)[m
+[32m+[m[32m            f["bp_systolic_max"] = max(sys_vals)[m
+[32m+[m[32m            f["bp_readings_count"] = len(sys_vals)[m
+[32m+[m[41m            [m
+[32m+[m[32m            # Trend: compare first half avg vs second half avg[m
+[32m+[m[32m            if len(sys_vals) >= 4:[m
+[32m+[m[32m                mid = len(sys_vals) // 2[m
+[32m+[m[32m                recent = sum(sys_vals[:mid]) / mid[m
+[32m+[m[32m                older = sum(sys_vals[mid:]) / (len(sys_vals) - mid)[m
+[32m+[m[32m                diff = recent - older[m
+[32m+[m[32m                if diff > 3:[m
+[32m+[m[32m                    f["bp_trend"] = "rising"[m
+[32m+[m[32m                elif diff < -3:[m
+[32m+[m[32m                    f["bp_trend"] = "falling"[m
+[32m+[m[32m                else:[m
+[32m+[m[32m                    f["bp_trend"] = "stable"[m
+[32m+[m[32m                f["bp_trend_velocity"] = round(diff, 1)[m
+[32m+[m[32m            else:[m
+[32m+[m[32m                f["bp_trend"] = "insufficient_data"[m
+[32m+[m[32m                f["bp_trend_velocity"] = 0[m
+[32m+[m[41m            [m
+[32m+[m[32m            # Days above 130[m
+[32m+[m[32m            f["bp_days_above_130"] = sum(1 for v in sys_vals if v >= 130)[m
+[32m+[m[32m            f["bp_days_above_140"] = sum(1 for v in sys_vals if v >= 140)[m
+[32m+[m[32m        else:[m
+[32m+[m[32m            f["bp_systolic_avg"] = None[m
+[32m+[m[41m            [m
+[32m+[m[32m        if dia_vals:[m
+[32m+[m[32m            f["bp_diastolic_avg"] = round(sum(dia_vals) / len(dia_vals), 1)[m
+[32m+[m[32m            f["bp_diastolic_latest"] = dia_vals[0][m
+[32m+[m[32m        else:[m
+[32m+[m[32m            f["bp_diastolic_avg"] = None[m
+     else:[m
+[31m-        f["systolic_avg_7d"] = 0[m
+[31m-        f["systolic_trend"] = 0[m
+[31m-[m
+[31m-    if sugar_readings:[m
+[31m-        sg_vals = [r.fasting_glucose for r in sugar_readings][m
+[31m-        f["fasting_sugar_avg"] = round(sum(sg_vals)/len(sg_vals), 1)[m
+[31m-        f["sugar_readings_above_100"] = sum(1 for s in sg_vals if s > 100)[m
+[32m+[m[32m        f["bp_systolic_avg"] = None[m
+[32m+[m[32m        f["bp_diastolic_avg"] = None[m
+[32m+[m[32m        f["bp_readings_count"] = 0[m
+[32m+[m[32m        f["bp_trend"] = None[m
+[32m+[m[41m    [m
+[32m+[m[32m    # ── Blood Sugar Analysis ──[m
+[32m+[m[32m    if sugar_readings and len(sugar_readings) > 0:[m
+[32m+[m[32m        sg_vals = [r.fasting_glucose for r in sugar_readings if r.fasting_glucose][m
+[32m+[m[41m        [m
+[32m+[m[32m        if sg_vals:[m
+[32m+[m[32m            f["sugar_avg"] = round(sum(sg_vals) / len(sg_vals), 1)[m
+[32m+[m[32m            f["sugar_latest"] = sg_vals[0][m
+[32m+[m[32m            f["sugar_min"] = min(sg_vals)[m
+[32m+[m[32m            f["sugar_max"] = max(sg_vals)[m
+[32m+[m[32m            f["sugar_readings_count"] = len(sg_vals)[m
+[32m+[m[32m            f["sugar_above_100_count"] = sum(1 for v in sg_vals if v > 100)[m
+[32m+[m[32m            f["sugar_above_126_count"] = sum(1 for v in sg_vals if v >= 126)[m
+[32m+[m[41m            [m
+[32m+[m[32m            # Trend[m
+[32m+[m[32m            if len(sg_vals) >= 4:[m
+[32m+[m[32m                mid = len(sg_vals) // 2[m
+[32m+[m[32m                recent = sum(sg_vals[:mid]) / mid[m
+[32m+[m[32m                older = sum(sg_vals[mid:]) / (len(sg_vals) - mid)[m
+[32m+[m[32m                diff = recent - older[m
+[32m+[m[32m                if diff > 5:[m
+[32m+[m[32m                    f["sugar_trend"] = "rising"[m
+[32m+[m[32m                elif diff < -5:[m
+[32m+[m[32m                    f["sugar_trend"] = "falling"[m
+[32m+[m[32m                else:[m
+[32m+[m[32m                    f["sugar_trend"] = "stable"[m
+[32m+[m[32m                f["sugar_trend_velocity"] = round(diff, 1)[m
+[32m+[m[32m            else:[m
+[32m+[m[32m                f["sugar_trend"] = "insufficient_data"[m
+[32m+[m[32m                f["sugar_trend_velocity"] = 0[m
+[32m+[m[32m        else:[m
+[32m+[m[32m            f["sugar_avg"] = None[m
+     else:[m
+[31m-        f["fasting_sugar_avg"] = 0[m
+[31m-        f["sugar_readings_above_100"] = 0[m
+[31m-[m
+[32m+[m[32m        f["sugar_avg"] = None[m
+[32m+[m[32m        f["sugar_readings_count"] = 0[m
+[32m+[m[32m        f["sugar_trend"] = None[m
+[32m+[m[41m    [m
+[32m+[m[32m    # ── Blood Report Values ──[m
+     if report:[m
+[31m-        f["hemoglobin"] = float(report.hemoglobin or 0)[m
+[31m-        f["platelet_count"] = int(report.platelet_count or 0)[m
+[32m+[m[32m        f["hemoglobin"] = float(report.hemoglobin) if report.hemoglobin else None[m
+[32m+[m[32m        f["rbc_count"] = float(report.rbc_count) if report.rbc_count else None[m
+[32m+[m[32m        f["wbc_count"] = int(report.wbc_count) if report.wbc_count else None[m
+[32m+[m[32m        f["platelet_count"] = int(report.platelet_count) if report.platelet_count else None[m
+[32m+[m[32m        f["fasting_glucose_report"] = float(report.fasting_glucose) if report.fasting_glucose else None[m
+[32m+[m[32m        f["creatinine"] = float(report.creatinine) if report.creatinine else None[m
+[32m+[m[32m        f["urea"] = float(report.urea) if report.urea else None[m
+[32m+[m[32m        f["has_report"] = True[m
+     else:[m
+[31m-        f["hemoglobin"] = 0[m
+[31m-        f["platelet_count"] = 0[m
+[32m+[m[32m        f["hemoglobin"] = None[m
+[32m+[m[32m        f["platelet_count"] = None[m
+[32m+[m[32m        f["has_report"] = False[m
+     [m
+     return f[m
+ [m
+[32m+[m
+[32m+[m[32m# ════════════════════════════════════════════════════════════════[m
+[32m+[m[32m# 3. HEALTH INDEX CALCULATOR — 0 to 100 score from ALL data[m
+[32m+[m[32m# ════════════════════════════════════════════════════════════════[m
+[32m+[m
+[32m+[m[32mdef calculate_health_index(features: dict) -> int:[m
+[32m+[m[32m    """[m
+[32m+[m[32m    Calculate a 0-100 health index based on ALL available data.[m
+[32m+[m[32m    Uses penalty-based scoring: start at 100, deduct for anomalies.[m
+[32m+[m[32m    """[m
+[32m+[m[32m    score = 100.0[m
+[32m+[m[32m    data_sources = 0  # Track how many data sources we have[m
+[32m+[m[41m    [m
+[32m+[m[32m    # ── BP Score (max -30 penalty) ──[m
+[32m+[m[32m    bp_avg = features.get("bp_systolic_avg")[m
+[32m+[m[32m    if bp_avg is not None:[m
+[32m+[m[32m        data_sources += 1[m
+[32m+[m[32m        if bp_avg < 120:[m
+[32m+[m[32m            pass  # Perfect[m
+[32m+[m[32m        elif bp_avg < 130:[m
+[32m+[m[32m            score -= 8   # Elevated[m
+[32m+[m[32m        elif bp_avg < 140:[m
+[32m+[m[32m            score -= 18  # Stage 1[m
+[32m+[m[32m        elif bp_avg < 160:[m
+[32m+[m[32m            score -= 28  # Stage 2[m
+[32m+[m[32m        else:[m
+[32m+[m[32m            score -= 35  # Crisis[m
+[32m+[m[41m        [m
+[32m+[m[32m        # Trend penalty[m
+[32m+[m[32m        if features.get("bp_trend") == "rising":[m
+[32m+[m[32m            score -= 5[m
+[32m+[m[41m    [m
+[32m+[m[32m    # ── Sugar Score (max -30 penalty) ──[m
+[32m+[m[32m    sugar_avg = features.get("sugar_avg")[m
+[32m+[m[32m    if sugar_avg is not None:[m
+[32m+[m[32m        data_sources += 1[m
+[32m+[m[32m        if sugar_avg < 100:[m
+[32m+[m[32m            pass  # Normal[m
+[32m+[m[32m        elif sugar_avg < 126:[m
+[32m+[m[32m            score -= 12  # Pre-diabetic[m
+[32m+[m[32m        elif sugar_avg < 200:[m
+[32m+[m[32m            score -= 25  # Diabetic range[m
+[32m+[m[32m        else:[m
+[32m+[m[32m            score -= 35  # Severe[m
+[32m+[m[41m        [m
+[32m+[m[32m        if features.get("sugar_trend") == "rising":[m
+[32m+[m[32m            score -= 5[m
+[32m+[m[41m    [m
+[32m+[m[32m    # ── BMI Score (max -15 penalty) ──[m
+[32m+[m[32m    bmi = features.get("bmi")[m
+[32m+[m[32m    if bmi is not None:[m
+[32m+[m[32m        data_sources += 1[m
+[32m+[m[32m        if 18.5 <= bmi <= 24.9:[m
+[32m+[m[32m            pass[m
+[32m+[m[32m        elif 25 <= bmi <= 29.9:[m
+[32m+[m[32m            score -= 8[m
+[32m+[m[32m        elif bmi >= 30:[m
+[32m+[m[32m            score -= 15[m
+[32m+[m[32m        elif bmi < 18.5:[m
+[32m+[m[32m            score -= 10[m
+[32m+[m[41m    [m
+[32m+[m[32m    # ── Report Values (max -20 penalty) ──[m
+[32m+[m[32m    hb = features.get("hemoglobin")[m
+[32m+[m[32m    if hb is not None:[m
+[32m+[m[32m        data_sources += 1[m
+[32m+[m[32m        hb_low = 13.5 if features.get("gender_enc") == 1 else 12.0[m
+[32m+[m[32m        if hb < hb_low - 2:[m
+[32m+[m[32m            score -= 12[m
+[32m+[m[32m        elif hb < hb_low:[m
+[32m+[m[32m            score -= 6[m
+[32m+[m[41m    [m
+[32m+[m[32m    platelets = features.get("platelet_count")[m
+[32m+[m[32m    if platelets is not None:[m
+[32m+[m[32m        if platelets < 100000:[m
+[32m+[m[32m            score -= 15[m
+[32m+[m[32m        elif platelets < 150000:[m
+[32m+[m[32m            score -= 8[m
+[32m+[m[41m    [m
+[32m+[m[32m    # ── Lifestyle Penalties (max -15) ──[m
+[32m+[m[32m    if features.get("smoking"):[m
+[32m+[m[32m        score -= 8[m
+[32m+[m[32m        data_sources += 1[m
+[32m+[m[32m    if features.get("alcohol"):[m
+[32m+[m[32m        score -= 5[m
+[32m+[m[32m    if features.get("stress_level", 5) >= 8:[m
+[32m+[m[32m        score -= 5[m
+[32m+[m[32m    if features.get("activity_level", 3) <= 1:[m
+[32m+[m[32m        score -= 5[m
+[32m+[m[41m    [m
+[32m+[m[32m    # ── Family History Risk (max -5) ──[m
+[32m+[m[32m    if features.get("family_hx_diabetes"):[m
+[32m+[m[32m        score -= 3[m
+[32m+[m[32m    if features.get("family_hx_heart"):[m
+[32m+[m[32m        score -= 3[m
+[32m+[m[41m    [m
+[32m+[m[32m    # If NO data at all, return 0 to show empty state[m
+[32m+[m[32m    if data_sources == 0:[m
+[32m+[m[32m        return 0[m
+[32m+[m[41m    [m
+[32m+[m[32m    return max(0, min(100, round(score)))[m
+[32m+[m
+[32m+[m
+[32m+[m[32m# ════════════════════════════════════════════════════════════════[m
+[32m+[m[32m# 4. PREVENTIVE CARE — Future risk predictions from ALL data[m
+[32m+[m[32m# ════════════════════════════════════════════════════════════════[m
+[32m+[m
+[32m+[m[32mdef generate_preventive_care(features: dict) -> list[dict]:[m
+[32m+[m[32m    """[m
+[32m+[m[32m    Generate preventive care items considering ALL data sources:[m
+[32m+[m[32m    BP, Sugar, BMI, Reports, Lifestyle, Family History.[m
+[32m+[m[32m    Each item predicts FUTURE risk and gives prevention steps.[m
+[32m+[m[32m    """[m
+[32m+[m[32m    care_items = [][m
+[32m+[m[41m    [m
+[32m+[m[32m    # ── BP Preventive Care ──[m
+[32m+[m[32m    bp_avg = features.get("bp_systolic_avg")[m
+[32m+[m[32m    if bp_avg is not None:[m
+[32m+[m[32m        bp_trend = features.get("bp_trend", "stable")[m
+[32m+[m[32m        days_130 = features.get("bp_days_above_130", 0)[m
+[32m+[m[41m        [m
+[32m+[m[32m        if bp_avg < 120 and bp_trend != "rising":[m
+[32m+[m[32m            care_items.append({[m
+[32m+[m[32m                "category": "blood_pressure",[m
+[32m+[m[32m                "urgency": "maintain",[m
+[32m+[m[32m                "current_status": f"Normal ({bp_avg:.0f} mmHg avg)",[m
+[32m+[m[32m                "future_risk_message": ([m
+[32m+[m[32m                    "Your BP is healthy. However, "[m
+[32m+[m[32m                    + ("with family history of heart disease, " if features.get("family_hx_heart") else "")[m
+[32m+[m[32m                    + ("and high stress levels, " if features.get("stress_level", 0) >= 7 else "")[m
+[32m+[m[32m                    + "maintaining this requires consistent habits."[m
+[32m+[m[32m                ),[m
+[32m+[m[32m                "prevention_steps": [[m
+[32m+[m[32m                    "Keep daily sodium below 2300mg",[m
+[32m+[m[32m                    "Walk at least 30 minutes, 4 days/week",[m
+[32m+[m[32m                    "Manage stress — #1 hidden BP driver",[m
+[32m+[m[32m                    "Stay hydrated — 8 glasses minimum"[m
+[32m+[m[32m                ],[m
+[32m+[m[32m                "risk_horizon": "5–10 years if lifestyle unchanged"[m
+[32m+[m[32m            })[m
+[32m+[m[32m        elif 120 <= bp_avg < 130:[m
+[32m+[m[32m            care_items.append({[m
+[32m+[m[32m                "category": "blood_pressure",[m
+[32m+[m[32m                "urgency": "watch",[m
+[32m+[m[32m                "current_status": f"Elevated ({bp_avg:.0f} mmHg avg, trend: {bp_trend})",[m
+[32m+[m[32m                "future_risk_message": ([m
+[32m+[m[32m                    f"Your BP is in the elevated zone. "[m
+[32m+[m[32m                    f"If {bp_trend}, it may move to hypertension in 4–6 weeks. "[m
+[32m+[m[32m                    "The good news — this is fully reversible with lifestyle changes."[m
+[32m+[m[32m                ),[m
+[32m+[m[32m                "prevention_steps": [[m
+[32m+[m[32m                    "Cut added salt from meals this week",[m
+[32m+[m[32m                    "Walk 30 min daily — reduces BP by 5–8 mmHg",[m
+[32m+[m[32m                    "Reduce caffeine to 1 cup/day",[m
+[32m+[m[32m                    "Practice 5-min deep breathing every evening",[m
+[32m+[m[32m                    "Avoid late-night heavy meals"[m
+[32m+[m[32m                ],[m
+[32m+[m[32m                "risk_horizon": "4–6 weeks if no action"[m
+[32m+[m[32m            })[m
+[32m+[m[32m        elif bp_avg >= 130:[m
+[32m+[m[32m            care_items.append({[m
+[32m+[m[32m                "category": "blood_pressure",[m
+[32m+[m[32m                "urgency": "act_now",[m
+[32m+[m[32m                "current_status": f"High ({bp_avg:.0f} mmHg avg, {days_130} readings above 130)",[m
+[32m+[m[32m                "future_risk_message": ([m
+[32m+[m[32m                    f"Your BP has been consistently above 130. "[m
+[32m+[m[32m                    f"Trend is {bp_trend}. "[m
+[32m+[m[32m                    "If untreated, this significantly increases risk of heart attack and stroke. "[m
+[32m+[m[32m                    "Acting now can reverse this completely."[m
+[32m+[m[32m                ),[m
+[32m+[m[32m                "prevention_steps": [[m
+[32m+[m[32m                    "Stop added salt completely for 2 weeks",[m
+[32m+[m[32m                    "Walk 10,000 steps daily — start today",[m
+[32m+[m[32m                    "No alcohol this week",[m
+[32m+[m[32m                    "Sleep before 10:30 PM",[m
+[32m+[m[32m                    "Log BP every morning to track progress",[m
+[32m+[m[32m                    "Book a routine checkup if no improvement in 10 days"[m
+[32m+[m[32m                ],[m
+[32m+[m[32m                "risk_horizon": "2–3 weeks — needs immediate attention"[m
+[32m+[m[32m            })[m
+[32m+[m[41m    [m
+[32m+[m[32m    # ── Sugar Preventive Care ──[m
+[32m+[m[32m    sugar_avg = features.get("sugar_avg")[m
+[32m+[m[32m    if sugar_avg is not None:[m
+[32m+[m[32m        sugar_trend = features.get("sugar_trend", "stable")[m
+[32m+[m[32m        above_100 = features.get("sugar_above_100_count", 0)[m
+[32m+[m[41m        [m
+[32m+[m[32m        if sugar_avg < 100 and above_100 == 0:[m
+[32m+[m[32m            care_items.append({[m
+[32m+[m[32m                "category": "blood_sugar",[m
+[32m+[m[32m                "urgency": "maintain",[m
+[32m+[m[32m                "current_status": f"Normal ({sugar_avg:.0f} mg/dL avg)",[m
+[32m+[m[32m                "future_risk_message": ([m
+[32m+[m[32m                    "Your fasting sugar is healthy. "[m
+[32m+[m[32m                    + ("With family history of diabetes, " if features.get("family_hx_diabetes") else "")[m
+[32m+[m[32m                    + "watch carb intake as you age."[m
+[32m+[m[32m                ),[m
+[32m+[m[32m                "prevention_steps": [[m
+[32m+[m[32m                    "Avoid sugary drinks — even fruit juice",[m
+[32m+[m[32m                    "Walk 10 min after every major meal",[m
+[32m+[m[32m                    "Include protein with every meal",[m
+[32m+[m[32m                    "Get sugar checked every 3 months"[m
+[32m+[m[32m                ],[m
+[32m+[m[32m                "risk_horizon": "Long-term maintenance"[m
+[32m+[m[32m            })[m
+[32m+[m[32m        elif 100 <= sugar_avg < 126 or above_100 >= 2:[m
+[32m+[m[32m            care_items.append({[m
+[32m+[m[32m                "category": "blood_sugar",[m
+[32m+[m[32m                "urgency": "watch",[m
+[32m+[m[32m                "current_status": f"Pre-diabetic ({sugar_avg:.0f} mg/dL avg, {above_100} readings above 100)",[m
+[32m+[m[32m                "future_risk_message": ([m
+[32m+[m[32m                    f"Your fasting sugar is in the pre-diabetic range (trend: {sugar_trend}). "[m
+[32m+[m[32m                    "Research shows lifestyle changes at this stage can fully "[m
+[32m+[m[32m                    "reverse the trend in 8–12 weeks."[m
+[32m+[m[32m                ),[m
+[32m+[m[32m                "prevention_steps": [[m
+[32m+[m[32m                    "Replace white rice with brown rice/millets",[m
+[32m+[m[32m                    "Eliminate sugar from tea and coffee",[m
+[32m+[m[32m                    "Walk 30 min every morning before breakfast",[m
+[32m+[m[32m                    "Eat dinner before 7:30 PM",[m
+[32m+[m[32m                    "Eat whole fruits instead of juices",[m
+[32m+[m[32m                    "Get HbA1c tested for 3-month sugar picture"[m
+[32m+[m[32m                ],[m
+[32m+[m[32m                "risk_horizon": "8–12 weeks to reverse"[m
+[32m+[m[32m            })[m
+[32m+[m[32m        elif sugar_avg >= 126:[m
+[32m+[m[32m            care_items.append({[m
+[32m+[m[32m                "category": "blood_sugar",[m
+[32m+[m[32m                "urgency": "act_now",[m
+[32m+[m[32m                "current_status": f"Elevated ({sugar_avg:.0f} mg/dL avg)",[m
+[32m+[m[32m                "future_risk_message": ([m
+[32m+[m[32m                    "Your fasting sugar is consistently above 126 mg/dL. "[m
+[32m+[m[32m                    "This pattern needs medical evaluation and HbA1c test."[m
+[32m+[m[32m                ),[m
+[32m+[m[32m                "prevention_steps": [[m
+[32m+[m[32m                    "Visit a doctor for HbA1c test this week",[m
+[32m+[m[32m                    "Stop all sugary foods completely",[m
+[32m+[m[32m                    "Walk 45 min daily — morning is best",[m
+[32m+[m[32m                    "Log sugar every day this week",[m
+[32m+[m[32m                    "Eat small meals every 3 hours"[m
+[32m+[m[32m                ],[m
+[32m+[m[32m                "risk_horizon": "Immediate — doctor visit recommended"[m
+[32m+[m[32m            })[m
+[32m+[m[41m    [m
+[32m+[m[32m    # ── BMI Preventive Care ──[m
+[32m+[m[32m    bmi = features.get("bmi")[m
+[32m+[m[32m    if bmi is not None:[m
+[32m+[m[32m        bmi_class = features.get("bmi_class", "normal")[m
+[32m+[m[32m        weight = features.get("weight_kg", 0)[m
+[32m+[m[41m        [m
+[32m+[m[32m        if bmi_class == "overweight":[m
+[32m+[m[32m            care_items.append({[m
+[32m+[m[32m                "category": "weight_bmi",[m
+[32m+[m[32m                "urgency": "watch",[m
+[32m+[m[32m                "current_status": f"Overweight (BMI {bmi}, Weight {weight:.0f}kg)",[m
+[32m+[m[32m                "future_risk_message": ([m
+[32m+[m[32m                    f"Your BMI of {bmi} puts you in the overweight range. "[m
+[32m+[m[32m                    "This increases risk of diabetes, heart disease, and joint problems. "[m
+[32m+[m[32m                    "Losing 3-5 kg can reduce BP by 5 mmHg and sugar by 10-15 mg/dL."[m
+[32m+[m[32m                ),[m
+[32m+[m[32m                "prevention_steps": [[m
+[32m+[m[32m                    "Reduce portion sizes by 20%",[m
+[32m+[m[32m                    "Walk 10,000 steps daily",[m
+[32m+[m[32m                    "Cut fried foods to twice a week",[m
+[32m+[m[32m                    "Eat more vegetables with every meal",[m
+[32m+[m[32m                    "Track weight weekly — aim for 0.5 kg/week loss"[m
+[32m+[m[32m                ],[m
+[32m+[m[32m                "risk_horizon": "3–6 months for healthy BMI"[m
+[32m+[m[32m            })[m
+[32m+[m[32m        elif bmi_class == "obese":[m
+[32m+[m[32m            care_items.append({[m
+[32m+[m[32m                "category": "weight_bmi",[m
+[32m+[m[32m                "urgency": "act_now",[m
+[32m+[m[32m                "current_status": f"Obese (BMI {bmi}, Weight {weight:.0f}kg)",[m
+[32m+[m[32m                "future_risk_message": ([m
+[32m+[m[32m                    f"Your BMI of {bmi} significantly increases risk of "[m
+[32m+[m[32m                    "type 2 diabetes, cardiovascular disease, and sleep apnea. "[m
+[32m+[m[32m                    "Medical consultation is recommended alongside lifestyle changes."[m
+[32m+[m[32m                ),[m
+[32m+[m[32m                "prevention_steps": [[m
+[32m+[m[32m                    "Consult a doctor for weight management plan",[m
+[32m+[m[32m                    "Start with 20-min daily walks, increase gradually",[m
+[32m+[m[32m                    "Eliminate sugary and fried foods completely",[m
+[32m+[m[32m                    "Eat protein-rich breakfast to reduce cravings",[m
+[32m+[m[32m                    "Sleep 7-8 hours — poor sleep causes weight gain"[m
+[32m+[m[32m                ],[m
+[32m+[m[32m                "risk_horizon": "Immediate lifestyle intervention needed"[m
+[32m+[m[32m            })[m
+[32m+[m[41m    [m
+[32m+[m[32m    # ── Hemoglobin Preventive Care ──[m
+[32m+[m[32m    hb = features.get("hemoglobin")[m
+[32m+[m[32m    if hb is not None:[m
+[32m+[m[32m        gender_enc = features.get("gender_enc", 1)[m
+[32m+[m[32m        hb_low = 13.5 if gender_enc == 1 else 12.0[m
+[32m+[m[41m        [m
+[32m+[m[32m        if hb < hb_low - 1.5:[m
+[32m+[m[32m            care_items.append({[m
+[32m+[m[32m                "category": "hemoglobin",[m
+[32m+[m[32m                "urgency": "act_now",[m
+[32m+[m[32m                "current_status": f"Low hemoglobin ({hb} g/dL)",[m
+[32m+[m[32m                "future_risk_message": ([m
+[32m+[m[32m                    "Your hemoglobin is significantly below normal, causing fatigue "[m
+[32m+[m[32m                    "and reduced immunity. Usually iron deficiency — very treatable."[m
+[32m+[m[32m                ),[m
+[32m+[m[32m                "prevention_steps": [[m
+[32m+[m[32m                    "See a doctor to confirm cause",[m
+[32m+[m[32m                    "Eat iron-rich foods: spinach, lentils, dates, jaggery",[m
+[32m+[m[32m                    "Take iron supplement if doctor advises",[m
+[32m+[m[32m                    "Eat vitamin C with iron foods for better absorption",[m
+[32m+[m[32m                    "Avoid tea/coffee 1 hour after iron-rich meals"[m
+[32m+[m[32m                ],[m
+[32m+[m[32m                "risk_horizon": "6 weeks to see improvement"[m
+[32m+[m[32m            })[m
+[32m+[m[32m        elif hb < hb_low:[m
+[32m+[m[32m            care_items.append({[m
+[32m+[m[32m                "category": "hemoglobin",[m
+[32m+[m[32m                "urgency": "watch",[m
+[32m+[m[32m                "current_status": f"Slightly low hemoglobin ({hb} g/dL)",[m
+[32m+[m[32m                "future_risk_message": ([m
+[32m+[m

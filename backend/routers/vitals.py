@@ -103,9 +103,29 @@ async def get_vitals_history(
         select(SugarReading).where(SugarReading.user_id == user_id).order_by(desc(SugarReading.date)).limit(10)
     )
     
+    bp_list = bp_rows.scalars().all()
+    sugar_list = sugar_rows.scalars().all()
+    
     return {
-        "bp_history": bp_rows.scalars().all(),
-        "sugar_history": sugar_rows.scalars().all()
+        "bp_history": [
+            {
+                "systolic": r.systolic,
+                "diastolic": r.diastolic,
+                "pulse": r.pulse,
+                "time_of_day": r.time_of_day,
+                "date": str(r.date),
+                "measured_at": str(r.measured_at) if r.measured_at else None
+            }
+            for r in bp_list
+        ],
+        "sugar_history": [
+            {
+                "fasting_glucose": r.fasting_glucose,
+                "date": str(r.date),
+                "measured_at": str(r.measured_at) if r.measured_at else None
+            }
+            for r in sugar_list
+        ]
     }
 
 @router.post("/bmi")

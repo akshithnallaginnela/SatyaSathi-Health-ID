@@ -51,9 +51,9 @@ Write-Host "`n========================================" -ForegroundColor Green
 Write-Host "✓ Backend: http://localhost:8000" -ForegroundColor Green
 Write-Host "✓ Frontend: http://localhost:3000" -ForegroundColor Green
 Write-Host "========================================" -ForegroundColor Green
-Write-Host "`nNEW MODEL-DRIVEN SYSTEM:" -ForegroundColor Cyan
-Write-Host "• Upload a blood report in My ID tab" -ForegroundColor Cyan
-Write-Host "• Dashboard will show ONLY model-predicted tasks" -ForegroundColor Cyan
-Write-Host "• Tasks = iron, sugar, exercise recommendations" -ForegroundColor Cyan
-Write-Host "• No hardcoded 'Log Morning BP' tasks" -ForegroundColor Cyan
+Write-Host "`nFULL DATA FUSION SYSTEM:" -ForegroundColor Cyan
+Write-Host "• Log BP or Sugar -> AI instantly generates tasks + diet + preventive care" -ForegroundColor Cyan
+Write-Host "• Upload a blood report -> Additional hemoglobin/platelet insights added" -ForegroundColor Cyan
+Write-Host "• ALL data sources (BP, Sugar, BMI, Report, Lifestyle) are considered" -ForegroundColor Cyan
+Write-Host "• Health Index score calculated from ALL your health data" -ForegroundColor Cyan
     

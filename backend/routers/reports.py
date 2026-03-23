@@ -105,9 +105,17 @@ async def analyze_report(
     return {
         "message": "Report analyzed successfully",
         "extracted_values": extracted,
-        "preventive_care": analysis["preventive_care"],
-        "tasks_generated": analysis["tasks"],
-        "diet_plan": analysis["diet"]
+        "ml_analysis": {
+            "summary": "Report analyzed with all your health data.",
+            "health_index": analysis.get("health_index", 0) if analysis else 0,
+        },
+        "preventive_care": analysis.get("preventive_care", []) if analysis else [],
+        "positive_precautions": [
+            step for item in (analysis.get("preventive_care", []) if analysis else [])
+            for step in item.get("prevention_steps", [])
+        ][:6],
+        "tasks_generated": analysis.get("tasks", []) if analysis else [],
+        "diet_plan": analysis.get("diet", {}) if analysis else {}
     }
 
 @router.get("/")
