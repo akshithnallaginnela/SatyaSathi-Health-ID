@@ -89,10 +89,34 @@ def _load_bundles() -> dict[str, Any] | None:
     }
 
 
-def _build_feature_map(ocr_data: dict[str, Any], user: Any) -> dict[str, float]:
+def _normalize_platelet(raw: float | None) -> float | None:
+    """Normalize platelets: values < 2000 are in x10³/µL units, convert to /µL."""
+    if raw is None:
+        return None
+    return raw * 1000 if raw < 2000 else raw
+
+
+def _build_feature_map(ocr_data: dict[str, Any], user: Any, body_metrics: Any = None, vitals: Any = None) -> dict[str, float]:
     lab = ocr_data.get("lab_results") or {}
     if not isinstance(lab, dict):
         lab = {}
+
+    # BMI from body_metrics table, fallback to normal
+    bmi = 23.0
+    waist_cm = 85.0
+    if body_metrics is not None:
+        bmi = float(getattr(body_metrics, "bmi", None) or 23.0)
+        waist_cm = float(getattr(body_metrics, "waist_cm", None) or 85.0)
+
+    # Glucose from vitals table if not in lab results
+    vitals_glucose = None
+    if vitals is not None:
+        vitals_glucose = float(getattr(vitals, "fasting_glucose", None) or 0) or None
+
+    fasting_glucose = _pick_numeric(lab, "fasting_sugar", "fasting_glucose", "glucose") or vitals_glucose or 95.0
+
+    raw_platelets = _pick_numeric(lab, "platelets", "platelet_count", "plt")
+    platelet_count = _normalize_platelet(raw_platelets) or 220000.0
 
     return {
         "hemoglobin": _pick_numeric(lab, "hemoglobin", "hb") or 13.0,
@@ -105,15 +129,15 @@ def _build_feature_map(ocr_data: dict[str, Any], user: Any) -> dict[str, float]:
         "wbc_count": _pick_numeric(lab, "wbc_count", "total_wbc_count", "tlc") or 7000.0,
         "neutrophils_pct": _pick_numeric(lab, "neutrophils", "neutrophils_pct") or 60.0,
         "lymphocytes_pct": _pick_numeric(lab, "lymphocytes", "lymphocytes_pct") or 30.0,
-        "platelet_count": _pick_numeric(lab, "platelets", "platelet_count", "plt") or 220000.0,
-        "fasting_glucose": _pick_numeric(lab, "fasting_sugar", "fasting_glucose", "glucose") or 95.0,
+        "platelet_count": platelet_count,
+        "fasting_glucose": fasting_glucose,
         "random_glucose": _pick_numeric(lab, "random_glucose") or 125.0,
         "urea": _pick_numeric(lab, "urea") or 25.0,
         "creatinine": _pick_numeric(lab, "creatinine") or 0.9,
         "age": _age_from_user(user),
         "gender_enc": _gender_enc(user),
-        "bmi": 23.0,
-        "waist_cm": 85.0,
+        "bmi": bmi,
+        "waist_cm": waist_cm,
         "activity_level": 1.0,
         "family_hx_diabetes": 0.0,
         "stress_level": 5.0,
@@ -124,14 +148,14 @@ def _build_feature_map(ocr_data: dict[str, Any], user: Any) -> dict[str, float]:
     }
 
 
-def predict_from_ocr(ocr_data: dict[str, Any], user: Any) -> PredictorResult | None:
+def predict_from_ocr(ocr_data: dict[str, Any], user: Any, body_metrics: Any = None, vitals: Any = None) -> PredictorResult | None:
     bundles = _load_bundles()
     if bundles is None:
         return None
 
     import pandas as pd
 
-    feat = _build_feature_map(ocr_data, user)
+    feat = _build_feature_map(ocr_data, user, body_metrics=body_metrics, vitals=vitals)
 
     overall = bundles["overall"]
     row_overall = pd.DataFrame([{f: feat.get(f, 0.0) for f in overall["features"]}])

@@ -118,7 +118,7 @@ async def get_dashboard_summary(
     result = await db.execute(
         select(Report)
         .where(Report.user_id == user_id)
-        .order_by(desc(Report.uploaded_at))
+        .order_by(desc(Report.id))
         .limit(1)
     )
     latest_report = result.scalar_one_or_none()
