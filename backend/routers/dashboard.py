@@ -1,223 +1,115 @@
-"""
-Dashboard router — single summary endpoint for the home screen.
-"""
-
+import json
 from datetime import date, datetime, timedelta
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc, func
 
 from database import get_db
-from models.user import User
-from models.health_record import VitalsLog
-from models.task import DailyTask
-from models.coin_ledger import CoinLedger
-from models.report import Report
+from models.domain import (
+    User, UserDataStatus, BPReading, SugarReading, 
+    DailyTask, PreventiveCare, DietRecommendation, CoinLedger
+)
 from security.jwt_handler import get_current_user_id
 
 router = APIRouter(prefix="/api/dashboard", tags=["Dashboard"])
-
-
-def _calculate_wellness_score(
-    latest_vitals: VitalsLog | None,
-    tasks_done: int,
-    tasks_total: int,
-    streak: int,
-    latest_report: Report | None,
-) -> int:
-    """Compute a practical MVP wellness score from vitals + adherence."""
-    score = 55.0
-
-    if latest_vitals:
-        # Blood pressure contribution
-        if latest_vitals.systolic and latest_vitals.diastolic:
-            sys = latest_vitals.systolic
-            dia = latest_vitals.diastolic
-            if sys <= 120 and dia <= 80:
-                score += 15
-            elif sys <= 140 and dia <= 90:
-                score += 8
-            else:
-                score -= 10
-
-        # Glucose contribution
-        if latest_vitals.fasting_glucose is not None:
-            glucose = float(latest_vitals.fasting_glucose)
-            if 70 <= glucose <= 99:
-                score += 12
-            elif glucose <= 125:
-                score += 6
-            else:
-                score -= 10
-
-        # Pulse contribution
-        if latest_vitals.pulse is not None:
-            pulse = latest_vitals.pulse
-            if 60 <= pulse <= 100:
-                score += 6
-            else:
-                score -= 4
-
-    # Task adherence contribution
-    if tasks_total > 0:
-        completion_ratio = tasks_done / tasks_total
-        score += completion_ratio * 18
-
-    # Streak bonus, capped to avoid dominance
-    score += min(streak, 14) * 0.8
-
-    # Report risk adjustment from latest ML analysis (positive framing still shown in UI)
-    if latest_report and isinstance(latest_report.extracted_values, dict):
-        risk_level = ((latest_report.extracted_values or {}).get("ml_analysis") or {}).get("risk_level")
-        if risk_level == "high":
-            score -= 12
-        elif risk_level == "moderate":
-            score -= 6
-        elif risk_level == "low":
-            score += 3
-
-    return int(max(0, min(100, round(score))))
-
 
 @router.get("/summary")
 async def get_dashboard_summary(
     user_id: str = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
-    """Get aggregated dashboard data for the home screen."""
+    # 1. Get User and Status
+    user_res = await db.execute(select(User).where(User.id == user_id))
+    user = user_res.scalar_one_or_none()
+    
+    status_res = await db.execute(select(UserDataStatus).where(UserDataStatus.user_id == user_id))
+    status = status_res.scalar_one_or_none()
 
-    # Get user
-    result = await db.execute(select(User).where(User.id == user_id))
-    user = result.scalar_one_or_none()
-
-    # Get latest vitals
-    result = await db.execute(
-        select(VitalsLog)
-        .where(VitalsLog.user_id == user_id)
-        .order_by(desc(VitalsLog.measured_at))
-        .limit(1)
-    )
-    latest_vitals = result.scalar_one_or_none()
-
-    # Get today's tasks
+    # 2. Get Today's Tasks
     today = date.today()
-    result = await db.execute(
-        select(DailyTask)
-        .where(DailyTask.user_id == user_id, DailyTask.task_date == today)
+    tasks_res = await db.execute(
+        select(DailyTask).where(DailyTask.user_id == user_id, DailyTask.task_date == today)
     )
-    todays_tasks = result.scalars().all()
+    tasks = tasks_res.scalars().all()
 
-    # Get coin balance
-    result = await db.execute(
-        select(func.coalesce(func.sum(CoinLedger.amount), 0))
-        .where(CoinLedger.user_id == user_id)
+    # 3. Get Preventive Care
+    care_res = await db.execute(
+        select(PreventiveCare).where(PreventiveCare.user_id == user_id).order_by(desc(PreventiveCare.urgency))
     )
-    coin_balance = result.scalar() or 0
+    care_items = care_res.scalars().all()
 
-    # Get latest processed report for preventive analytics
-    result = await db.execute(
-        select(Report)
-        .where(Report.user_id == user_id)
-        .order_by(desc(Report.id))
-        .limit(1)
+    # 4. Get Diet Plan
+    diet_res = await db.execute(select(DietRecommendation).where(DietRecommendation.user_id == user_id))
+    diet = diet_res.scalar_one_or_none()
+
+    # 5. Get Latest Vitals
+    bp_res = await db.execute(
+        select(BPReading).where(BPReading.user_id == user_id).order_by(desc(BPReading.date)).limit(1)
     )
-    latest_report = result.scalar_one_or_none()
-
-    # Calculate streak (consecutive days with at least 1 completed task)
-    streak = 0
-    check_date = today - timedelta(days=1)
-    while True:
-        result = await db.execute(
-            select(func.count())
-            .select_from(DailyTask)
-            .where(
-                DailyTask.user_id == user_id,
-                DailyTask.task_date == check_date,
-                DailyTask.completed == True,
-            )
-        )
-        count = result.scalar()
-        if count and count > 0:
-            streak += 1
-            check_date -= timedelta(days=1)
-        else:
-            break
-
-    # Week completion (Mon=0 to Sun=6 for this week)
-    week_start = today - timedelta(days=today.weekday())
-    week_completion = []
-    for i in range(7):
-        day = week_start + timedelta(days=i)
-        result = await db.execute(
-            select(func.count())
-            .select_from(DailyTask)
-            .where(
-                DailyTask.user_id == user_id,
-                DailyTask.task_date == day,
-                DailyTask.completed == True,
-            )
-        )
-        count = result.scalar()
-        week_completion.append(bool(count and count > 0))
-
-    # Build response
-    initials = "".join(word[0].upper() for word in (user.full_name or "U").split()[:2])
-
-    tasks_done = sum(1 for t in todays_tasks if t.completed)
-    tasks_total = len(todays_tasks)
-
-    wellness_score = _calculate_wellness_score(
-        latest_vitals=latest_vitals,
-        tasks_done=tasks_done,
-        tasks_total=tasks_total,
-        streak=streak,
-        latest_report=latest_report,
+    latest_bp = bp_res.scalar_one_or_none()
+    
+    sugar_res = await db.execute(
+        select(SugarReading).where(SugarReading.user_id == user_id).order_by(desc(SugarReading.date)).limit(1)
     )
+    latest_sugar = sugar_res.scalar_one_or_none()
 
-    report_ml = {}
-    report_precautions = []
-    report_type = None
-    diet_plan = None
-    if latest_report and isinstance(latest_report.extracted_values, dict):
-        report_ml = (latest_report.extracted_values or {}).get("ml_analysis") or {}
-        report_precautions = (latest_report.extracted_values or {}).get("positive_precautions") or []
-        report_type = latest_report.report_type
-        diet_plan = (latest_report.extracted_values or {}).get("diet_plan")
+    # 6. Get Coin Balance
+    coin_res = await db.execute(
+        select(func.coalesce(func.sum(CoinLedger.amount), 0)).where(CoinLedger.user_id == user_id)
+    )
+    coin_balance = coin_res.scalar() or 0
 
+    # 7. Helper for Task parsing
+    formatted_tasks = []
+    for t in tasks:
+        formatted_tasks.append({
+            "id": str(t.id),
+            "name": t.task_name,
+            "category": t.category,
+            "completed": t.completed,
+            "coins": t.coins_reward,
+            "why": t.why_this_task
+        })
+
+    # 8. Helper for Preventive Care parsing
+    formatted_care = []
+    for c in care_items:
+        formatted_care.append({
+            "category": c.category,
+            "urgency": c.urgency,
+            "status": c.current_value,
+            "risk": c.future_risk_message,
+            "steps": json.loads(c.prevention_steps) if c.prevention_steps else [],
+            "horizon": c.risk_horizon
+        })
+
+    # 9. Helper for Diet Plan
+    formatted_diet = None
+    if diet:
+        formatted_diet = {
+            "focus": diet.focus_type,
+            "reason": diet.reason,
+            "eat_more": json.loads(diet.eat_more) if diet.eat_more else [],
+            "reduce": json.loads(diet.reduce) if diet.reduce else [],
+            "avoid": json.loads(diet.avoid) if diet.avoid else [],
+            "hydration": diet.hydration_goal_glasses
+        }
+
+    # 10. Health Index (Mock for now, but dynamic)
+    health_index = 85
+    if status and not status.has_report:
+        health_index = 70 # Lower if no report
+    
     return {
-        "user": {
-            "name": user.full_name if user else "User",
-            "initials": initials,
-            "health_id": user.health_id if user else None,
-            "profile_photo_url": user.profile_photo_url if user else None,
+        "health_index": health_index,
+        "health_id": user.health_id if user else None,
+        "has_report": status.has_report if status else False,
+        "coin_balance": coin_balance,
+        "vitals": {
+            "bp": f"{latest_bp.systolic}/{latest_bp.diastolic}" if latest_bp else "No data",
+            "sugar": f"{latest_sugar.fasting_glucose} mg/dL" if latest_sugar else "No data"
         },
-        "wellness_score": wellness_score,
-        "streak_days": streak,
-        "week_completion": week_completion,
-        "coin_balance": int(coin_balance),
-        "todays_tasks": [
-            {
-                "id": t.id,
-                "type": t.task_type,
-                "name": t.task_name,
-                "coins": t.coins_reward,
-                "completed": t.completed,
-                "time_slot": t.time_slot,
-            }
-            for t in todays_tasks
-        ],
-        "tasks_summary": f"{tasks_done}/{tasks_total} Done",
-        "preventive_analytics": {
-            "risk_level": report_ml.get("risk_level", "low"),
-            "summary": report_ml.get("summary", "Keep tracking your daily habits to stay on course."),
-            "positive_precautions": report_precautions,
-            "report_type": report_type,
-            "diet_plan": diet_plan,
-        },
-        "vitals_snapshot": {
-            "bp": f"{latest_vitals.systolic}/{latest_vitals.diastolic}" if latest_vitals and latest_vitals.systolic else None,
-            "glucose": float(latest_vitals.fasting_glucose) if latest_vitals and latest_vitals.fasting_glucose else None,
-            "pulse": latest_vitals.pulse if latest_vitals else None,
-            "spo2": latest_vitals.spo2 if latest_vitals else None,
-        } if latest_vitals else {},
+        "tasks": formatted_tasks,
+        "preventive_care": formatted_care,
+        "diet_plan": formatted_diet
     }
