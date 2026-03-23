@@ -84,7 +84,7 @@ async function apiFetch(endpoint: string, options: RequestInit = {}): Promise<an
 // ─── Auth API ───
 
 export const authAPI = {
-  register: (data: { full_name: string; phone_number: string; password: string; date_of_birth?: string; gender?: string }) =>
+  register: (data: Record<string, any>) =>
     apiFetch('/auth/register', { method: 'POST', body: JSON.stringify(data) }),
 
   verifyOTP: (phone_number: string, otp: string) =>
