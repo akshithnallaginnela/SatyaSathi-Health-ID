@@ -170,13 +170,20 @@ def _rule_based_assessment(ocr_data: dict[str, Any]) -> dict[str, Any]:
             except ValueError:
                 pass
 
-        # Numeric Platelet Check
+        # Numeric Platelet Check (handle both /µL and x10³/µL units)
         platelet_str = str(lab_results.get("platelets") or lab_results.get("platelet_count") or "")
-        match = re.search(r"(\d+)", platelet_str)
+        match = re.search(r"(\d+(?:\.\d+)?)", platelet_str)
         if match:
             try:
-                platelet_val = int(match.group(1))
-                if platelet_val < 150000:
+                platelet_val = float(match.group(1))
+                # Values < 2000 are in x10³/µL units — convert to /µL
+                if platelet_val < 2000:
+                    platelet_val *= 1000
+                if platelet_val < 50000:
+                    high_hits.append("severe thrombocytopenia")
+                    numeric_evidence_count += 1
+                    has_numeric_evidence = True
+                elif platelet_val < 150000:
                     moderate_hits.append("low platelets")
                     numeric_evidence_count += 1
                     has_numeric_evidence = True

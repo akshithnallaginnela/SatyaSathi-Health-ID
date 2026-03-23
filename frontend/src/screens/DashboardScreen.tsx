@@ -104,12 +104,13 @@ export default function DashboardScreen() {
   const coins = data?.coin_balance || 1240;
   const streakDays = data?.streak_days || 0;
   const todaysTasks = data?.todays_tasks || [];
-  const displayTasks = todaysTasks.slice(0, 4);
+  const displayTasks = todaysTasks; // Show all model tasks
   const tasksDone = displayTasks.filter((t: any) => t.completed).length;
   const tasksPending = Math.max(displayTasks.length - tasksDone, 0);
   const weekCompletion = data?.week_completion || [false, false, false, false, false, false, false];
   const preventive = data?.preventive_analytics || {};
   const preventiveTips: string[] = preventive?.positive_precautions || [];
+  const dietPlan = preventive?.diet_plan || null;
 
   // Deduplicate preventive tips
   const uniquePreventiveTips = Array.from(new Map(preventiveTips.map(tip => [tip, tip])).values());
@@ -182,7 +183,7 @@ export default function DashboardScreen() {
           </div>
           <div>
             <h2 className="text-white font-extrabold text-[15px] mb-0.5">Health Index</h2>
-            <p className="text-[#C8F0EC] text-xs font-semibold mb-2">Mostly stable. {tasksPending} tasks pending.</p>
+            <p className="text-[#C8F0EC] text-xs font-semibold mb-2">Mostly stable and healthy.</p>
             <div
               className="text-[10px] font-extrabold px-3 py-1.5 rounded-full inline-block shadow-sm"
               style={{ background: theme.badgeBg, color: theme.badgeText }}
@@ -222,37 +223,42 @@ export default function DashboardScreen() {
           </div>
         </div>
 
-        {/* 3. DAILY TASKS */}
-        <div className="bg-white border-[1.5px] border-border-teal rounded-[28px] p-5 shadow-sm">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-dark-teal font-extrabold text-lg">Daily Tasks</h3>
-            <span className="text-primary-teal text-[10px] font-extrabold uppercase tracking-widest">{tasksDone}/{displayTasks.length} DONE</span>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            {displayTasks.map((task: any, idx: number) => {
-              const reward = task.coins_reward ?? task.coins ?? 15;
-              return (
-              <div key={idx} 
-                   onClick={() => !task.completed && completeTask(task.id, reward)}
-                   className={`p-4 rounded-[20px] flex flex-col justify-between aspect-square border-[1.5px] transition-all bg-white relative cursor-pointer ${
-                    task.completed ? 'border-[#E8F1F1] opacity-50 blur-[0.5px]' : 'border-border-teal shadow-sm'
-                   }`}>
-                <div className="flex justify-between items-start relative z-10">
-                  <div className={`w-[26px] h-[26px] rounded-full flex items-center justify-center shrink-0 ${task.completed ? 'bg-primary-teal' : 'border-[1.5px] border-[#E0E0E0] bg-white'}`}>
-                    {task.completed && <CheckCircle2 size={16} className="text-white" />}
-                  </div>
-                  <div className="bg-white shadow-[0_2px_8px_rgba(0,0,0,0.06)] text-[9px] font-extrabold text-[#D4AF37] border border-[#F4E3A0] px-2 py-1 rounded-full flex items-center gap-1">
-                    <div className="w-1.5 h-1.5 bg-[#FFD700] rounded-full" />
-                    +{reward}
-                  </div>
-                </div>
-                <h4 className={`font-extrabold text-[13px] leading-snug mt-3 relative z-10 ${task.completed ? 'text-[#A0A0A0] line-through' : 'text-dark-teal'}`}>{task.task_name ?? task.name ?? 'Task'}</h4>
+        {/* 3. ML-DRIVEN DAILY TASKS */}
+        {hasReport && displayTasks.length > 0 && (
+          <div className="bg-white border-[1.5px] border-border-teal rounded-[28px] p-5 shadow-sm">
+            <div className="flex justify-between items-center mb-4">
+              <div>
+                <h3 className="text-dark-teal font-extrabold text-[17px]">Daily Care Plan</h3>
+                <p className="text-muted-teal text-[11px] font-medium leading-tight">Generated from your latest report</p>
               </div>
-            )})}
+              <span className="bg-[#E0F7F4] text-primary-teal text-[10px] px-2 py-1 rounded-lg font-extrabold tracking-widest">{tasksDone}/{displayTasks.length} DONE</span>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              {displayTasks.map((task: any, idx: number) => {
+                const reward = task.coins_reward ?? task.coins ?? 15;
+                return (
+                <div key={idx} 
+                     onClick={() => !task.completed && completeTask(task.id, reward)}
+                     className={`p-4 rounded-[20px] flex flex-col justify-between aspect-square border-[1.5px] transition-all bg-white relative cursor-pointer ${
+                      task.completed ? 'border-[#E8F1F1] opacity-50 blur-[0.5px]' : 'border-border-teal shadow-sm hover:border-[#48D0C9]'
+                     }`}>
+                  <div className="flex justify-between items-start relative z-10">
+                    <div className={`w-[26px] h-[26px] rounded-full flex items-center justify-center shrink-0 ${task.completed ? 'bg-primary-teal' : 'border-[1.5px] border-[#E0E0E0] bg-white'}`}>
+                      {task.completed && <CheckCircle2 size={16} className="text-white" />}
+                    </div>
+                    <div className="bg-white shadow-[0_2px_8px_rgba(0,0,0,0.06)] text-[9px] font-extrabold text-[#D4AF37] border border-[#F4E3A0] px-2 py-1 rounded-full flex items-center gap-1">
+                      <div className="w-1.5 h-1.5 bg-[#FFD700] rounded-full" />
+                      +{reward}
+                    </div>
+                  </div>
+                  <h4 className={`font-extrabold text-[13px] leading-snug mt-3 relative z-10 ${task.completed ? 'text-[#A0A0A0] line-through' : 'text-dark-teal'}`}>{task.task_name ?? task.name ?? 'Task'}</h4>
+                </div>
+              )})}
+            </div>
           </div>
-        </div>
+        )}
 
-        {/* 4. FORECAST/RISK BARS */}
+        {/* 4. PREVENTIVE CARE ANALYSIS */}
         <div className="bg-white border-[1.5px] border-border-teal rounded-[28px] p-5 shadow-sm">
           <h3 className="text-dark-teal font-extrabold text-[17px] leading-tight mb-1">What your body is telling you</h3>
           <p className="text-[#A0A0A0] text-[11px] font-semibold italic mb-4">Trends only — not a diagnosis.</p>
@@ -263,22 +269,25 @@ export default function DashboardScreen() {
               <p className="text-muted-teal text-[11px] mt-1">Upload a report in My ID to see your health insights.</p>
             </div>
           ) : (
-            <div className="space-y-6">
+            <div className="space-y-5">
               <div>
                 <h3 className="text-dark-teal font-extrabold text-[15px] capitalize">
-                  {preventive.report_type ? preventive.report_type.replace(/_/g, " ") : "Risk Analysis"}
+                  ML Analysis
                 </h3>
                 <div className="flex justify-between items-center mt-0.5">
-                  <p className="text-muted-teal text-[11px] font-medium leading-tight pr-4">
-                    {preventive.summary || "Keep tracking your daily habits to stay on course."}
+                  <p className="text-muted-teal text-[12px] font-medium leading-tight pr-4">
+                    {preventive.summary || `Model analyzed your report. Risk level: ${preventive.risk_level || 'low'}.`}
                   </p>
-                  <span className="text-primary-teal font-extrabold text-[15px]">
-                    {preventive.risk_level === 'high' ? '82%' : preventive.risk_level === 'moderate' ? '55%' : '20%'}
+                  <span className="text-primary-teal font-extrabold text-[15px] capitalize">
+                    {preventive.risk_level} Risk
                   </span>
                 </div>
                 <div className="w-full bg-[#E0F7F4] h-2.5 rounded-full mt-2 overflow-hidden flex">
-                  <div className="bg-primary-teal h-full rounded-full transition-all duration-1000" 
-                       style={{ width: preventive.risk_level === 'high' ? '82%' : preventive.risk_level === 'moderate' ? '55%' : '20%' }} />
+                  <div className={`h-full rounded-full transition-all duration-1000 ${
+                    preventive.risk_level === 'high' ? 'bg-[#EF4444]' : 
+                    preventive.risk_level === 'moderate' ? 'bg-[#F59E0B]' : 'bg-primary-teal'
+                  }`} 
+                  style={{ width: preventive.risk_level === 'high' ? '90%' : preventive.risk_level === 'moderate' ? '60%' : '30%' }} />
                 </div>
               </div>
 
@@ -286,10 +295,11 @@ export default function DashboardScreen() {
                 <div>
                   <h3 className="text-dark-teal font-extrabold text-[13px] mb-2">Recommended Actions</h3>
                   <div className="flex flex-col gap-2">
-                    {uniquePreventiveTips.slice(0, 3).map((tip: string, idx: number) => (
-                      <button key={`tip-${idx}`} className="bg-[#E0F7F4] text-left text-primary-teal text-[11px] font-extrabold px-4 py-2 rounded-xl">
-                        → {tip}
-                      </button>
+                    {uniquePreventiveTips.map((tip: string, idx: number) => (
+                      <div key={`tip-${idx}`} className="bg-[#E0F7F4] text-left flex items-start gap-2 text-primary-teal text-[12px] font-extrabold px-4 py-3 rounded-xl">
+                        <span className="pt-[1px]">→</span>
+                        <span>{tip}</span>
+                      </div>
                     ))}
                   </div>
                 </div>
@@ -297,6 +307,45 @@ export default function DashboardScreen() {
             </div>
           )}
         </div>
+
+        {/* 4.5 PERSONALIZED DIET PLAN */}
+        {hasReport && dietPlan && (
+          <div className="pt-2">
+            <h3 className="text-dark-teal font-extrabold text-[17px] leading-tight mb-1">Diet Focus</h3>
+            <p className="text-[#A0A0A0] text-[11px] font-semibold italic mb-4 capitalize">Personalized for: {dietPlan.focus?.replace(/_/g, ' ')}</p>
+
+            <div className="flex gap-4 overflow-x-auto pb-4 no-scrollbar -mx-5 px-5 snap-x">
+              
+              <div className="bg-white border-[1.5px] border-[#E8F1F1] border-l-4 border-l-[#26C6BF] rounded-[24px] p-5 min-w-[220px] shrink-0 shadow-sm snap-start">
+                <span className="bg-[#26C6BF] text-white text-[10px] font-extrabold px-3 py-1 rounded-full inline-block mb-3">Eat more</span>
+                <h4 className="text-dark-teal font-extrabold text-[15px] mb-3">Recommended Foods</h4>
+                <ul className="space-y-1">
+                  {[...(dietPlan.breakfast || []), ...(dietPlan.lunch || []), ...(dietPlan.dinner || [])]
+                    .slice(0, 4).map((item: string, i: number) => (
+                    <li key={i} className="text-dark-teal text-[12px] font-medium flex items-center gap-2">
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#26C6BF] shrink-0" /> <span className="leading-tight">{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              {dietPlan.avoid && dietPlan.avoid.length > 0 && (
+                <div className="bg-white border-[1.5px] border-[#E8F1F1] border-l-4 border-l-[#FF4D4D] rounded-[24px] p-5 min-w-[220px] shrink-0 shadow-sm snap-start">
+                  <span className="bg-[#E0F7F4] text-dark-teal text-[10px] font-extrabold px-3 py-1 rounded-full inline-block mb-3">Reduce</span>
+                  <h4 className="text-dark-teal font-extrabold text-[15px] mb-3">Foods to Avoid</h4>
+                  <ul className="space-y-1">
+                    {dietPlan.avoid.slice(0, 4).map((item: string, i: number) => (
+                      <li key={i} className="text-dark-teal text-[12px] font-medium flex items-center gap-2">
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#FF4D4D] shrink-0" /> <span className="leading-tight">{item}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+            </div>
+          </div>
+        )}
 
         {/* 5. NEAREST CLINICS */}
         <div className="bg-white border-[1.5px] border-border-teal rounded-[28px] p-5 shadow-sm">
@@ -372,46 +421,7 @@ export default function DashboardScreen() {
           </div>
         </div>
 
-        {/* 7. YOUR NEXT STEPS TIMELINE */}
-        <div className="pt-2 pb-4">
-          <h3 className="text-primary-teal text-[11px] font-extrabold uppercase tracking-widest mb-5">YOUR NEXT STEPS</h3>
-          <div className="relative pl-[14px] border-l-[1.5px] border-border-teal ml-2 space-y-6">
-            
-            <div className="relative">
-              <div className="absolute left-[-21px] top-1 w-3.5 h-3.5 bg-primary-teal rounded-full border-2 border-[#FAFAFA]" />
-              <div className="flex justify-between items-center">
-                <div>
-                  <h4 className="text-dark-teal font-bold text-[14px]">Log today's BP</h4>
-                  <p className="text-muted-teal text-[11px] font-medium">Today</p>
-                </div>
-                <div className="bg-[#E0F7F4] text-[#1A9E98] font-bold text-[11px] px-3 py-1.5 rounded-full">+15 coins</div>
-              </div>
-            </div>
-
-            <div className="relative">
-              <div className="absolute left-[-21px] top-1 w-3.5 h-3.5 bg-primary-teal rounded-full border-2 border-[#FAFAFA]" />
-              <div className="flex justify-between items-center">
-                <div>
-                  <h4 className="text-dark-teal font-bold text-[14px]">Clinic checkup (QR scan)</h4>
-                  <p className="text-muted-teal text-[11px] font-medium">This week</p>
-                </div>
-                <div className="bg-[#E0F7F4] text-[#1A9E98] font-bold text-[11px] px-3 py-1.5 rounded-full">+50 coins</div>
-              </div>
-            </div>
-
-            <div className="relative rounded-xl p-2 -ml-2 bg-light-teal-surface">
-              <div className="absolute left-[-13px] top-3 w-3.5 h-3.5 bg-primary-teal rounded-full border-2 border-[#FAFAFA]" />
-              <div className="flex justify-between items-center">
-                <div>
-                  <h4 className="text-dark-teal font-bold text-[14px]">Upload report from My ID</h4>
-                  <p className="text-muted-teal text-[11px] font-medium">Go to My ID → Upload Report</p>
-                </div>
-                <div className="bg-[#E0F7F4] text-[#1A9E98] font-bold text-[11px] px-3 py-1.5 rounded-full">+25 coins</div>
-              </div>
-            </div>
-
-          </div>
-        </div>
+        {/* 7. YOUR NEXT STEPS TIMELINE (Removed per request) */}
 
       </div>
 

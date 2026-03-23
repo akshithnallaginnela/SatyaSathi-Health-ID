@@ -279,40 +279,6 @@ export default function VitalsScreen() {
 
               </div>
             </div>
-
-            {/* DIET FOCUS */}
-            <div className="pb-8">
-              <h3 className="text-[#26C6BF] text-[11px] font-extrabold uppercase tracking-widest px-6 mb-4">DIET FOCUS</h3>
-              <div className="flex gap-4 overflow-x-auto pb-4 no-scrollbar px-6 snap-x">
-                
-                <div className="bg-white border-[1.5px] border-[#E8F1F1] border-l-4 border-l-[#26C6BF] rounded-[24px] p-5 min-w-[200px] shrink-0 shadow-sm snap-start">
-                  <span className="bg-[#26C6BF] text-white text-[10px] font-extrabold px-3 py-1 rounded-full inline-block mb-3">Eat more</span>
-                  <h4 className="text-[#1A3A38] font-extrabold text-[15px] mb-3">Potassium foods</h4>
-                  <ul className="space-y-1">
-                    <li className="text-[#1A3A38] text-[12px] font-medium flex items-center gap-2">
-                      <span className="w-1.5 h-1.5 rounded-full bg-[#26C6BF]" /> Banana
-                    </li>
-                    <li className="text-[#1A3A38] text-[12px] font-medium flex items-center gap-2">
-                      <span className="w-1.5 h-1.5 rounded-full bg-[#26C6BF]" /> Sweet potato
-                    </li>
-                  </ul>
-                </div>
-
-                <div className="bg-white border-[1.5px] border-[#E8F1F1] border-l-4 border-l-[#FF4D4D] rounded-[24px] p-5 min-w-[200px] shrink-0 shadow-sm snap-start">
-                  <span className="bg-[#E0F7F4] text-[#1A3A38] text-[10px] font-extrabold px-3 py-1 rounded-full inline-block mb-3">Reduce</span>
-                  <h4 className="text-[#1A3A38] font-extrabold text-[15px] mb-3">High sodium</h4>
-                  <ul className="space-y-1">
-                    <li className="text-[#1A3A38] text-[12px] font-medium flex items-center gap-2">
-                      <span className="w-1.5 h-1.5 rounded-full bg-[#26C6BF]" /> Pickles
-                    </li>
-                    <li className="text-[#1A3A38] text-[12px] font-medium flex items-center gap-2">
-                      <span className="w-1.5 h-1.5 rounded-full bg-[#26C6BF]" /> Packaged snacks
-                    </li>
-                  </ul>
-                </div>
-
-              </div>
-            </div>
           </>
         ) : (
           <div className="px-6 pb-8">
