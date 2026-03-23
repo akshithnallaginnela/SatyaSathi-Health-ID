@@ -24,9 +24,9 @@ async def get_coin_balance(
 async def get_offers():
     """Return mock offers for coin redemption."""
     return [
-        {"id": "o1", "title": "Free Clinic Mini-Checkup", "cost": 500, "description": "Get a free BP and blood sugar checkup at any partner clinic."},
-        {"id": "o2", "title": "Rs 100 Pharmacy Voucher", "cost": 1000, "description": "Flat discount on your next medicine purchase."},
-        {"id": "o3", "title": "Premium Diet Plan (1 Month)", "cost": 2500, "description": "Expert personalized diet consultation."},
+        {"id": "o1", "partner": "Partner Clinic", "offer": "Free BP & Sugar Checkup", "coins_required": 500, "description": "Get a free mini-checkup at any partner clinic."},
+        {"id": "o2", "partner": "MedPlus Pharmacy", "offer": "₹100 Medicine Discount", "coins_required": 1000, "description": "Flat discount on your next medicine purchase."},
+        {"id": "o3", "partner": "HealthifyMe", "offer": "Premium Diet Plan (1 Month)", "coins_required": 2500, "description": "Expert personalized diet consultation."},
     ]
 
 @router.post("/redeem")
