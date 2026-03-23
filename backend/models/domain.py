@@ -142,7 +142,7 @@ class PreventiveCare(Base):
     id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     user_id = Column(GUID(), ForeignKey("users.id"))
     category = Column(String(50))
-    risk_horizon = Column(String(30))
+    risk_horizon = Column(String(255))
     current_value = Column(Text)
     trend_summary = Column(Text)
     future_risk_message = Column(Text)

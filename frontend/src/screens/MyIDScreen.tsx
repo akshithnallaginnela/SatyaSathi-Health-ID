@@ -71,13 +71,17 @@ export default function MyIDScreen({ user, onLogout, onReportUploaded }: { user:
       setReportResult(res);
       setNoticeMsg('Report uploaded and analyzed successfully.');
       
-      // Trigger dashboard refresh
+      // Set flag so Dashboard knows to refetch when it mounts
+      localStorage.setItem('vitalid_data_updated', Date.now().toString());
+      
+      // Show confirmation FIRST, then navigate
+      alert('✅ Upload Successful!\n\nYour Health Dashboard and Daily Tasks have been updated with insights from your report.');
+      
+      // Navigate to dashboard AFTER user dismisses alert
       window.dispatchEvent(new Event('report-uploaded'));
       if (onReportUploaded) {
         onReportUploaded();
       }
-      
-      alert('✅ Upload Successful!\n\nYour Health Dashboard and Daily Tasks have been dynamically updated with insights from your report.');
     } catch (e: any) {
       setNoticeMsg(e?.message || 'Failed to upload report.');
       alert('❌ Upload Failed:\n\n' + (e?.message || 'Unknown network error.'));

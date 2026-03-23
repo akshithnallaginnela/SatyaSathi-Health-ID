@@ -78,16 +78,20 @@ async def get_dashboard_summary(
             "why": t.why_this_task
         })
 
-    # 9. Format Preventive Care — include ALL items, not just first
+    # 9. Format Preventive Care
+    urgency_scores = {"great": 15, "watch": 42, "focus": 65, "act_now": 85}
     formatted_care = []
     for c in care_items:
+        steps = json.loads(c.prevention_steps) if c.prevention_steps else []
         formatted_care.append({
             "category": c.category,
             "urgency": c.urgency,
             "status": c.current_value,
             "risk": c.future_risk_message,
-            "steps": json.loads(c.prevention_steps) if c.prevention_steps else [],
-            "horizon": c.risk_horizon
+            "steps": steps,
+            "horizon": c.risk_horizon,
+            "risk_score": urgency_scores.get(c.urgency, 30),
+            "top_action": steps[0] if steps else "Monitor regularly"
         })
 
     # 10. Format Diet Plan
@@ -102,34 +106,35 @@ async def get_dashboard_summary(
             "hydration": diet.hydration_goal_glasses
         }
 
-    # 11. Determine what data we have
-    has_data = False
+    # 11. Determine what VITALS data we have
+    # CRITICAL: has_data is TRUE only when user has logged BP, Sugar, or uploaded a Report
+    # BMI alone does NOT count — those are profile fields from registration
+    has_vitals = False
     data_sources = []
     if status:
         if status.has_bp:
-            has_data = True
+            has_vitals = True
             data_sources.append("BP")
         if status.has_sugar:
-            has_data = True
+            has_vitals = True
             data_sources.append("Sugar")
         if status.has_report:
-            has_data = True
+            has_vitals = True
             data_sources.append("Report")
     
-    # Also mark as has_data if user has BMI
+    # BMI is supplementary info, not a vitals trigger
     if user and user.bmi:
-        has_data = True
         data_sources.append("BMI")
 
-    # 12. Determine highest urgency
-    urgency_order = {"act_now": 3, "watch": 2, "maintain": 1, "info": 0}
-    highest_urgency = "low"
+    # 12. Determine highest urgency from care items  
+    urgency_order = {"act_now": 4, "focus": 3, "watch": 2, "great": 1, "info": 0}
+    highest_urgency = "great"
     if formatted_care:
         max_care = max(formatted_care, key=lambda c: urgency_order.get(c["urgency"], 0))
         highest_urgency = max_care["urgency"]
     
-    # 13. Build comprehensive preventive summary
-    preventive_summary = "Keep tracking your daily habits."
+    # 13. Build preventive summary
+    preventive_summary = "Log your vitals to get personalized health insights."
     all_steps = []
     if formatted_care:
         summaries = [c["risk"] for c in formatted_care if c.get("risk")]
@@ -138,22 +143,21 @@ async def get_dashboard_summary(
         for c in formatted_care:
             all_steps.extend(c.get("steps", []))
     
-    # Deduplicate steps
     unique_steps = list(dict.fromkeys(all_steps))
 
     initials = "".join(word[0].upper() for word in (user.full_name or "U").split()[:2]) if user else "U"
 
-    # Health index subtitle
+    # Health index subtitle — positive framing
     if health_index >= 80:
-        health_subtitle = "Your vitals look great! Keep going."
+        health_subtitle = "Your vitals look great — keep it up! 💪"
     elif health_index >= 60:
-        health_subtitle = "Mostly stable. A few areas need attention."
+        health_subtitle = "You're doing well! A few small improvements will make a big difference."
     elif health_index >= 40:
-        health_subtitle = "Multiple vitals need attention."
+        health_subtitle = "Your body has some areas that need attention — you're already on top of it."
     elif health_index > 0:
-        health_subtitle = "Your health needs immediate focus."
+        health_subtitle = "Some vitals need focus — the good news is, you're tracking them."
     else:
-        health_subtitle = "Log vitals to see your health index."
+        health_subtitle = "Log your first reading to see your health score."
 
     return {
         "user": {
@@ -165,7 +169,7 @@ async def get_dashboard_summary(
         "wellness_score": health_index,
         "health_subtitle": health_subtitle,
         "has_report": status.has_report if status else False,
-        "has_data": has_data,
+        "has_data": has_vitals,  # TRUE only when user has logged actual vitals
         "data_sources": data_sources,
         "coin_balance": int(coin_balance),
         "vitals_snapshot": {
@@ -178,11 +182,11 @@ async def get_dashboard_summary(
         "preventive_analytics": {
             "risk_level": highest_urgency,
             "summary": preventive_summary,
-            "positive_precautions": unique_steps[:8],  # Top 8 action items
+            "positive_precautions": unique_steps[:8],
             "all_care_items": formatted_care,
             "data_sources_used": data_sources,
             "report_type": "Blood Test" if status and status.has_report else None,
             "diet_plan": formatted_diet
         },
-        "streak_days": 3  # Will be calculated from login events later
+        "streak_days": 3
     }
