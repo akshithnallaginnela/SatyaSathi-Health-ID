@@ -224,14 +224,24 @@ async def analyze_report(
     db.add(report)
     await db.flush()
 
-    # --- Dynamic Task Generation ---
+    # --- Dynamic Task Generation (CLEAR OLD INCOMPLETE TASKS & REGENERATE) ---
     today = date.today()
+
+    # DELETE all incomplete tasks for today to regenerate based on new report
+    await db.execute(
+        delete(DailyTask).where(
+            and_(
+                DailyTask.user_id == user_id,
+                DailyTask.task_date == today,
+                DailyTask.completed == False
+            )
+        )
+    )
+    await db.flush()
 
     # Generate new specific tasks based on the report type / analysis
     new_tasks = []
     
-    # We only generate extra tasks if the report detects risks.
-    # Routine vitals tracking (like LOG_BP) is strictly managed by tasks.py based on past values.
     risk = ml_result.get("risk_level", "low")
     flags_text = " ".join(ml_result.get("flags", [])).lower()
     
@@ -256,6 +266,12 @@ async def analyze_report(
         if mt not in new_tasks:
             new_tasks.append(mt)
 
+    # Add default wellness task if no specific tasks
+    if not new_tasks:
+        new_tasks.append({"type": "WATER_INTAKE", "name": "Drink 8 Glasses Water", "coins": 15, "time_slot": "all_day"})
+        new_tasks.append({"type": "DEEP_BREATHING", "name": "5 Min Deep Breathing", "coins": 15, "time_slot": "evening"})
+
+    # Get remaining completed tasks to avoid duplicates
     existing_tasks_result = await db.execute(
         select(DailyTask.task_type)
         .where(DailyTask.user_id == user_id, DailyTask.task_date == today)
@@ -275,6 +291,9 @@ async def analyze_report(
 
     await db.flush()
 
+    # Build diet plan based on diet_focus
+    diet_plan = _build_diet_plan(ml_result.get("diet_focus", "balanced"), ml_result.get("risk_level", "low"))
+    
     precautions = _build_positive_precautions(ml_result.get("risk_level", "low"), selected_report_type, ml_result.get("flags", []))
     if ml_result.get("diet_focus") == "iron_rich" or ml_result.get("diet_focus") == "iron_and_low_sugar":
         precautions = [
@@ -288,6 +307,7 @@ async def analyze_report(
     if isinstance(report.extracted_values, dict):
         report.extracted_values["positive_precautions"] = precautions
         report.extracted_values["ml_analysis"] = ml_result
+        report.extracted_values["diet_plan"] = diet_plan
     await db.flush()
 
     return {
@@ -301,4 +321,6 @@ async def analyze_report(
         "ocr_data": ocr_data,
         "ml_analysis": ml_result,
         "positive_precautions": precautions,
+        "diet_plan": diet_plan,
+        "tasks_updated": len(new_tasks),
     }
