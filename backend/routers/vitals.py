@@ -107,10 +107,10 @@ async def get_vitals_history(
 ):
     """Get history of BP and Sugar readings."""
     bp_rows = await db.execute(
-        select(BPReading).where(BPReading.user_id == user_id).order_by(desc(BPReading.date)).limit(10)
+        select(BPReading).where(BPReading.user_id == user_id).order_by(desc(BPReading.measured_at)).limit(10)
     )
     sugar_rows = await db.execute(
-        select(SugarReading).where(SugarReading.user_id == user_id).order_by(desc(SugarReading.date)).limit(10)
+        select(SugarReading).where(SugarReading.user_id == user_id).order_by(desc(SugarReading.measured_at)).limit(10)
     )
     
     bp_list = bp_rows.scalars().all()
