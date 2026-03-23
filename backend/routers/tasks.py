@@ -81,3 +81,15 @@ async def get_task_history(
         .limit(limit)
     )
     return result.scalars().all()
+
+@router.get("/balance")
+async def get_coin_balance(
+    user_id: str = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """Calculate current coin balance."""
+    result = await db.execute(
+        select(func.sum(CoinLedger.amount)).where(CoinLedger.user_id == user_id)
+    )
+    balance = result.scalar() or 0
+    return {"balance": balance}
