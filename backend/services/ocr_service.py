@@ -30,19 +30,15 @@ class OCRPayload(BaseModel):
 
 def _clean_json_text(text: str) -> str:
     cleaned = text.strip()
-    if cleaned.startswith("```json"):
+    if cleaned.startswith("" * 3 + "json"):
         cleaned = cleaned[7:]
-    elif cleaned.startswith("```"):
+    elif cleaned.startswith("" * 3):
         cleaned = cleaned[3:]
-    if cleaned.endswith("```"):
+    if cleaned.endswith("" * 3):
         cleaned = cleaned[:-3]
     return cleaned.strip()
 
 async def extract_report_values(file_path: str) -> dict:
-    """
-    Takes an image or PDF path and uses Gemini 1.5 Flash
-    to extract vital health information into a structured JSON dictionary.
-    """
     api_key = os.environ.get("GEMINI_API_KEY")
     if not api_key:
         raise ValueError("GEMINI_API_KEY is not set in the environment.")
@@ -110,12 +106,9 @@ Convert all values to standard units:
   Platelets: if given as 10^3/uL multiply by 1000
 
 Return ONLY valid JSON, no explanation, no markdown.
-If a value is flagged as Low or High in the report,
-still return the numeric value — do not return "Low" or "High".
 """
         
         if media_type == "application/pdf":
-            # Pass as document
             contents = [
                 {"mime_type": media_type, "data": file_bytes},
                 base_prompt
@@ -130,11 +123,10 @@ still return the numeric value — do not return "Low" or "High".
         text_response = _clean_json_text(raw_text)
         parsed = json.loads(text_response)
         
-        # Validate against schema and remove unexpected keys
         payload = OCRPayload.model_validate(parsed)
         return payload.model_dump()
 
     except Exception as e:
-        print(f"Error in Gemini OCR: {e}")
+        import traceback
+        traceback.print_exc()
         raise e
-
