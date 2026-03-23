@@ -19,10 +19,21 @@ export default function VitalsScreen() {
 
   const loadHistory = async () => {
     try {
-      const [res, bmiRes, summary] = await Promise.all([vitalsAPI.getHistory(), vitalsAPI.getLatestBMI(), dashboardAPI.getSummary()]);
-      setHistory(res || []);
+      const [vitalsRes, bmiRes, summary] = await Promise.all([
+        vitalsAPI.getHistory(), 
+        vitalsAPI.getLatestBMI(), 
+        dashboardAPI.getSummary()
+      ]);
+      
+      // Flatten split history for the graph logic
+      const flatHistory = [
+        ...(vitalsRes.bp_history || []),
+        ...(vitalsRes.sugar_history || [])
+      ].sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+      setHistory(flatHistory);
       setLatestBmi(bmiRes || null);
-      if (summary?.preventive_analytics?.report_type) {
+      if (summary?.has_report) {
         setHasReport(true);
       }
     } catch (e) {
