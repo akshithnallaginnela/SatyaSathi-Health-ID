@@ -35,7 +35,7 @@ async def get_bp_readings(user_id: str, db: AsyncSession, limit=30):
     row = await db.execute(
         select(BPReading)
         .where(BPReading.user_id == user_id)
-        .order_by(desc(BPReading.date))
+        .order_by(desc(BPReading.measured_at))
         .limit(limit)
     )
     return row.scalars().all()
@@ -44,7 +44,7 @@ async def get_sugar_readings(user_id: str, db: AsyncSession, limit=30):
     row = await db.execute(
         select(SugarReading)
         .where(SugarReading.user_id == user_id)
-        .order_by(desc(SugarReading.date))
+        .order_by(desc(SugarReading.measured_at))
         .limit(limit)
     )
     return row.scalars().all()
