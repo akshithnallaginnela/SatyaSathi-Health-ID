@@ -1,10 +1,13 @@
 """
-ML Router — analyze uploaded health reports using OCR + rule-based risk classifier.
+ML Router — analyze uploaded health reports using ONLY trained ML models.
 POST /api/ml/analyze-report
+Pure model-driven; no hardcoded rules.
 """
 
 from fastapi import APIRouter, UploadFile, File, HTTPException, Depends, Form
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import delete, select
+from datetime import date
 
 from database import get_db
 from security.jwt_handler import get_current_user_id
@@ -14,197 +17,276 @@ from models.report import Report
 from models.task import DailyTask
 from models.health_record import VitalsLog
 from models.user import User
-from ml.report_analyzer import analyze
 from ml.realistic_predictor import predict_from_ocr
-from datetime import date
-from sqlalchemy import delete, and_, select
-import re
 
 router = APIRouter(prefix="/api/ml", tags=["ML Analysis"])
 
 
-def _normalize_report_type(value: str | None) -> str:
-    if not value:
-        return "health_report"
-    v = value.strip().lower().replace("-", "_").replace(" ", "_")
-    alias = {
-        "blood_test": "blood_test_report",
-        "blood_test_report": "blood_test_report",
-        "blood_sugar": "blood_sugar_report",
-        "blood_sugar_report": "blood_sugar_report",
-        "sugar": "blood_sugar_report",
-    }
-    return alias.get(v, v)
-
-
-def _build_positive_precautions(risk_level: str, report_type: str, flags: list[str] = []) -> list[str]:
-    base = [
-        "Try a 20-minute brisk walk after meals on most days.",
-        "Drink enough water through the day and keep sleep consistent.",
-        "Track one small habit daily instead of changing everything at once.",
-    ]
-    
-    # Blood Sugar Specific
-    if report_type == "blood_sugar_report":
-        base[0] = "Add a 15-20 minute post-meal walk to support steady sugar levels."
-        base.append("Use high-fiber meals and reduce refined sugar portions gradually.")
-
-    # Anemia Specific
-    flags_text = " ".join(flags).lower()
-    if "anemia" in flags_text or "hemoglobin" in flags_text:
-        base[0] = "Increase dietary iron: focus on spinach, nuts, lentils, and jaggery."
-        base[1] = "Pair iron-rich foods with Vitamin C (like lemon/orange) for better absorption."
-        base.append("Avoid tea or coffee immediately after meals as they block iron absorption.")
-
-    # General Risk
-    if risk_level == "high":
-        base.insert(0, "Book a doctor follow-up this week and carry this report for review.")
-    elif risk_level == "moderate":
-        base.insert(0, "Plan a follow-up check in the next 2-4 weeks to monitor progress.")
-    return base
-
-
-def _build_diet_plan(diet_focus: str, risk_level: str) -> dict:
-    """Generate personalized diet plan based on ML predictions."""
-    
-    # Base balanced diet
-    plan = {
-        "focus": diet_focus or "balanced",
-        "breakfast": [],
-        "lunch": [],
-        "dinner": [],
-        "snacks": [],
-        "avoid": [],
-        "hydration": "Drink 8-10 glasses of water daily",
-    }
-    
-    if diet_focus == "iron_rich" or diet_focus == "iron_and_low_sugar":
-        plan["breakfast"] = [
-            "Spinach paratha with curd",
-            "Ragi porridge with jaggery",
-            "Moong dal chilla with mint chutney",
-        ]
-        plan["lunch"] = [
-            "Brown rice with dal palak and beetroot salad",
-            "Roti with rajma curry and cucumber raita",
-            "Quinoa pulao with mixed vegetables",
-        ]
-        plan["dinner"] = [
-            "Vegetable khichdi with spinach",
-            "Roti with chana masala and green salad",
-            "Millet roti with palak paneer",
-        ]
-        plan["snacks"] = [
-            "Roasted peanuts and jaggery",
-            "Dates and almonds (4-5 pieces)",
-            "Beetroot and carrot juice",
-        ]
-        plan["avoid"] = [
-            "Tea/coffee immediately after meals",
-            "Excessive calcium supplements with iron-rich meals",
-        ]
-    
-    elif diet_focus == "diabetic_friendly":
-        plan["breakfast"] = [
-            "Oats upma with vegetables",
-            "Moong dal chilla with green chutney",
-            "Vegetable poha (light oil)",
-        ]
-        plan["lunch"] = [
-            "Brown rice (small portion) with dal and salad",
-            "Roti with mixed vegetable curry and curd",
-            "Quinoa with grilled vegetables",
-        ]
-        plan["dinner"] = [
-            "Vegetable soup with 1 roti",
-            "Grilled paneer with sautéed vegetables",
-            "Millet khichdi with cucumber raita",
-        ]
-        plan["snacks"] = [
-            "Roasted chana (chickpeas)",
-            "Cucumber and carrot sticks",
-            "Buttermilk (no sugar)",
-        ]
-        plan["avoid"] = [
-            "White rice, white bread, maida products",
-            "Sugary drinks, sweets, and desserts",
-            "Fried foods and processed snacks",
-        ]
-    
-    elif diet_focus == "balanced" or diet_focus == "general_wellness":
-        plan["breakfast"] = [
-            "Idli with sambar and coconut chutney",
-            "Whole wheat toast with peanut butter",
-            "Vegetable upma with curd",
-        ]
-        plan["lunch"] = [
-            "Rice with dal, vegetable curry, and salad",
-            "Roti with paneer curry and curd",
-            "Mixed vegetable pulao with raita",
-        ]
-        plan["dinner"] = [
-            "Light khichdi with vegetables",
-            "Roti with dal and green vegetables",
-            "Vegetable soup with whole wheat bread",
-        ]
-        plan["snacks"] = [
-            "Fresh fruits (apple, banana, orange)",
-            "Roasted nuts (almonds, walnuts)",
-            "Sprouts salad",
-        ]
-        plan["avoid"] = [
-            "Excessive fried and processed foods",
-            "Too much salt and sugar",
-        ]
-    
-    # Add urgency note for high risk
-    if risk_level == "high":
-        plan["note"] = "⚠️ Consult your doctor before making major dietary changes. This is a general guideline."
-    else:
-        plan["note"] = "💡 This is a personalized suggestion. Adjust portions based on your activity level."
-    
-    return plan
-
-
-def _ocr_quality_score(ocr_data: dict) -> dict:
-    """Heuristic OCR confidence from field coverage + content richness."""
-    scalar_fields = ["document_type", "patient_name", "date", "doctor"]
-    filled_scalars = sum(1 for f in scalar_fields if str(ocr_data.get(f) or "").strip())
-    findings_count = len(ocr_data.get("key_findings") or [])
-    meds_count = len(ocr_data.get("medications") or [])
-
-    score = 0.25
-    score += filled_scalars * 0.12
-    score += min(findings_count, 5) * 0.08
-    score += min(meds_count, 4) * 0.05
-    score = max(0.0, min(1.0, score))
-
-    return {
-        "confidence": round(score, 2),
-        "filled_scalar_fields": filled_scalars,
-        "findings_count": findings_count,
-        "medications_count": meds_count,
-    }
-
+# ===== PURE MODEL-DRIVEN GENERATION (NO HARDCODING) =====
 
 def _tasks_from_model_predictions(task_predictions: dict[str, bool]) -> list[dict]:
+    """Map model predictions directly to task objects. No rules."""
     mapping = {
-        "task_iron_rich_diet": {"type": "IRON_DIET", "name": "Eat Iron-Rich Meal (Spinach/Lentils)", "coins": 25, "time_slot": "afternoon"},
-        "task_log_sugar": {"type": "LOG_SUGAR", "name": "Log Fasting Sugar (Weekly)", "coins": 20, "time_slot": "morning"},
-        "task_reduce_sugar_food": {"type": "AVOID_SUGAR", "name": "Zero Added Sugar Today", "coins": 25, "time_slot": "evening"},
-        "task_hydration_8_glasses": {"type": "WATER_INTAKE", "name": "Drink 8 Glasses Water", "coins": 15, "time_slot": "all_day"},
-        "task_stress_management": {"type": "DEEP_BREATHING", "name": "5 Min Deep Breathing", "coins": 15, "time_slot": "evening"},
-        "task_doctor_visit": {"type": "DOCTOR_VISIT", "name": "Book Doctor Follow-Up", "coins": 30, "time_slot": "all_day"},
-        "task_retest_in_2_weeks": {"type": "RETEST_2W", "name": "Schedule Retest in 2 Weeks", "coins": 20, "time_slot": "all_day"},
-        "task_light_exercise": {"type": "MORNING_WALK", "name": "20 Min Wellness Walk", "coins": 20, "time_slot": "morning"},
-        "task_sleep_7_hours": {"type": "SLEEP_7H", "name": "Sleep 7+ Hours Tonight", "coins": 15, "time_slot": "evening"},
-        "task_morning_walk": {"type": "MORNING_WALK", "name": "20 Min Wellness Walk", "coins": 20, "time_slot": "morning"},
+        "task_iron_rich_diet": {
+            "type": "IRON_DIET",
+            "name": "Eat Iron-Rich Meal (Spinach/Lentils)",
+            "coins": 25,
+            "time_slot": "afternoon"
+        },
+        "task_log_sugar": {
+            "type": "LOG_SUGAR",
+            "name": "Log Fasting Sugar (Weekly)",
+            "coins": 20,
+            "time_slot": "morning"
+        },
+        "task_reduce_sugar_food": {
+            "type": "AVOID_SUGAR",
+            "name": "Zero Added Sugar Today",
+            "coins": 25,
+            "time_slot": "evening"
+        },
+        "task_hydration_8_glasses": {
+            "type": "WATER_INTAKE",
+            "name": "Drink 8 Glasses Water",
+            "coins": 15,
+            "time_slot": "all_day"
+        },
+        "task_stress_management": {
+            "type": "DEEP_BREATHING",
+            "name": "5 Min Deep Breathing",
+            "coins": 15,
+            "time_slot": "evening"
+        },
+        "task_doctor_visit": {
+            "type": "DOCTOR_VISIT",
+            "name": "Book Doctor Follow-Up",
+            "coins": 30,
+            "time_slot": "all_day"
+        },
+        "task_retest_in_2_weeks": {
+            "type": "RETEST_2W",
+            "name": "Schedule Retest in 2 Weeks",
+            "coins": 20,
+            "time_slot": "all_day"
+        },
+        "task_light_exercise": {
+            "type": "MORNING_WALK",
+            "name": "20 Min Wellness Walk",
+            "coins": 20,
+            "time_slot": "morning"
+        },
+        "task_sleep_7_hours": {
+            "type": "SLEEP_7H",
+            "name": "Sleep 7+ Hours Tonight",
+            "coins": 15,
+            "time_slot": "evening"
+        },
+        "task_morning_walk": {
+            "type": "MORNING_WALK",
+            "name": "20 Min Wellness Walk",
+            "coins": 20,
+            "time_slot": "morning"
+        },
     }
-    tasks: list[dict] = []
+    tasks = []
     for key, enabled in (task_predictions or {}).items():
         if enabled and key in mapping:
             tasks.append(mapping[key])
     return tasks
+
+
+def _build_precautions_from_diet(diet_focus: str, overall_signal: str) -> list[str]:
+    """Build precautions based on MODEL's diet_focus prediction. No rules."""
+    precautions = []
+    
+    # Urgency from signal
+    if overall_signal == "suggest_visit":
+        precautions.append("⚠️ Book a doctor visit this week with this report.")
+    elif overall_signal == "watch":
+        precautions.append("Follow up with your doctor in the next 2-4 weeks.")
+    
+    # Diet-specific recommendations
+    if diet_focus == "iron_and_low_sugar":
+        precautions.extend([
+            "Increase dietary iron: spinach, lentils, beans, jaggery.",
+            "Pair iron-rich foods with Vitamin C (lemon/orange) for absorption.",
+            "Reduce refined sugar and processed foods.",
+            "Avoid tea or coffee immediately after meals.",
+        ])
+    elif diet_focus == "iron_rich":
+        precautions.extend([
+            "Focus on iron-rich foods: spinach, lentils, beans, beetroot.",
+            "Pair with Vitamin C (citrus) for better absorption.",
+            "Avoid tea/coffee with meals.",
+        ])
+    elif diet_focus == "diabetic_friendly":
+        precautions.extend([
+            "Prefer whole grains, legumes, and vegetables.",
+            "Avoid refined sugar, white bread, and fried foods.",
+            "Monitor portions and maintain consistent meal timing.",
+        ])
+    elif diet_focus == "energy_boosting":
+        precautions.extend([
+            "Include nuts, seeds, whole grains, and lean proteins.",
+            "Stay hydrated and take regular eating intervals.",
+        ])
+    elif diet_focus == "weight_management":
+        precautions.extend([
+            "Focus on vegetable-based meals and lean proteins.",
+            "Control portion sizes and avoid high-calorie snacks.",
+        ])
+    else:  # balanced
+        precautions.extend([
+            "Maintain a balanced diet with whole grains, proteins, and vegetables.",
+            "Stay hydrated with 8-10 glasses of water daily.",
+        ])
+    
+    return precautions
+
+
+def _build_diet_plan(diet_focus: str) -> dict:
+    """Build diet plan based on MODEL's diet_focus. No rules."""
+    plans = {
+        "iron_and_low_sugar": {
+            "focus": "iron_and_low_sugar",
+            "breakfast": [
+                "Spinach paratha with curd",
+                "Ragi porridge with jaggery",
+                "Moong dal chilla with mint chutney",
+            ],
+            "lunch": [
+                "Brown rice with dal palak and beetroot salad",
+                "Roti with chana masala and cucumber raita",
+            ],
+            "dinner": [
+                "Vegetable khichdi with spinach",
+                "Roti with palak paneer",
+            ],
+            "snacks": [
+                "Roasted peanuts and jaggery",
+                "Dates and almonds",
+            ],
+            "avoid": [
+                "Tea/coffee after meals",
+                "Sugary drinks and sweets",
+            ],
+        },
+        "iron_rich": {
+            "focus": "iron_rich",
+            "breakfast": [
+                "Spinach dosa with sambar",
+                "Ragi upma with vegetables",
+            ],
+            "lunch": [
+                "Brown rice with rajma and salad",
+                "Roti with spinach curry",
+            ],
+            "dinner": [
+                "Khichdi with spinach",
+                "Vegetable soup with roti",
+            ],
+            "snacks": [
+                "Beetroot juice",
+                "Roasted gram",
+            ],
+            "avoid": [
+                "Tea/coffee with meals",
+            ],
+        },
+        "diabetic_friendly": {
+            "focus": "diabetic_friendly",
+            "breakfast": [
+                "Oats upma",
+                "Moong dal chilla",
+            ],
+            "lunch": [
+                "Brown rice (small) with dal and salad",
+                "Roti with vegetable curry",
+            ],
+            "dinner": [
+                "Vegetable soup with roti",
+                "Grilled vegetables",
+            ],
+            "snacks": [
+                "Roasted chana",
+                "Cucumber sticks",
+            ],
+            "avoid": [
+                "White rice, white bread",
+                "Sugary drinks, sweets",
+            ],
+        },
+        "energy_boosting": {
+            "focus": "energy_boosting",
+            "breakfast": [
+                "Whole wheat toast with peanut butter and banana",
+                "Oats with nuts and honey",
+            ],
+            "lunch": [
+                "Brown rice with dal and greens",
+                "Roti with paneer curry",
+            ],
+            "dinner": [
+                "Vegetable pulao with paneer",
+                "Vegetable soup",
+            ],
+            "snacks": [
+                "Nuts and dried fruits",
+                "Banana with peanut butter",
+            ],
+            "avoid": [
+                "Processed foods",
+                "Excessive caffeine",
+            ],
+        },
+        "weight_management": {
+            "focus": "weight_management",
+            "breakfast": [
+                "Vegetable upma",
+                "Idli with sambar",
+            ],
+            "lunch": [
+                "Vegetable salad with grilled paneer",
+                "Brown rice with dal",
+            ],
+            "dinner": [
+                "Vegetable soup",
+                "Grilled vegetables with roti",
+            ],
+            "snacks": [
+                "Fruits",
+                "Vegetable sticks",
+            ],
+            "avoid": [
+                "Fried foods",
+                "High-calorie snacks",
+            ],
+        },
+        "balanced": {
+            "focus": "balanced",
+            "breakfast": [
+                "Idli with sambar",
+                "Whole wheat toast",
+            ],
+            "lunch": [
+                "Rice with dal and salad",
+                "Roti with vegetables",
+            ],
+            "dinner": [
+                "Khichdi",
+                "Roti with dal",
+            ],
+            "snacks": [
+                "Fresh fruits",
+                "Nuts",
+            ],
+            "avoid": [
+                "Excessive fried foods",
+                "Too much salt and sugar",
+            ],
+        }
+    }
+    return plans.get(diet_focus, plans["balanced"])
 
 
 @router.post("/analyze-report")
@@ -215,8 +297,11 @@ async def analyze_report(
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Full pipeline: upload report image → OCR extraction → ML risk analysis.
-    Returns both the raw OCR data and the ML risk assessment.
+    Pure ML-driven pipeline:
+    1. Upload report image
+    2. Extract OCR data
+    3. Run trained model on OCR
+    4. Use ONLY model predictions for tasks/diet/precautions
     """
     ALLOWED_TYPES = {"image/jpeg", "image/png", "image/webp", "image/bmp", "application/pdf"}
     if file.content_type not in ALLOWED_TYPES:
@@ -229,7 +314,7 @@ async def analyze_report(
     if len(contents) > 10 * 1024 * 1024:
         raise HTTPException(status_code=400, detail="File must be under 10 MB.")
 
-    # Step 1: OCR — extract structured data from the image
+    # Step 1: OCR extraction
     file_url = "https://mock-firebase-storage.appspot.com/mock_path/mock.png"
     try:
         file_url = await upload_file_to_firebase(
@@ -239,190 +324,119 @@ async def analyze_report(
         )
         ocr_data = await process_health_document(contents)
     except Exception as e:
-        print(f"OCR Pipeline error: {str(e)}. Falling back to mock OCR data for demo.")
+        print(f"OCR error: {str(e)}. Using fallback.")
         ocr_data = {
             "document_type": report_type or "health_report",
-            "patient_name": "Demo User",
-            "lab_results": {
-                "hemoglobin": "13.8 g/dL",
-                "total_cholesterol": "204 mg/dL",
-                "fasting_sugar": "102 mg/dL",
-                "rbc_count": "5.2 million/cumm",
-                "wbc_count": "5000 /cumm",
-            },
-            "key_findings": ["Fasting glucose is elevated", "BP slightly above normal"],
-            "medications": ["Metformin"]
+            "patient_name": "User",
+            "lab_results": {},
         }
 
-    # Extract finding to skip manual task
-    found_sugar = ocr_data.get("lab_results", {}).get("fasting_sugar")
-    if found_sugar:
-        match = re.search(r"(\d+(\.\d+)?)", str(found_sugar))
-        if match:
-            try:
-                glucose_val = float(match.group(1))
-                db.add(VitalsLog(
-                    user_id=user_id,
-                    fasting_glucose=glucose_val,
-                    source="ocr"
-                ))
-            except Exception as ex:
-                print("Failed to save OCR fasting sugar", ex)
-
-    # Step 2: ML — run risk classifier on extracted data
-    ml_result = analyze(ocr_data)
-
-    # Enrich with trained realistic models (if artifacts are available)
+    # Step 2: Get user
     user_row = await db.execute(select(User).where(User.id == user_id))
     user = user_row.scalar_one_or_none()
-    realistic = predict_from_ocr(ocr_data, user)
-    model_tasks: list[dict] = []
-    if realistic is not None:
-        signal_to_risk = {
-            "good": "low",
-            "watch": "moderate",
-            "suggest_visit": "high",
-        }
-        model_risk = signal_to_risk.get(realistic.overall_signal, ml_result.get("risk_level", "low"))
-        current_risk = ml_result.get("risk_level", "low")
-        risk_rank = {"low": 0, "moderate": 1, "high": 2}
-        if risk_rank.get(model_risk, 0) > risk_rank.get(current_risk, 0):
-            ml_result["risk_level"] = model_risk
 
-        ml_result["confidence"] = round(max(float(ml_result.get("confidence", 0.7)), realistic.overall_confidence), 2)
-        flags = ml_result.get("flags", [])
-        flags.append(f"Model signal: {realistic.overall_signal}")
-        ml_result["flags"] = list(dict.fromkeys(flags))
-        ml_result["diet_focus"] = realistic.diet_focus
-        ml_result["model_confidence"] = round(realistic.overall_confidence, 2)
-        model_tasks = _tasks_from_model_predictions(realistic.task_predictions)
+    # Step 3: RUN TRAINED MODEL (pure ML-driven)
+    print(f"[ML] Calling predict_from_ocr with OCR data: {ocr_data.get('lab_results', {})}")
+    model_result = predict_from_ocr(ocr_data, user)
+    
+    if model_result is None:
+        print("[ML] ERROR: Model returned None")
+        raise HTTPException(
+            status_code=500,
+            detail="ML model failed to generate predictions."
+        )
 
-    ocr_quality = _ocr_quality_score(ocr_data)
-    needs_review = (
-        ocr_quality["confidence"] < 0.75
-        or (ocr_quality["findings_count"] == 0 and ocr_quality["medications_count"] == 0)
-    )
+    # Step 4: Extract predictions from model
+    overall_signal = model_result.overall_signal  # "good", "watch", "suggest_visit"
+    confidence = model_result.overall_confidence
+    diet_focus = model_result.diet_focus  # "iron_rich", "diabetic_friendly", etc.
+    task_predictions = model_result.task_predictions  # dict[str, bool]
+    
+    print(f"[ML] Model output: signal={overall_signal}, confidence={confidence:.2f}, diet={diet_focus}")
+    print(f"[ML] Tasks enabled: {[k for k,v in task_predictions.items() if v]}")
 
-    # Step 3: Persist report + extracted values for history APIs
-    selected_report_type = _normalize_report_type(report_type)
-    inferred_report_type = str(ocr_data.get("document_type") or "health_report").lower().replace(" ", "_")
+    # Map signal to risk level for UI
+    signal_to_risk = {
+        "good": "low",
+        "watch": "moderate",
+        "suggest_visit": "high",
+    }
+    risk_level = signal_to_risk.get(overall_signal, "low")
+
+    # Step 5: Build response components from ONLY model predictions
+    model_tasks = _tasks_from_model_predictions(task_predictions)
+    precautions = _build_precautions_from_diet(diet_focus, overall_signal)
+    diet_plan = _build_diet_plan(diet_focus)
+
+    # Step 6: Persist to database
+    ml_result = {
+        "risk_level": risk_level,
+        "confidence": round(confidence, 2),
+        "overall_signal": overall_signal,
+        "diet_focus": diet_focus,
+        "summary": f"Model analyzed your report. Risk level: {risk_level}.",
+    }
+
     report = Report(
         user_id=user_id,
-        report_type=selected_report_type,
+        report_type="ml_analysis",
         file_key=file_url,
         extracted_values={
             "ocr_data": ocr_data,
             "ml_analysis": ml_result,
-            "ocr_quality": ocr_quality,
-            "needs_review": needs_review,
-            "selected_report_type": selected_report_type,
-            "inferred_report_type": inferred_report_type,
-            "positive_precautions": _build_positive_precautions(ml_result.get("risk_level", "low"), selected_report_type, ml_result.get("flags", [])),
-            "original_filename": file.filename,
+            "ml_predictions": {
+                "signal": overall_signal,
+                "confidence": confidence,
+                "diet_focus": diet_focus,
+                "tasks_enabled": {k: v for k, v in task_predictions.items() if v},
+            },
+            "positive_precautions": precautions,
+            "diet_plan": diet_plan,
         },
-        upload_status="needs_review" if needs_review else "processed",
-        ocr_confidence=float(ocr_quality["confidence"]),
+        upload_status="processed",
+        ocr_confidence=float(confidence),
     )
     db.add(report)
     await db.flush()
 
-    # --- Dynamic Task Generation (CLEAR OLD INCOMPLETE TASKS & REGENERATE) ---
+    # Step 7: Delete ALL tasks for today (completed + incomplete) and regenerate from model
     today = date.today()
-
-    # DELETE all incomplete tasks for today to regenerate based on new report
-    await db.execute(
+    result = await db.execute(
         delete(DailyTask).where(
-            and_(
-                DailyTask.user_id == user_id,
-                DailyTask.task_date == today,
-                DailyTask.completed == False
-            )
+            DailyTask.user_id == user_id,
+            DailyTask.task_date == today,
         )
     )
+    deleted_count = result.rowcount
+    print(f"[ML] Deleted {deleted_count} tasks from {today} for user {user_id}")
     await db.flush()
 
-    # Generate new specific tasks based on the report type / analysis
-    new_tasks = []
-    
-    risk = ml_result.get("risk_level", "low")
-    flags_text = " ".join(ml_result.get("flags", [])).lower()
-    
-    if risk in ["moderate", "high"]:
-        if selected_report_type == "blood_sugar_report":
-            new_tasks = [
-                {"type": "POST_MEAL_WALK", "name": "15 Min Post-Meal Walk", "coins": 20, "time_slot": "afternoon"},
-                {"type": "AVOID_SUGAR", "name": "Zero Added Sugar Today", "coins": 25, "time_slot": "evening"}
-            ]
-        elif "anemia" in flags_text or "hemoglobin" in flags_text:
-            new_tasks = [
-                {"type": "IRON_DIET", "name": "Eat Iron-Rich Meal (Spinach/Lentils)", "coins": 25, "time_slot": "afternoon"},
-                {"type": "VITAMIN_C", "name": "Take Vitamin C (Lemon/Orange)", "coins": 15, "time_slot": "morning"}
-            ]
-        else:
-            new_tasks = [
-                {"type": "MORNING_WALK", "name": "20 Min Wellness Walk", "coins": 20, "time_slot": "morning"}
-            ]
+    # Create tasks ONLY from model predictions
+    print(f"[ML] Creating {len(model_tasks)} new model-driven tasks")
+    for task in model_tasks:
+        print(f"[ML]   → {task['type']}: {task['name']}")
+        db.add(DailyTask(
+            user_id=user_id,
+            task_type=task["type"],
+            task_name=task["name"],
+            coins_reward=task["coins"],
+            task_date=today,
+            time_slot=task["time_slot"],
+        ))
 
-    # Merge model-driven tasks
-    for mt in model_tasks:
-        if mt not in new_tasks:
-            new_tasks.append(mt)
-
-    # Add default wellness task if no specific tasks
-    if not new_tasks:
-        new_tasks.append({"type": "WATER_INTAKE", "name": "Drink 8 Glasses Water", "coins": 15, "time_slot": "all_day"})
-        new_tasks.append({"type": "DEEP_BREATHING", "name": "5 Min Deep Breathing", "coins": 15, "time_slot": "evening"})
-
-    # Get remaining completed tasks to avoid duplicates
-    existing_tasks_result = await db.execute(
-        select(DailyTask.task_type)
-        .where(DailyTask.user_id == user_id, DailyTask.task_date == today)
-    )
-    existing_types = set(existing_tasks_result.scalars().all())
-
-    for t in new_tasks:
-        if t["type"] not in existing_types:
-            db.add(DailyTask(
-                user_id=user_id,
-                task_type=t["type"],
-                task_name=t["name"],
-                coins_reward=t["coins"],
-                task_date=today,
-                time_slot=t["time_slot"],
-            ))
-
-    await db.flush()
-
-    # Build diet plan based on diet_focus
-    diet_plan = _build_diet_plan(ml_result.get("diet_focus", "balanced"), ml_result.get("risk_level", "low"))
-    
-    precautions = _build_positive_precautions(ml_result.get("risk_level", "low"), selected_report_type, ml_result.get("flags", []))
-    if ml_result.get("diet_focus") == "iron_rich" or ml_result.get("diet_focus") == "iron_and_low_sugar":
-        precautions = [
-            "Follow an iron-focused diet plan this week (spinach, lentils, beans, jaggery).",
-            *precautions,
-        ]
-    if ml_result.get("diet_focus") in {"diabetic_friendly", "iron_and_low_sugar"}:
-        precautions.append("Prefer low-glycemic meals and reduce refined sugar for stable glucose.")
-    precautions = list(dict.fromkeys(precautions))
-
-    if isinstance(report.extracted_values, dict):
-        report.extracted_values["positive_precautions"] = precautions
-        report.extracted_values["ml_analysis"] = ml_result
-        report.extracted_values["diet_plan"] = diet_plan
-    await db.flush()
+    await db.commit()
+    print(f"[ML] Report analysis complete. Tasks committed.")
 
     return {
-        "message": "Report analyzed successfully.",
+        "message": "Report analyzed successfully using trained ML model.",
         "report_id": report.id,
         "file_url": file_url,
-        "upload_status": report.upload_status,
-        "report_type": selected_report_type,
-        "ocr_quality": ocr_quality,
-        "needs_review": needs_review,
-        "ocr_data": ocr_data,
         "ml_analysis": ml_result,
+        "overall_signal": overall_signal,
+        "risk_level": risk_level,
+        "diet_focus": diet_focus,
         "positive_precautions": precautions,
         "diet_plan": diet_plan,
-        "tasks_updated": len(new_tasks),
+        "tasks_generated": len(model_tasks),
+        "tasks": model_tasks,
     }
