@@ -1,6 +1,7 @@
 import numpy as np
 import datetime
-from sqlalchemy import select, desc
+import json
+from sqlalchemy import select, desc, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 from models.domain import (
     User, UserDataStatus, BPReading, SugarReading, BloodReport,
@@ -165,13 +166,100 @@ async def run_full_analysis(user_id: str, db: AsyncSession):
     tasks      = generate_daily_tasks(features, signals, user)
     diet       = generate_diet_plan(features, signals)
 
-    # Assume dummy implementation for db saving logic for now
-    # await save_signals(user_id, signals, db)
-    # await save_preventive_care(user_id, preventive, db)
-    # await replace_todays_tasks(user_id, tasks, db)
-    # await save_diet(user_id, diet, db)
-    # await update_analysis_status(user_id, db)
-    # await db.commit()
+async def save_signals(user_id: str, signals: dict, db: AsyncSession):
+    # For prototype, we just update status or log messages
+    pass
+
+async def save_preventive_care(user_id: str, care_items: list[dict], db: AsyncSession):
+    # Clear old items for this user
+    await db.execute(delete(PreventiveCare).where(PreventiveCare.user_id == user_id))
+    
+    for item in care_items:
+        obj = PreventiveCare(
+            user_id=user_id,
+            category=item["category"],
+            urgency=item["urgency"],
+            current_value=item["current_status"],
+            future_risk_message=item["future_risk_message"],
+            prevention_steps=json.dumps(item["prevention_steps"]),
+            risk_horizon=item["risk_horizon"]
+        )
+        db.add(obj)
+
+async def replace_todays_tasks(user_id: str, task_list: list[dict], db: AsyncSession):
+    # Delete incomplete tasks for today for this user
+    await db.execute(
+        delete(DailyTask)
+        .where(DailyTask.user_id == user_id)
+        .where(DailyTask.completed == False)
+        .where(DailyTask.task_date == datetime.date.today())
+    )
+    
+    for t in task_list:
+        obj = DailyTask(
+            user_id=user_id,
+            task_type=t["task_type"],
+            task_name=t["task_name"],
+            description=t["description"],
+            why_this_task=t["why_this_task"],
+            category=t["category"],
+            time_of_day=t["time_of_day"],
+            duration_or_quantity=t["duration_or_quantity"],
+            coins_reward=t["coins_reward"],
+            task_date=datetime.date.today()
+        )
+        db.add(obj)
+
+async def save_diet(user_id: str, diet: dict, db: AsyncSession):
+    await db.execute(delete(DietRecommendation).where(DietRecommendation.user_id == user_id))
+    
+    obj = DietRecommendation(
+        user_id=user_id,
+        focus_type=diet["focus_type"],
+        reason=diet["reason"],
+        eat_more=json.dumps(diet["eat_more"]),
+        reduce=json.dumps(diet["reduce"]),
+        avoid=json.dumps(diet["avoid"]),
+        hydration_goal_glasses=diet["hydration_goal"]
+    )
+    db.add(obj)
+
+async def update_analysis_status(user_id: str, db: AsyncSession):
+    result = await db.execute(select(UserDataStatus).where(UserDataStatus.user_id == user_id))
+    status = result.scalar_one_or_none()
+    if status:
+        status.last_analysis_at = datetime.datetime.utcnow()
+        status.analysis_ready = True
+
+async def run_full_analysis(user_id: str, db: AsyncSession):
+    """
+    Triggered after every data update.
+    Regenerates signals, preventive care, tasks, diet.
+    """
+    user   = await get_user(user_id, db)
+    status = await get_data_status(user_id, db)
+
+    bp_readings    = await get_bp_readings_7d(user_id, db)
+    sugar_readings = await get_sugar_readings_4w(user_id, db)
+    latest_report  = await get_latest_report(user_id, db)
+
+    features = build_features(
+        user, bp_readings, sugar_readings, latest_report
+    )
+
+    # In a real app we run ML predictions here (predict_signals)
+    signals = {}
+    
+    preventive = generate_preventive_care(features, signals)
+    tasks      = generate_daily_tasks(features, signals, user)
+    diet       = generate_diet_plan(features, signals)
+
+    await save_preventive_care(user_id, preventive, db)
+    await replace_todays_tasks(user_id, tasks, db)
+    await save_diet(user_id, diet, db)
+    await update_analysis_status(user_id, db)
+    
+    await db.commit()
 
     return {
         "signals": signals,
