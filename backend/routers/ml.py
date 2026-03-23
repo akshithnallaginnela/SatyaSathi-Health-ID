@@ -13,9 +13,11 @@ from services.storage_service import upload_file_to_firebase
 from models.report import Report
 from models.task import DailyTask
 from models.health_record import VitalsLog
+from models.user import User
 from ml.report_analyzer import analyze
+from ml.realistic_predictor import predict_from_ocr
 from datetime import date
-from sqlalchemy import delete, and_
+from sqlalchemy import delete, and_, select
 import re
 
 router = APIRouter(prefix="/api/ml", tags=["ML Analysis"])
@@ -83,6 +85,26 @@ def _ocr_quality_score(ocr_data: dict) -> dict:
     }
 
 
+def _tasks_from_model_predictions(task_predictions: dict[str, bool]) -> list[dict]:
+    mapping = {
+        "task_iron_rich_diet": {"type": "IRON_DIET", "name": "Eat Iron-Rich Meal (Spinach/Lentils)", "coins": 25, "time_slot": "afternoon"},
+        "task_log_sugar": {"type": "LOG_SUGAR", "name": "Log Fasting Sugar (Weekly)", "coins": 20, "time_slot": "morning"},
+        "task_reduce_sugar_food": {"type": "AVOID_SUGAR", "name": "Zero Added Sugar Today", "coins": 25, "time_slot": "evening"},
+        "task_hydration_8_glasses": {"type": "WATER_INTAKE", "name": "Drink 8 Glasses Water", "coins": 15, "time_slot": "all_day"},
+        "task_stress_management": {"type": "DEEP_BREATHING", "name": "5 Min Deep Breathing", "coins": 15, "time_slot": "evening"},
+        "task_doctor_visit": {"type": "DOCTOR_VISIT", "name": "Book Doctor Follow-Up", "coins": 30, "time_slot": "all_day"},
+        "task_retest_in_2_weeks": {"type": "RETEST_2W", "name": "Schedule Retest in 2 Weeks", "coins": 20, "time_slot": "all_day"},
+        "task_light_exercise": {"type": "MORNING_WALK", "name": "20 Min Wellness Walk", "coins": 20, "time_slot": "morning"},
+        "task_sleep_7_hours": {"type": "SLEEP_7H", "name": "Sleep 7+ Hours Tonight", "coins": 15, "time_slot": "evening"},
+        "task_morning_walk": {"type": "MORNING_WALK", "name": "20 Min Wellness Walk", "coins": 20, "time_slot": "morning"},
+    }
+    tasks: list[dict] = []
+    for key, enabled in (task_predictions or {}).items():
+        if enabled and key in mapping:
+            tasks.append(mapping[key])
+    return tasks
+
+
 @router.post("/analyze-report")
 async def analyze_report(
     file: UploadFile = File(...),
@@ -147,6 +169,32 @@ async def analyze_report(
 
     # Step 2: ML — run risk classifier on extracted data
     ml_result = analyze(ocr_data)
+
+    # Enrich with trained realistic models (if artifacts are available)
+    user_row = await db.execute(select(User).where(User.id == user_id))
+    user = user_row.scalar_one_or_none()
+    realistic = predict_from_ocr(ocr_data, user)
+    model_tasks: list[dict] = []
+    if realistic is not None:
+        signal_to_risk = {
+            "good": "low",
+            "watch": "moderate",
+            "suggest_visit": "high",
+        }
+        model_risk = signal_to_risk.get(realistic.overall_signal, ml_result.get("risk_level", "low"))
+        current_risk = ml_result.get("risk_level", "low")
+        risk_rank = {"low": 0, "moderate": 1, "high": 2}
+        if risk_rank.get(model_risk, 0) > risk_rank.get(current_risk, 0):
+            ml_result["risk_level"] = model_risk
+
+        ml_result["confidence"] = round(max(float(ml_result.get("confidence", 0.7)), realistic.overall_confidence), 2)
+        flags = ml_result.get("flags", [])
+        flags.append(f"Model signal: {realistic.overall_signal}")
+        ml_result["flags"] = list(dict.fromkeys(flags))
+        ml_result["diet_focus"] = realistic.diet_focus
+        ml_result["model_confidence"] = round(realistic.overall_confidence, 2)
+        model_tasks = _tasks_from_model_predictions(realistic.task_predictions)
+
     ocr_quality = _ocr_quality_score(ocr_data)
     needs_review = (
         ocr_quality["confidence"] < 0.75
@@ -203,7 +251,11 @@ async def analyze_report(
                 {"type": "MORNING_WALK", "name": "20 Min Wellness Walk", "coins": 20, "time_slot": "morning"}
             ]
 
-    from sqlalchemy import select
+    # Merge model-driven tasks
+    for mt in model_tasks:
+        if mt not in new_tasks:
+            new_tasks.append(mt)
+
     existing_tasks_result = await db.execute(
         select(DailyTask.task_type)
         .where(DailyTask.user_id == user_id, DailyTask.task_date == today)
@@ -223,6 +275,21 @@ async def analyze_report(
 
     await db.flush()
 
+    precautions = _build_positive_precautions(ml_result.get("risk_level", "low"), selected_report_type, ml_result.get("flags", []))
+    if ml_result.get("diet_focus") == "iron_rich" or ml_result.get("diet_focus") == "iron_and_low_sugar":
+        precautions = [
+            "Follow an iron-focused diet plan this week (spinach, lentils, beans, jaggery).",
+            *precautions,
+        ]
+    if ml_result.get("diet_focus") in {"diabetic_friendly", "iron_and_low_sugar"}:
+        precautions.append("Prefer low-glycemic meals and reduce refined sugar for stable glucose.")
+    precautions = list(dict.fromkeys(precautions))
+
+    if isinstance(report.extracted_values, dict):
+        report.extracted_values["positive_precautions"] = precautions
+        report.extracted_values["ml_analysis"] = ml_result
+    await db.flush()
+
     return {
         "message": "Report analyzed successfully.",
         "report_id": report.id,
@@ -233,5 +300,5 @@ async def analyze_report(
         "needs_review": needs_review,
         "ocr_data": ocr_data,
         "ml_analysis": ml_result,
-        "positive_precautions": _build_positive_precautions(ml_result.get("risk_level", "low"), selected_report_type, ml_result.get("flags", [])),
+        "positive_precautions": precautions,
     }

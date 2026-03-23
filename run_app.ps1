@@ -30,3 +30,4 @@ Start-Process powershell -ArgumentList @('-NoExit', '-Command', $frontendCmd)
 
 Write-Host 'Started backend (http://localhost:8000) and frontend (http://localhost:3000).' -ForegroundColor Green
 Write-Host 'Upload dummy report from: backend/uploads/dummy_health_report.png' -ForegroundColor Cyan
+    
