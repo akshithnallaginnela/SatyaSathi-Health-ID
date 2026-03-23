@@ -59,6 +59,7 @@ app.include_router(profile_router)
 app.include_router(settings_router)
 app.include_router(clinics_router)
 app.include_router(coins_router)
+app.include_router(notifications_router)
 
 # Legacy compatibility for /api/ml/analyze-report
 from routers.reports import analyze_report
