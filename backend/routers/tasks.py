@@ -28,7 +28,7 @@ DEFAULT_TASKS = [
 
 
 async def _ensure_today_tasks(user_id: str, db: AsyncSession):
-    """Generate today's tasks if they don't exist yet."""
+    """Generate today's tasks dynamically based on latest vitals."""
     today = date.today()
     result = await db.execute(
         select(func.count()).select_from(DailyTask)
@@ -38,7 +38,57 @@ async def _ensure_today_tasks(user_id: str, db: AsyncSession):
     if count and count > 0:
         return  # Already generated
 
-    for task_tmpl in DEFAULT_TASKS:
+    from models.health_record import VitalsLog
+    
+    # Latest BP
+    bp_result = await db.execute(
+        select(VitalsLog)
+        .where(VitalsLog.user_id == user_id, VitalsLog.systolic != None)
+        .order_by(desc(VitalsLog.measured_at)).limit(1)
+    )
+    last_bp = bp_result.scalar_one_or_none()
+    
+    # Latest Glucose
+    sugar_result = await db.execute(
+        select(VitalsLog)
+        .where(VitalsLog.user_id == user_id, VitalsLog.fasting_glucose != None)
+        .order_by(desc(VitalsLog.measured_at)).limit(1)
+    )
+    last_sugar = sugar_result.scalar_one_or_none()
+
+    tasks_to_create = []
+
+    # Blood Pressure - Daily manual entry unless normal (e.g. 120/80)
+    bp_is_normal = False
+    if last_bp and last_bp.systolic and last_bp.diastolic:
+        if last_bp.systolic <= 120 and last_bp.diastolic <= 85:
+            bp_is_normal = True
+
+    if not bp_is_normal:
+        tasks_to_create.append({"type": "LOG_BP", "name": "Log Blood Pressure Today", "coins": 15, "time_slot": "morning"})
+
+    # Fasting Sugar - Weekly manual entry
+    needs_sugar = True
+    if last_sugar and last_sugar.measured_at:
+        days_since = (datetime.utcnow() - last_sugar.measured_at).days
+        if days_since < 7:
+            needs_sugar = False
+            
+    if needs_sugar:
+        tasks_to_create.append({"type": "LOG_SUGAR", "name": "Log Fasting Sugar (Weekly)", "coins": 20, "time_slot": "morning"})
+
+    # Dynamic clinical tasks / preventive tasks based on values
+    if last_bp and last_bp.systolic and last_bp.systolic > 130:
+        tasks_to_create.append({"type": "WALK", "name": "20 Min Walk Check (High BP)", "coins": 20, "time_slot": "afternoon"})
+    elif last_sugar and last_sugar.fasting_glucose and float(last_sugar.fasting_glucose) > 100:
+        tasks_to_create.append({"type": "AVOID_SUGAR", "name": "Zero Added Sugar Today", "coins": 20, "time_slot": "all_day"})
+    else:
+        tasks_to_create.append({"type": "WATER_INTAKE", "name": "Drink 8 Glasses Water", "coins": 15, "time_slot": "all_day"})
+
+    # Always add one general wellness task
+    tasks_to_create.append({"type": "DEEP_BREATHING", "name": "5 Min Deep Breathing", "coins": 15, "time_slot": "evening"})
+
+    for task_tmpl in tasks_to_create:
         task = DailyTask(
             user_id=user_id,
             task_type=task_tmpl["type"],

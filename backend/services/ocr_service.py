@@ -9,6 +9,7 @@ class OCRPayload(BaseModel):
     patient_name: str | None = None
     date: str | None = None
     doctor: str | None = None
+    lab_results: dict[str, str] = Field(default_factory=dict)
     key_findings: list[str] = Field(default_factory=list)
     medications: list[str] = Field(default_factory=list)
 
@@ -66,21 +67,24 @@ async def process_health_document(image_bytes: bytes) -> dict:
                 ) from sdk_err
         
         base_prompt = """
-        You are an expert medical data extractor. I am providing an image of a health document.
+        You are an expert medical data extractor. I am providing an image of a clinical / blood test report.
         Return ONLY a valid JSON object with exactly these keys:
         {
           "document_type": string|null,
           "patient_name": string|null,
           "date": string|null,
           "doctor": string|null,
+          "lab_results": { "test_name_1": "value with unit", "test_name_2": "value with unit" },
           "key_findings": string[],
           "medications": string[]
         }
         Rules:
         - Do not include markdown.
         - Do not include extra keys.
-        - If a value is not visible, use null for strings and [] for arrays.
-        - key_findings should contain clinically relevant findings from report text.
+        - Under "lab_results", extract EVERY individual test finding you see (e.g. Hemoglobin, Fasting Sugar, Total Cholesterol, RBC, WBC, Platelets, MCV, Urea, Creatinine, etc) as key-value pairs.
+        - Standardize the keys in `lab_results` to lowercase with underscores (e.g. "fasting_sugar", "hemoglobin", "platelet_count", "rdw", "mcv", "wbc").
+        - If a value is not visible, do not include it.
+        - key_findings should contain clinically relevant findings from the report text or abnormal values.
         """
 
         retry_prompt = """

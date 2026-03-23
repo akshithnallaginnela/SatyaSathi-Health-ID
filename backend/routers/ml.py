@@ -12,9 +12,11 @@ from services.ocr_service import process_health_document
 from services.storage_service import upload_file_to_firebase
 from models.report import Report
 from models.task import DailyTask
+from models.health_record import VitalsLog
 from ml.report_analyzer import analyze
 from datetime import date
 from sqlalchemy import delete, and_
+import re
 
 router = APIRouter(prefix="/api/ml", tags=["ML Analysis"])
 
@@ -106,9 +108,31 @@ async def analyze_report(
         ocr_data = {
             "document_type": report_type or "health_report",
             "patient_name": "Demo User",
+            "lab_results": {
+                "hemoglobin": "13.8 g/dL",
+                "total_cholesterol": "204 mg/dL",
+                "fasting_sugar": "102 mg/dL",
+                "rbc_count": "5.2 million/cumm",
+                "wbc_count": "5000 /cumm",
+            },
             "key_findings": ["Fasting glucose is elevated", "BP slightly above normal"],
             "medications": ["Metformin"]
         }
+
+    # Extract finding to skip manual task
+    found_sugar = ocr_data.get("lab_results", {}).get("fasting_sugar")
+    if found_sugar:
+        match = re.search(r"(\d+(\.\d+)?)", str(found_sugar))
+        if match:
+            try:
+                glucose_val = float(match.group(1))
+                db.add(VitalsLog(
+                    user_id=user_id,
+                    fasting_glucose=glucose_val,
+                    source="ocr"
+                ))
+            except Exception as ex:
+                print("Failed to save OCR fasting sugar", ex)
 
     # Step 2: ML — run risk classifier on extracted data
     ml_result = analyze(ocr_data)
@@ -143,42 +167,41 @@ async def analyze_report(
 
     # --- Dynamic Task Generation ---
     today = date.today()
-    # Delete previous dynamic tasks for today that haven't been completed yet
-    default_types = ["DIET_MEAL", "WATER_INTAKE", "DEEP_BREATHING"]
-    await db.execute(
-        delete(DailyTask)
-        .where(
-            and_(
-                DailyTask.user_id == user_id,
-                DailyTask.task_date == today,
-                DailyTask.completed == False,
-                DailyTask.task_type.notin_(default_types)
-            )
-        )
-    )
 
     # Generate new specific tasks based on the report type / analysis
     new_tasks = []
-    if selected_report_type == "blood_sugar_report":
-        new_tasks = [
-            {"type": "POST_MEAL_WALK", "name": "15 Min Post-Meal Walk", "coins": 20, "time_slot": "afternoon"},
-            {"type": "AVOID_SUGAR", "name": "Zero Added Sugar Today", "coins": 25, "time_slot": "evening"}
-        ]
-    else:
-        new_tasks = [
-            {"type": "LOG_BP", "name": "Log Morning BP", "coins": 15, "time_slot": "morning"},
-            {"type": "MORNING_WALK", "name": "20 Min Morning Walk", "coins": 20, "time_slot": "morning"}
-        ]
+    
+    # We only generate extra tasks if the report detects risks.
+    # Routine vitals tracking (like LOG_BP) is strictly managed by tasks.py based on past values.
+    risk = ml_result.get("risk_level", "low")
+    if risk in ["moderate", "high"]:
+        if selected_report_type == "blood_sugar_report":
+            new_tasks = [
+                {"type": "POST_MEAL_WALK", "name": "15 Min Post-Meal Walk", "coins": 20, "time_slot": "afternoon"},
+                {"type": "AVOID_SUGAR", "name": "Zero Added Sugar Today", "coins": 25, "time_slot": "evening"}
+            ]
+        else:
+            new_tasks = [
+                {"type": "MORNING_WALK", "name": "20 Min Wellness Walk", "coins": 20, "time_slot": "morning"}
+            ]
+
+    from sqlalchemy import select
+    existing_tasks_result = await db.execute(
+        select(DailyTask.task_type)
+        .where(DailyTask.user_id == user_id, DailyTask.task_date == today)
+    )
+    existing_types = set(existing_tasks_result.scalars().all())
 
     for t in new_tasks:
-        db.add(DailyTask(
-            user_id=user_id,
-            task_type=t["type"],
-            task_name=t["name"],
-            coins_reward=t["coins"],
-            task_date=today,
-            time_slot=t["time_slot"],
-        ))
+        if t["type"] not in existing_types:
+            db.add(DailyTask(
+                user_id=user_id,
+                task_type=t["type"],
+                task_name=t["name"],
+                coins_reward=t["coins"],
+                task_date=today,
+                time_slot=t["time_slot"],
+            ))
 
     await db.flush()
 

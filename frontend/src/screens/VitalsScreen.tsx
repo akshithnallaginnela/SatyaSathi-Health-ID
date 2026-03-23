@@ -5,7 +5,7 @@ import { vitalsAPI, dashboardAPI } from '../services/api.ts';
 
 export default function VitalsScreen() {
   const [showLogModal, setShowLogModal] = useState(false);
-  const [activeTab, setActiveTab] = useState<'BP' | 'SUGAR' | 'BMI'>('BP');
+  const [activeTab, setActiveTab] = useState<'BP' | 'SUGAR'>('BP');
   const [history, setHistory] = useState<any[]>([]);
   const [latestBmi, setLatestBmi] = useState<any>(null);
   const [loading, setLoading] = useState(false);
@@ -14,7 +14,6 @@ export default function VitalsScreen() {
   // Form states
   const [bp, setBp] = useState({ sys: '', dia: '', pulse: '' });
   const [glucose, setGlucose] = useState('');
-  const [bmi, setBmi] = useState({ weight: '', height: '' });
 
   useEffect(() => { loadHistory(); }, []);
 
@@ -40,13 +39,10 @@ export default function VitalsScreen() {
       } else if (activeTab === 'SUGAR') {
         if (!glucose) return;
         await vitalsAPI.logGlucose(Number(glucose));
-      } else if (activeTab === 'BMI') {
-        if (!bmi.weight || !bmi.height) return;
-        await vitalsAPI.logBMI(Number(bmi.weight), Number(bmi.height));
       }
       setShowLogModal(false);
       loadHistory();
-      setBp({ sys: '', dia: '', pulse: '' }); setGlucose(''); setBmi({ weight: '', height: '' });
+      setBp({ sys: '', dia: '', pulse: '' }); setGlucose('');
     } catch (e) {
       console.error(e);
     } finally {
@@ -121,14 +117,6 @@ export default function VitalsScreen() {
             <div onClick={() => { setActiveTab('SUGAR'); setShowLogModal(true); }} className="bg-white border-[1.5px] border-[#E8F1F1] rounded-[24px] p-4 flex flex-col items-center justify-center gap-3 shadow-sm cursor-pointer hover:border-[#26C6BF] transition-colors">
               <Droplet size={24} className="text-[#26C6BF]" />
               <span className="text-[#1A3A38] font-extrabold text-[13px]">Blood Sugar</span>
-            </div>
-            <div onClick={() => { setActiveTab('BMI'); setShowLogModal(true); }} className="bg-white border-[1.5px] border-[#E8F1F1] rounded-[24px] p-4 flex flex-col items-center justify-center gap-3 shadow-sm cursor-pointer hover:border-[#26C6BF] transition-colors">
-              <User size={24} className="text-[#FF9D4A]" />
-              <span className="text-[#1A3A38] font-extrabold text-[13px]">Weight/Height</span>
-            </div>
-            <div onClick={() => { setActiveTab('BP'); setShowLogModal(true); }} className="bg-white border-[1.5px] border-[#E8F1F1] rounded-[24px] p-4 flex flex-col items-center justify-center gap-3 shadow-sm cursor-pointer hover:border-[#26C6BF] transition-colors">
-              <Plus size={24} className="text-[#26C6BF]" />
-              <span className="text-[#1A3A38] font-extrabold text-[13px]">Other Vitals</span>
             </div>
           </div>
         </div>
@@ -356,7 +344,7 @@ export default function VitalsScreen() {
               <h2 className="text-[#1A3A38] font-extrabold text-xl mb-6">Log Vitals</h2>
 
               <div className="flex gap-2 mb-6 bg-[#F2FDFB] p-1 rounded-full">
-                {['BP', 'SUGAR', 'BMI'].map(tab => (
+                {['BP', 'SUGAR'].map(tab => (
                   <button key={tab} onClick={() => setActiveTab(tab as any)}
                     className={`flex-1 py-2 rounded-full text-[12px] font-bold transition-all ${activeTab === tab ? 'bg-[#26C6BF] text-white shadow-sm' : 'text-[#7ECCC7]'}`}>
                     {tab}
@@ -388,19 +376,6 @@ export default function VitalsScreen() {
                   <div>
                     <label className="text-[#7ECCC7] text-[10px] font-extrabold uppercase tracking-wider">Glucose (mg/dL)</label>
                     <input type="number" placeholder="95" value={glucose} onChange={e=>setGlucose(e.target.value)} className="w-full mt-1 px-4 py-3 bg-[#F2FDFB] border border-[#C8F0EC] rounded-2xl font-bold" />
-                  </div>
-                </div>
-              )}
-
-              {activeTab === 'BMI' && (
-                <div className="flex gap-4">
-                  <div className="flex-1">
-                    <label className="text-[#7ECCC7] text-[10px] font-extrabold uppercase tracking-wider">Weight (kg)</label>
-                    <input type="number" placeholder="70" value={bmi.weight} onChange={e=>setBmi({...bmi, weight: e.target.value})} className="w-full mt-1 px-4 py-3 bg-[#F2FDFB] border border-[#C8F0EC] rounded-2xl font-bold" />
-                  </div>
-                  <div className="flex-1">
-                    <label className="text-[#7ECCC7] text-[10px] font-extrabold uppercase tracking-wider">Height (cm)</label>
-                    <input type="number" placeholder="175" value={bmi.height} onChange={e=>setBmi({...bmi, height: e.target.value})} className="w-full mt-1 px-4 py-3 bg-[#F2FDFB] border border-[#C8F0EC] rounded-2xl font-bold" />
                   </div>
                 </div>
               )}
