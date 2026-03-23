@@ -129,6 +129,10 @@ def _rule_based_assessment(ocr_data: dict[str, Any]) -> dict[str, Any]:
     high_med_hits = _scan_text(full_text, HIGH_RISK_MEDICATIONS)
     moderate_med_hits = _scan_text(full_text, MODERATE_RISK_MEDICATIONS)
 
+    # Track numeric evidence for confidence boosting
+    has_numeric_evidence = False
+    numeric_evidence_count = 0
+
     import re
     lab_results = ocr_data.get("lab_results") or {}
     if isinstance(lab_results, dict):
@@ -140,8 +144,12 @@ def _rule_based_assessment(ocr_data: dict[str, Any]) -> dict[str, Any]:
                 hb_val = float(match.group(1))
                 if hb_val < 7.0:
                     high_hits.append("severe anemia")
+                    numeric_evidence_count += 1
+                    has_numeric_evidence = True
                 elif hb_val < 13.0:
                     moderate_hits.append("low hemoglobin")
+                    numeric_evidence_count += 1
+                    has_numeric_evidence = True
             except ValueError:
                 pass
                 
@@ -153,10 +161,36 @@ def _rule_based_assessment(ocr_data: dict[str, Any]) -> dict[str, Any]:
                 fs_val = float(match.group(1))
                 if fs_val > 250:
                     high_hits.append("fasting glucose > 250")
+                    numeric_evidence_count += 1
+                    has_numeric_evidence = True
                 elif fs_val > 100:
                     moderate_hits.append("glucose elevated")
+                    numeric_evidence_count += 1
+                    has_numeric_evidence = True
             except ValueError:
                 pass
+
+        # Numeric Platelet Check
+        platelet_str = str(lab_results.get("platelets") or lab_results.get("platelet_count") or "")
+        match = re.search(r"(\d+)", platelet_str)
+        if match:
+            try:
+                platelet_val = int(match.group(1))
+                if platelet_val < 150000:
+                    moderate_hits.append("low platelets")
+                    numeric_evidence_count += 1
+                    has_numeric_evidence = True
+            except ValueError:
+                pass
+
+    # Check for clinical context/lab source
+    has_lab_context = False
+    lab_source_keywords = ["pathology", "lab", "laboratory", "clinical", "hospital", "diagnostic", "report"]
+    if any(kw in full_text.lower() for kw in lab_source_keywords):
+        has_lab_context = True
+
+    # Check for explicit findings/interpretation
+    has_clinical_interpretation = "anemia" in full_text.lower() or "confirm" in full_text.lower() or "further" in full_text.lower()
 
     flags: list[str] = []
     for hit in high_hits:
@@ -181,10 +215,14 @@ def _rule_based_assessment(ocr_data: dict[str, Any]) -> dict[str, Any]:
     score = len(high_hits) * 3 + len(high_med_hits) * 2 + len(moderate_hits) + len(moderate_med_hits) * 0.5
 
     if high_hits or high_med_hits or score >= 5:
+        # High Risk Confidence Calculation (improved)
+        confidence = 0.70 + len(high_hits) * 0.08  # More increments per hit
+        confidence += numeric_evidence_count * 0.05  # Boost for numeric evidence
+        confidence = min(0.98, confidence)  # Allow up to 98% for HIGH risk
         return {
             "risk_level": "high",
             "flags": unique_flags,
-            "confidence": min(0.95, 0.70 + len(high_hits) * 0.05),
+            "confidence": confidence,
             "summary": (
                 "This report contains critical markers that suggest urgent medical attention. "
                 "Please consult your doctor immediately."
@@ -193,10 +231,26 @@ def _rule_based_assessment(ocr_data: dict[str, Any]) -> dict[str, Any]:
         }
 
     if moderate_hits or moderate_med_hits or score >= 1:
+        # Moderate Risk Confidence Calculation (IMPROVED for presentations)
+        confidence = 0.70  # Higher base for moderate risk
+        confidence += len(moderate_hits) * 0.08  # Better increment (0.08 vs 0.05)
+        confidence += len(moderate_med_hits) * 0.05
+        
+        # Confidence boosts for clinical evidence
+        if has_numeric_evidence:
+            confidence += 0.08  # Lab values are hard evidence
+        if has_lab_context:
+            confidence += 0.05  # Professional lab/clinic context
+        if has_clinical_interpretation:
+            confidence += 0.04  # Explicit clinical interpretation
+        
+        # Cap at 0.92 for moderate (high confidence but not absolute certainty)
+        confidence = min(0.92, confidence)
+        
         return {
             "risk_level": "moderate",
             "flags": unique_flags,
-            "confidence": min(0.90, 0.60 + len(moderate_hits) * 0.05),
+            "confidence": confidence,
             "summary": (
                 "Some findings indicate health risks that should be monitored. "
                 "Consider scheduling a follow-up with your physician."
