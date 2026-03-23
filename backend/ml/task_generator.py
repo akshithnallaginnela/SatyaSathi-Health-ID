@@ -1,9 +1,9 @@
 def generate_daily_tasks(features: dict, signals: dict, user) -> list[dict]:
-    \"\"\"
+    """
     Returns list of tasks for TODAY.
     Always includes base tasks + signal-based tasks.
     Tasks update every time data changes.
-    \"\"\"
+    """
     tasks = []
 
     # ── ALWAYS INCLUDE (every user, every day) ────────────────
