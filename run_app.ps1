@@ -22,6 +22,10 @@ if (Test-Path "$backendDir\.venv\Scripts\python.exe") {
 
 Write-Host "Using Python from: $pythonCmd" -ForegroundColor Cyan
 
+# Ensure asyncpg is installed (required for PostgreSQL/Supabase)
+Write-Host "Checking asyncpg..." -ForegroundColor Yellow
+& $pythonCmd -m pip install asyncpg --quiet
+
 $backendCmd = @(
     "Set-Location '$backendDir'" 
     "& '$pythonCmd' -m uvicorn main:app --reload --host 0.0.0.0 --port 8000"
@@ -40,9 +44,3 @@ Write-Host "`n========================================" -ForegroundColor Green
 Write-Host "✓ Backend: http://localhost:8000" -ForegroundColor Green
 Write-Host "✓ Frontend: http://localhost:3000" -ForegroundColor Green
 Write-Host "========================================" -ForegroundColor Green
-Write-Host "`nFULL DATA FUSION SYSTEM:" -ForegroundColor Cyan
-Write-Host "• Log BP or Sugar -> AI instantly generates tasks + diet + preventive care" -ForegroundColor Cyan
-Write-Host "• Upload a blood report -> Additional hemoglobin/platelet insights added" -ForegroundColor Cyan
-Write-Host "• ALL data sources (BP, Sugar, BMI, Report, Lifestyle) are considered" -ForegroundColor Cyan
-Write-Host "• Health Index score calculated from ALL your health data" -ForegroundColor Cyan
-    

@@ -859,7 +859,7 @@ async def save_diet(user_id: str, diet: dict | None, db: AsyncSession):
         eat_more=json.dumps(diet["eat_more"]),
         reduce=json.dumps(diet["reduce"]),
         avoid=json.dumps(diet["avoid"]),
-        hydration_goal_glasses=diet["hydration_goal"]
+        hydration_goal_glasses=diet.get("hydration_goal_glasses") or diet.get("hydration_goal", 8)
     ))
 
 async def update_analysis_status(user_id: str, db: AsyncSession):

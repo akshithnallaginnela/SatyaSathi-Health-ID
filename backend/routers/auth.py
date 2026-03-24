@@ -140,6 +140,17 @@ async def login(data: UserLogin, db: AsyncSession = Depends(get_db)):
         user=UserResponse.model_validate(user)
     )
 
+@router.post("/refresh")
+async def refresh_token(payload: dict = Depends(verify_token), db: AsyncSession = Depends(get_db)):
+    user_id = payload.get("user_id")
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    access_token = create_access_token(user.id, user.phone_number[-4:], user.aadhaar_verified)
+    new_refresh_token = create_refresh_token(user.id, user.phone_number[-4:], user.aadhaar_verified)
+    return {"access_token": access_token, "refresh_token": new_refresh_token}
+
 @router.get("/me", response_model=UserResponse)
 async def get_me(user_id: str = Depends(get_current_user_id), db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(User).where(User.id == user_id))

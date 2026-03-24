@@ -6,10 +6,9 @@ import { vitalsAPI, dashboardAPI } from '../services/api.ts';
 type LogTab = 'BP' | 'SUGAR' | 'BMI';
 
 function getBPStatus(sys: number, dia: number) {
-  if (sys < 120 && dia < 80) return { label: 'Normal', color: '#22C55E', bg: '#DCFCE7' };
+  if (sys <= 120 && dia <= 80) return { label: 'Normal ✅', color: '#22C55E', bg: '#DCFCE7' };
   if (sys < 130 && dia < 80) return { label: 'Elevated', color: '#F59E0B', bg: '#FEF3C7' };
-  if (sys < 140 && dia < 90) return { label: 'High Stage 1', color: '#EF4444', bg: '#FEE2E2' };
-  if (sys >= 140 || dia >= 90) return { label: 'High Stage 1', color: '#EF4444', bg: '#FEE2E2' };
+  if (sys < 140 || dia < 90) return { label: 'High Stage 1', color: '#EF4444', bg: '#FEE2E2' };
   return { label: 'High Stage 2', color: '#DC2626', bg: '#FEE2E2' };
 }
 
