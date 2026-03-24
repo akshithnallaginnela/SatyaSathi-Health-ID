@@ -495,6 +495,26 @@ def generate_preventive_care(features: dict) -> list[dict]:
                 "risk_horizon": ""
             })
 
+    # ── WBC COUNT (from blood report) — Immune system ──
+    wbc = features.get("wbc_count")
+    if wbc is not None:
+        if wbc < 4000:
+            care_items.append({
+                "category": "immune_system", "urgency": "focus",
+                "current_status": f"WBC {wbc:,.0f}/cumm — Low (Leukopenia)",
+                "future_risk_message": f"Low WBC at {wbc:,.0f}/cumm weakens immunity. Consult a doctor — infections can become serious. Protein-rich diet helps.",
+                "prevention_steps": ["See a doctor this week", "Protein-rich meals: eggs, dal, chicken", "Avoid crowded places — infection risk is high"],
+                "risk_horizon": ""
+            })
+        elif wbc > 11000:
+            care_items.append({
+                "category": "immune_system", "urgency": "watch",
+                "current_status": f"WBC {wbc:,.0f}/cumm — Elevated",
+                "future_risk_message": f"Elevated WBC at {wbc:,.0f}/cumm may indicate infection or inflammation. Monitor for fever or pain — see a doctor if symptoms appear.",
+                "prevention_steps": ["Monitor for fever, pain, or swelling", "Stay hydrated — 10+ glasses daily", "See doctor if symptoms persist beyond 3 days"],
+                "risk_horizon": ""
+            })
+
     # ── CREATININE (from blood report) ──
     creatinine = features.get("creatinine")
     if creatinine is not None and creatinine > 1.2:
@@ -562,6 +582,90 @@ def generate_preventive_care(features: dict) -> list[dict]:
             "prevention_steps": ["Eggs, paneer, or dairy every day", "Ask doctor about B12 supplement"],
             "risk_horizon": ""
         })
+
+    # ── THYROID / TSH (from blood report) ──
+    tsh = features.get("tsh")
+    if tsh is not None:
+        if tsh > 10:
+            care_items.append({
+                "category": "thyroid", "urgency": "focus",
+                "current_status": f"TSH {tsh:.2f} mIU/L — Hypothyroidism",
+                "future_risk_message": f"TSH at {tsh:.2f} mIU/L indicates underactive thyroid. This causes fatigue, weight gain, and depression. Doctor-prescribed medication normalizes it in 4-6 weeks.",
+                "prevention_steps": ["See an endocrinologist this week", "Iodized salt in cooking", "Avoid raw cabbage and soy in excess"],
+                "risk_horizon": ""
+            })
+        elif tsh > 5:
+            care_items.append({
+                "category": "thyroid", "urgency": "watch",
+                "current_status": f"TSH {tsh:.2f} mIU/L — Borderline high",
+                "future_risk_message": f"TSH at {tsh:.2f} mIU/L is borderline. Retest in 3 months — if it rises further, medication may be needed.",
+                "prevention_steps": ["Retest TSH in 3 months", "Ensure iodized salt in diet", "Monitor for fatigue or unexplained weight gain"],
+                "risk_horizon": ""
+            })
+        elif tsh < 0.3:
+            care_items.append({
+                "category": "thyroid", "urgency": "focus",
+                "current_status": f"TSH {tsh:.2f} mIU/L — Hyperthyroidism",
+                "future_risk_message": f"TSH at {tsh:.2f} mIU/L indicates overactive thyroid. This causes rapid heartbeat, anxiety, and weight loss. See a doctor immediately.",
+                "prevention_steps": ["See an endocrinologist this week", "Avoid excess iodine (seaweed, iodine supplements)", "Monitor heart rate and anxiety levels"],
+                "risk_horizon": ""
+            })
+
+    # ── UREA (from blood report) — Kidney function ──
+    urea = features.get("urea")
+    if urea is not None and urea > 40:
+        care_items.append({
+            "category": "kidney_health", "urgency": "watch",
+            "current_status": f"Urea {urea:.1f} mg/dL — Elevated",
+            "future_risk_message": f"Urea at {urea:.1f} mg/dL suggests kidney stress or dehydration. Drink 10+ glasses of water daily and retest in 2 weeks.",
+            "prevention_steps": ["Drink 10+ glasses of water daily", "Reduce protein intake slightly", "Retest kidney function in 2 weeks"],
+            "risk_horizon": ""
+        })
+
+    # ── TRIGLYCERIDES (from blood report) ──
+    triglycerides = features.get("triglycerides")
+    if triglycerides is not None and triglycerides > 150:
+        urgency = "focus" if triglycerides > 200 else "watch"
+        care_items.append({
+            "category": "triglycerides", "urgency": urgency,
+            "current_status": f"Triglycerides {triglycerides:.0f} mg/dL — {'High' if triglycerides > 200 else 'Borderline'}",
+            "future_risk_message": f"Triglycerides at {triglycerides:.0f} mg/dL increase heart disease and pancreatitis risk. Cut sugar and alcohol — levels drop 30% in 8 weeks.",
+            "prevention_steps": ["Eliminate sugar in tea/coffee", "Avoid alcohol completely", "30-min brisk walk daily"],
+            "risk_horizon": ""
+        })
+
+    # ── HDL CHOLESTEROL (from blood report) — "Good" cholesterol ──
+    hdl = features.get("hdl")
+    if hdl is not None and hdl < 40:
+        care_items.append({
+            "category": "hdl_cholesterol", "urgency": "watch",
+            "current_status": f"HDL {hdl:.0f} mg/dL — Low (protective cholesterol)",
+            "future_risk_message": f"HDL at {hdl:.0f} mg/dL is too low — this is your 'good' cholesterol that protects your heart. Exercise and nuts raise it naturally.",
+            "prevention_steps": ["30-min brisk walk 5 days/week", "Handful of walnuts or almonds daily", "Olive oil instead of ghee for cooking"],
+            "risk_horizon": ""
+        })
+
+    # ── RBC INDICES — MCV (Mean Corpuscular Volume) for anemia type ──
+    mcv = features.get("mcv")
+    if mcv is not None and hb is not None and hb < hb_low:
+        if mcv < 80:
+            # Microcytic anemia — iron deficiency
+            care_items.append({
+                "category": "anemia_type", "urgency": "watch",
+                "current_status": f"MCV {mcv:.1f} fL + Low Hb — Iron deficiency anemia",
+                "future_risk_message": "Low MCV with low hemoglobin indicates iron deficiency. Daily iron-rich foods with vitamin C can restore levels in 6-8 weeks.",
+                "prevention_steps": ["Iron-rich foods: spinach, rajma, eggs", "Eat citrus fruit with iron meals — triples absorption", "Avoid tea within 1 hour of meals"],
+                "risk_horizon": ""
+            })
+        elif mcv > 100:
+            # Macrocytic anemia — B12/folate deficiency
+            care_items.append({
+                "category": "anemia_type", "urgency": "watch",
+                "current_status": f"MCV {mcv:.1f} fL + Low Hb — B12/Folate deficiency anemia",
+                "future_risk_message": "High MCV with low hemoglobin suggests B12 or folate deficiency. Daily eggs/dairy and a B12 supplement can fix this in 4-6 weeks.",
+                "prevention_steps": ["Eggs, paneer, or dairy every day", "Ask doctor about B12 supplement", "Folate-rich: spinach, lentils, chickpeas"],
+                "risk_horizon": ""
+            })
 
     # Post-process: risk scores + top_action
     for item in care_items:
