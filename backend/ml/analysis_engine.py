@@ -220,6 +220,17 @@ def build_features(user, bp_readings, sugar_readings, report) -> dict:
             f[key] = None
 
     f["has_vitals_data"] = f["has_bp_data"] or f["has_sugar_data"] or f["has_report"]
+
+    # If no manual sugar readings but report has glucose — treat it as sugar data for analysis
+    if not f["has_sugar_data"] and f["has_report"]:
+        rg = f.get("fasting_glucose_report") or f.get("random_glucose_report")
+        if rg:
+            f["sugar_latest"] = rg
+            f["sugar_avg"] = rg
+            f["sugar_readings_count"] = 1
+            f["sugar_trend"] = "just_started"
+            f["has_sugar_data"] = True  # treat report glucose as sugar data for diet/tasks
+
     return f
 
 
