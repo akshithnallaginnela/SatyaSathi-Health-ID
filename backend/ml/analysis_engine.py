@@ -879,6 +879,62 @@ def generate_daily_tasks(features: dict, user) -> list[dict]:
             "coins_reward": 0
         })
 
+    # WBC task (0 coins)
+    wbc = features.get("wbc_count")
+    if wbc is not None and wbc < 4000:
+        tasks.append({
+            "task_type": "PROTEIN_BOOST",
+            "task_name": "Eat protein-rich meal today",
+            "description": "Eggs, dal, or chicken — protein supports immune recovery",
+            "why_this_task": f"WBC at {wbc:,.0f} — protein helps rebuild white blood cells",
+            "category": "diet",
+            "time_of_day": "lunch",
+            "duration_or_quantity": "At least 1 protein-rich meal",
+            "coins_reward": 0
+        })
+
+    # Thyroid task (0 coins)
+    tsh = features.get("tsh")
+    if tsh is not None and tsh > 5:
+        tasks.append({
+            "task_type": "IODIZED_SALT",
+            "task_name": "Use iodized salt in cooking",
+            "description": "Iodine supports thyroid function",
+            "why_this_task": f"TSH at {tsh:.1f} mIU/L — iodine deficiency is common in India",
+            "category": "diet",
+            "time_of_day": "all_day",
+            "duration_or_quantity": "All meals",
+            "coins_reward": 0
+        })
+
+    # Triglycerides task (0 coins)
+    triglycerides = features.get("triglycerides")
+    if triglycerides is not None and triglycerides > 150:
+        tasks.append({
+            "task_type": "NO_SUGAR_NO_ALCOHOL",
+            "task_name": "Skip sugar and alcohol today",
+            "description": "Sugar and alcohol spike triglycerides",
+            "why_this_task": f"Triglycerides at {triglycerides:.0f} mg/dL — cutting these drops levels by 30% in weeks",
+            "category": "diet",
+            "time_of_day": "all_day",
+            "duration_or_quantity": "All day",
+            "coins_reward": 0
+        })
+
+    # HDL task (0 coins)
+    hdl = features.get("hdl")
+    if hdl is not None and hdl < 40:
+        tasks.append({
+            "task_type": "NUTS_SNACK",
+            "task_name": "Eat a handful of nuts today",
+            "description": "Walnuts or almonds — raises good cholesterol naturally",
+            "why_this_task": f"HDL at {hdl:.0f} mg/dL — nuts raise protective cholesterol",
+            "category": "diet",
+            "time_of_day": "afternoon",
+            "duration_or_quantity": "1 handful (8-10 nuts)",
+            "coins_reward": 0
+        })
+
     # BMI guidance (0 coins)
     if bmi is not None and bmi > 27:
         tasks.append({
@@ -942,11 +998,16 @@ def generate_diet_plan(features: dict) -> dict | None:
     hb_low = 13.5 if gender_enc == 1 else 12.0
     # Additional report markers
     ldl = features.get("ldl")
+    hdl = features.get("hdl")
+    triglycerides = features.get("triglycerides")
     tsh = features.get("tsh")
     vit_d = features.get("vitamin_d")
     vit_b12 = features.get("vitamin_b12")
     creatinine = features.get("creatinine")
+    urea = features.get("urea")
     sgpt = features.get("sgpt")
+    wbc = features.get("wbc_count")
+    mcv = features.get("mcv")
 
     eat_more, reduce, avoid = [], [], []
     focus_parts, reason_parts = [], []
@@ -1019,6 +1080,42 @@ def generate_diet_plan(features: dict) -> dict | None:
         eat_more.extend(["Protein-rich breakfast (eggs, paneer)", "Salad before each meal", "Green tea instead of milk tea"])
         reduce.extend(["Portion sizes by 20%", "Fried food to twice a week"])
         avoid.extend(["Late night snacking", "Sugary drinks"])
+
+    # Priority 10: Triglycerides (from report)
+    if triglycerides is not None and triglycerides > 150:
+        focus_parts.append("heart_healthy")
+        reason_parts.append(f"Managing triglycerides ({triglycerides:.0f} mg/dL)")
+        eat_more.extend(["Fatty fish: salmon, mackerel (omega-3)", "Flaxseeds and chia seeds"])
+        avoid.extend(["Sugar in any form — biggest trigger", "Alcohol completely", "White bread and maida"])
+
+    # Priority 11: Low HDL (from report)
+    if hdl is not None and hdl < 40:
+        focus_parts.append("heart_healthy")
+        reason_parts.append(f"Raising good cholesterol (HDL {hdl:.0f} mg/dL)")
+        eat_more.extend(["Walnuts and almonds daily", "Olive oil for cooking", "Fatty fish 2x per week"])
+
+    # Priority 12: Thyroid (from report)
+    if tsh is not None and tsh > 5:
+        focus_parts.append("thyroid_support")
+        reason_parts.append(f"Supporting thyroid function (TSH {tsh:.1f} mIU/L)")
+        eat_more.extend(["Iodized salt in cooking", "Eggs and dairy", "Brazil nuts (selenium)"])
+        avoid.extend(["Raw cabbage and broccoli in excess", "Soy products in large amounts"])
+
+    # Priority 13: Low WBC (from report)
+    if wbc is not None and wbc < 4000:
+        focus_parts.append("immune_boost")
+        reason_parts.append(f"Boosting immunity (WBC {wbc:,.0f}/cumm)")
+        eat_more.extend(["Protein every meal: eggs, dal, chicken", "Citrus fruits daily", "Garlic and ginger in cooking"])
+        avoid.extend(["Junk food and packaged snacks"])
+
+    # Priority 14: Kidney stress (from report)
+    if (creatinine is not None and creatinine > 1.2) or (urea is not None and urea > 40):
+        focus_parts.append("kidney_friendly")
+        reason_parts.append(f"Supporting kidney health")
+        eat_more.extend(["10+ glasses of water daily", "Fresh fruits and vegetables"])
+        reduce.extend(["Protein to moderate amounts", "Salt intake"])
+        avoid.extend(["NSAIDs like ibuprofen without doctor advice"])
+        hydration = max(hydration, 12)
 
     # Fallback: balanced
     if not focus_parts:

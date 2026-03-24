@@ -316,7 +316,23 @@ export default function DashboardScreen({ onLogout }: { onLogout: () => void; ke
           ) : (
             <div className="space-y-6">
               {(preventive.all_care_items || []).map((item: any, idx: number) => {
-                const categoryLabel: any = { blood_pressure: 'BP Health', blood_sugar: 'Sugar/Glucose', weight_bmi: 'Body Composition', hemoglobin: 'Blood Health (Hb)', platelets: 'Platelets', kidney_health: 'Kidney Health', cholesterol: 'Cholesterol', liver_health: 'Liver Health', vitamin_d: 'Vitamin D', vitamin_b12: 'Vitamin B12' };
+                const categoryLabel: any = { 
+                  blood_pressure: 'BP Health', 
+                  blood_sugar: 'Sugar/Glucose', 
+                  weight_bmi: 'Body Composition', 
+                  hemoglobin: 'Blood Health (Hb)', 
+                  platelets: 'Platelets', 
+                  kidney_health: 'Kidney Health', 
+                  cholesterol: 'Cholesterol (LDL)', 
+                  liver_health: 'Liver Health', 
+                  vitamin_d: 'Vitamin D', 
+                  vitamin_b12: 'Vitamin B12',
+                  immune_system: 'Immune System (WBC)',
+                  thyroid: 'Thyroid (TSH)',
+                  triglycerides: 'Triglycerides',
+                  hdl_cholesterol: 'HDL (Good Cholesterol)',
+                  anemia_type: 'Anemia Type'
+                };
                 const scoreValue = item.risk_score || 30;
                 let barColor = 'bg-primary-teal';
                 if (scoreValue > 70) barColor = 'bg-[#FF6B6B]';
