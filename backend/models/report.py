@@ -9,13 +9,14 @@ from pydantic import BaseModel
 from sqlalchemy import Column, String, DateTime, Numeric, Date, ForeignKey, Text
 from sqlalchemy.dialects.sqlite import JSON
 from database import Base
+from models.domain import GUID
 
 
 class Report(Base):
     __tablename__ = "reports"
 
-    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    user_id = Column(String(36), ForeignKey("users.id"), nullable=False, index=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    user_id = Column(GUID(), ForeignKey("users.id"), nullable=False, index=True)
     report_type = Column(String(50), nullable=False)  # blood_sugar, lipid_profile, cbc
     file_key = Column(String(255), nullable=False)     # S3 file key or local path
     extracted_values = Column(JSON, nullable=True)      # OCR-extracted lab values
