@@ -164,7 +164,6 @@ async def analyze_report(
 
     # 7. Trigger Full ML Analysis in a fresh session
     try:
-        from database import async_session
         async with async_session() as analysis_db:
             analysis = await run_full_analysis(user_id, analysis_db)
             await analysis_db.commit()
