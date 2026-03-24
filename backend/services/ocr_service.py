@@ -289,26 +289,17 @@ async def extract_report_values(file_path: str) -> dict:
     media_type = "image/jpeg" if ext in ["jpg", "jpeg"] else "image/png" if ext == "png" else "application/pdf"
 
     try:
-        from google import genai
-        from google.genai import types
-        
-        client = genai.Client(api_key=api_key)
-        
+        import google.generativeai as genai
+        genai.configure(api_key=api_key)
+        model = genai.GenerativeModel("gemini-1.5-flash-latest")
+
         if media_type == "application/pdf":
-            response = client.models.generate_content(
-                model='gemini-2.0-flash-exp',
-                contents=[
-                    types.Part.from_bytes(data=file_bytes, mime_type=media_type),
-                    EXTRACTION_PROMPT
-                ]
-            )
+            contents = [{"mime_type": media_type, "data": file_bytes}, EXTRACTION_PROMPT]
         else:
             image = Image.open(io.BytesIO(file_bytes))
-            response = client.models.generate_content(
-                model='gemini-2.0-flash-exp',
-                contents=[image, EXTRACTION_PROMPT]
-            )
+            contents = [image, EXTRACTION_PROMPT]
 
+        response = model.generate_content(contents)
         raw_text = _clean_json_text((response.text or "").strip())
         parsed = json.loads(raw_text)
         payload = OCRPayload.model_validate(parsed)
@@ -384,12 +375,10 @@ Write exactly 2 short sentences (max 25 words each) about the FUTURE health risk
 """
 
     try:
-        from google import genai
-        client = genai.Client(api_key=api_key)
-        response = client.models.generate_content(
-            model='gemini-2.0-flash-exp',
-            contents=prompt
-        )
+        import google.generativeai as genai
+        genai.configure(api_key=api_key)
+        model = genai.GenerativeModel("gemini-1.5-flash-latest")
+        response = model.generate_content(prompt)
         text = (response.text or "").strip()
         # Ensure it's max 2 sentences
         sentences = [s.strip() for s in text.replace("\n", " ").split(".") if s.strip()]
