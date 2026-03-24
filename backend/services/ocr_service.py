@@ -384,10 +384,12 @@ Write exactly 2 short sentences (max 25 words each) about the FUTURE health risk
 """
 
     try:
-        import google.generativeai as genai
-        genai.configure(api_key=api_key)
-        model = genai.GenerativeModel("gemini-1.5-flash")
-        response = model.generate_content(prompt)
+        from google import genai
+        client = genai.Client(api_key=api_key)
+        response = client.models.generate_content(
+            model='gemini-2.0-flash-exp',
+            contents=prompt
+        )
         text = (response.text or "").strip()
         # Ensure it's max 2 sentences
         sentences = [s.strip() for s in text.replace("\n", " ").split(".") if s.strip()]
