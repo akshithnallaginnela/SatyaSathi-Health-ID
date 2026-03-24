@@ -289,17 +289,26 @@ async def extract_report_values(file_path: str) -> dict:
     media_type = "image/jpeg" if ext in ["jpg", "jpeg"] else "image/png" if ext == "png" else "application/pdf"
 
     try:
-        import google.generativeai as genai
-        genai.configure(api_key=api_key)
-        model = genai.GenerativeModel("gemini-1.5-flash")
-
+        from google import genai
+        from google.genai import types
+        
+        client = genai.Client(api_key=api_key)
+        
         if media_type == "application/pdf":
-            contents = [{"mime_type": media_type, "data": file_bytes}, EXTRACTION_PROMPT]
+            response = client.models.generate_content(
+                model='gemini-2.0-flash-exp',
+                contents=[
+                    types.Part.from_bytes(data=file_bytes, mime_type=media_type),
+                    EXTRACTION_PROMPT
+                ]
+            )
         else:
             image = Image.open(io.BytesIO(file_bytes))
-            contents = [image, EXTRACTION_PROMPT]
+            response = client.models.generate_content(
+                model='gemini-2.0-flash-exp',
+                contents=[image, EXTRACTION_PROMPT]
+            )
 
-        response = model.generate_content(contents)
         raw_text = _clean_json_text((response.text or "").strip())
         parsed = json.loads(raw_text)
         payload = OCRPayload.model_validate(parsed)
