@@ -1,38 +1,24 @@
 /**
- * API service — connects the React frontend to the FastAPI backend.
- * Handles JWT token storage, auto-refresh, and all API calls.
+ * VitalID API Service — JWT auth, auto-refresh, all endpoints.
  */
 
 const API_BASE = 'http://localhost:8000/api';
-
-// ─── Token Management ───
 
 let accessToken: string | null = localStorage.getItem('vitalid_access_token');
 let refreshToken: string | null = localStorage.getItem('vitalid_refresh_token');
 
 export function setTokens(access: string, refresh: string) {
-  accessToken = access;
-  refreshToken = refresh;
+  accessToken = access; refreshToken = refresh;
   localStorage.setItem('vitalid_access_token', access);
   localStorage.setItem('vitalid_refresh_token', refresh);
 }
-
 export function clearTokens() {
-  accessToken = null;
-  refreshToken = null;
+  accessToken = null; refreshToken = null;
   localStorage.removeItem('vitalid_access_token');
   localStorage.removeItem('vitalid_refresh_token');
 }
-
-export function getAccessToken() {
-  return accessToken;
-}
-
-export function isLoggedIn() {
-  return !!accessToken;
-}
-
-// ─── Fetch Wrapper ───
+export function getAccessToken() { return accessToken; }
+export function isLoggedIn() { return !!accessToken; }
 
 async function apiFetch(endpoint: string, options: RequestInit = {}): Promise<any> {
   const url = `${API_BASE}${endpoint}`;
@@ -40,134 +26,103 @@ async function apiFetch(endpoint: string, options: RequestInit = {}): Promise<an
     'Content-Type': 'application/json',
     ...(options.headers as Record<string, string> || {}),
   };
+  if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`;
 
-  if (accessToken) {
-    headers['Authorization'] = `Bearer ${accessToken}`;
-  }
-
-  const response = await fetch(url, { ...options, headers });
+  let response = await fetch(url, { ...options, headers });
 
   if (response.status === 401 && refreshToken) {
-    // Try to refresh the token
     const refreshResp = await fetch(`${API_BASE}/auth/refresh`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${refreshToken}`,
-      },
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${refreshToken}` },
     });
-
     if (refreshResp.ok) {
       const data = await refreshResp.json();
       setTokens(data.access_token, data.refresh_token);
       headers['Authorization'] = `Bearer ${data.access_token}`;
-      const retryResp = await fetch(url, { ...options, headers });
-      if (!retryResp.ok) {
-        const err = await retryResp.json().catch(() => ({ detail: 'Request failed' }));
-        throw new Error(err.detail || 'Request failed');
-      }
-      return retryResp.json();
+      response = await fetch(url, { ...options, headers });
     } else {
       clearTokens();
-      throw new Error('Session expired. Please login again.');
+      const err: any = new Error('Session expired. Please login again.');
+      err.status = 401;
+      throw err;
     }
   }
 
   if (!response.ok) {
-    const err = await response.json().catch(() => ({ detail: 'Request failed' }));
-    throw new Error(err.detail || `HTTP ${response.status}`);
+    const err: any = await response.json().catch(() => ({ detail: 'Request failed' }));
+    const error: any = new Error(err.detail || `HTTP ${response.status}`);
+    error.status = response.status;
+    throw error;
   }
-
   return response.json();
 }
 
-// ─── Auth API ───
-
+// ─── Auth ───
 export const authAPI = {
   register: (data: Record<string, any>) =>
     apiFetch('/auth/register', { method: 'POST', body: JSON.stringify(data) }),
-
   verifyOTP: (phone_number: string, otp: string) =>
     apiFetch('/auth/verify-otp', { method: 'POST', body: JSON.stringify({ phone_number, otp }) }),
-
   aadhaarVerify: (aadhaar_number: string, tempToken: string) =>
     fetch(`${API_BASE}/auth/aadhaar-submit`, {
       method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json', 
-        'Authorization': `Bearer ${tempToken}` 
-      },
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${tempToken}` },
       body: JSON.stringify({ aadhaar_number }),
-    }).then(r => { if (!r.ok) throw r; return r.json(); }),
-
+    }).then(async r => { if (!r.ok) { const e = await r.json(); throw new Error(e.detail || 'Failed'); } return r.json(); }),
   login: (phone_number: string, password: string) =>
     apiFetch('/auth/login', { method: 'POST', body: JSON.stringify({ phone_number, password }) }),
-
   getMe: () => apiFetch('/auth/me'),
 };
 
-// ─── Dashboard API ───
-
+// ─── Dashboard ───
 export const dashboardAPI = {
   getSummary: () => apiFetch('/dashboard/summary'),
 };
 
-// ─── Vitals API ───
-
+// ─── Vitals ───
 export const vitalsAPI = {
   logBP: (systolic: number, diastolic: number, pulse?: number) =>
     apiFetch('/vitals/bp', { method: 'POST', body: JSON.stringify({ systolic, diastolic, pulse }) }),
-
   logGlucose: (fasting_glucose: number) =>
     apiFetch('/vitals/sugar', { method: 'POST', body: JSON.stringify({ fasting_glucose }) }),
-
   logBMI: (weight_kg: number, height_cm: number, waist_cm?: number) =>
     apiFetch('/vitals/bmi', { method: 'POST', body: JSON.stringify({ weight_kg, height_cm, waist_cm }) }),
-
-  getHistory: (limit = 20) => apiFetch(`/vitals/history?limit=${limit}`),
+  getHistory: () => apiFetch('/vitals/history'),
   getLatestBMI: () => apiFetch('/vitals/bmi/latest'),
 };
 
-// ─── Tasks API ───
-
+// ─── Tasks ───
 export const tasksAPI = {
   getToday: () => apiFetch('/tasks/today'),
-  completeTask: (taskId: string, verificationData?: any) =>
-    apiFetch(`/tasks/${taskId}/complete`, {
-      method: 'POST',
-      body: JSON.stringify({ verification_data: verificationData }),
-    }),
-  getStreak: () => apiFetch('/tasks/streak'),
-  getHistory: (page = 1) => apiFetch(`/tasks/history?page=${page}`),
+  completeTask: (taskId: string) =>
+    apiFetch(`/tasks/${taskId}/complete`, { method: 'POST', body: JSON.stringify({}) }),
+  getHistory: () => apiFetch('/tasks/history'),
 };
 
-// ─── OCR API ───
-
-export const ocrAPI = {
-  analyze: async (file: File) => {
+// ─── Reports ───
+export const reportsAPI = {
+  list: () => apiFetch('/reports/'),
+  analyze: async (file: File): Promise<any> => {
     const formData = new FormData();
     formData.append('file', file);
-    
     const token = getAccessToken();
     const headers: any = {};
     if (token) headers['Authorization'] = `Bearer ${token}`;
-
-    const response = await fetch(`${API_BASE}/reports/analyze`, {
-      method: 'POST',
-      headers,
-      body: formData,
-    });
-    
+    const response = await fetch(`${API_BASE}/reports/analyze`, { method: 'POST', headers, body: formData });
     if (!response.ok) {
-      const err = await response.json().catch(() => ({ detail: 'OCR failed' }));
-      throw new Error(err.detail || 'Upload failed');
+      const err = await response.json().catch(() => ({ detail: 'Upload failed' }));
+      throw new Error(err.detail || `Upload failed (HTTP ${response.status})`);
     }
     return response.json();
-  }
+  },
 };
 
-// ─── Coins API ───
+// ─── ML (legacy alias — same as reports/analyze) ───
+export const mlAPI = {
+  analyzeReport: (file: File) => reportsAPI.analyze(file),
+};
 
+// ─── Coins ───
 export const coinsAPI = {
   getBalance: () => apiFetch('/coins/balance'),
   getOffers: () => apiFetch('/coins/offers'),
@@ -175,92 +130,45 @@ export const coinsAPI = {
     apiFetch('/coins/redeem', { method: 'POST', body: JSON.stringify({ offer_id: offerId }) }),
 };
 
-// ─── Profile API ───
-
+// ─── Profile ───
 export const profileAPI = {
   get: () => apiFetch('/profile/'),
-  update: (data: { full_name?: string; gender?: string; date_of_birth?: string }) =>
+  update: (data: Record<string, any>) =>
     apiFetch('/profile/update', { method: 'PUT', body: JSON.stringify(data) }),
   changePassword: (old_password: string, new_password: string) =>
     apiFetch('/profile/change-password', { method: 'POST', body: JSON.stringify({ old_password, new_password }) }),
+  downloadReport: () => apiFetch('/profile/download-report'),
   getActivity: () => apiFetch('/profile/activity'),
-
   uploadPhoto: async (file: File) => {
     const formData = new FormData();
     formData.append('file', file);
     const token = getAccessToken();
     const headers: any = {};
     if (token) headers['Authorization'] = `Bearer ${token}`;
-    const response = await fetch(`${API_BASE}/profile/upload-photo`, {
-      method: 'POST',
-      headers,
-      body: formData,
-    });
-    if (!response.ok) {
-      const err = await response.json().catch(() => ({ detail: 'Upload failed' }));
-      throw new Error(err.detail || 'Upload failed');
-    }
+    const response = await fetch(`${API_BASE}/profile/upload-photo`, { method: 'POST', headers, body: formData });
+    if (!response.ok) { const err = await response.json().catch(() => ({ detail: 'Upload failed' })); throw new Error(err.detail || 'Upload failed'); }
     return response.json();
   },
 };
 
-// ─── ML API ───
-
-export const mlAPI = {
-  analyzeReport: async (file: File, reportType?: string) => {
-    const formData = new FormData();
-    formData.append('file', file);
-    if (reportType) {
-      formData.append('report_type', reportType);
-    }
-    const token = getAccessToken();
-    const headers: any = {};
-    if (token) headers['Authorization'] = `Bearer ${token}`;
-    const response = await fetch(`${API_BASE}/ml/analyze-report`, {
-      method: 'POST',
-      headers,
-      body: formData,
-    });
-    if (!response.ok) {
-      const err = await response.json().catch(() => ({ detail: 'Analysis failed' }));
-      throw new Error(err.detail || `Analysis failed (HTTP ${response.status})`);
-    }
-    return response.json();
-  },
-};
-
-// ─── Reports API ───
-
-export const reportsAPI = {
-  list: (page = 1, limit = 20) => apiFetch(`/reports/?page=${page}&limit=${limit}`),
-  getById: (reportId: string) => apiFetch(`/reports/${reportId}`),
-};
-
-// ─── Clinics API ───
-
-export const clinicsAPI = {
-  nearest: (lat: number, lng: number) => apiFetch(`/clinics/nearest?lat=${lat}&lng=${lng}`),
-};
-
-// ─── Settings API ───
-
+// ─── Settings ───
 export const settingsAPI = {
   get: () => apiFetch('/settings/'),
-  update: (data: { notifications_enabled?: boolean; reminder_enabled?: boolean; reminder_time?: string; language?: string }) =>
+  update: (data: Record<string, any>) =>
     apiFetch('/settings/', { method: 'PUT', body: JSON.stringify(data) }),
 };
 
-// ─── Notifications API ───
-
+// ─── Notifications ───
 export const notificationsAPI = {
   list: () => apiFetch('/notifications/'),
-  create: (data: { title: string; message: string; reminder_time: string; reminder_type?: string; is_recurring?: boolean }) =>
+  create: (data: Record<string, any>) =>
     apiFetch('/notifications/', { method: 'POST', body: JSON.stringify(data) }),
-  update: (id: string, data: { title?: string; message?: string; reminder_time?: string; is_active?: boolean; is_recurring?: boolean }) =>
-    apiFetch(`/notifications/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
-  delete: (id: string) =>
-    apiFetch(`/notifications/${id}`, { method: 'DELETE' }),
+  delete: (id: string) => apiFetch(`/notifications/${id}`, { method: 'DELETE' }),
   check: () => apiFetch('/notifications/check'),
-  initWaterReminders: () =>
-    apiFetch('/notifications/init-water-reminders', { method: 'POST' }),
+  initWaterReminders: () => apiFetch('/notifications/init-water-reminders', { method: 'POST' }),
+};
+
+// ─── Clinics ───
+export const clinicsAPI = {
+  nearest: (lat: number, lng: number) => apiFetch(`/clinics/nearest?lat=${lat}&lng=${lng}`),
 };

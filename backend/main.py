@@ -22,6 +22,11 @@ from routers.settings import router as settings_router
 from routers.clinics import router as clinics_router
 from routers.coins import router as coins_router
 from routers.notifications import router as notifications_router
+try:
+    from routers.diet import router as diet_router
+    _has_diet = True
+except Exception:
+    _has_diet = False
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -61,8 +66,10 @@ app.include_router(settings_router)
 app.include_router(clinics_router)
 app.include_router(coins_router)
 app.include_router(notifications_router)
+if _has_diet:
+    app.include_router(diet_router)
 
-# Legacy compatibility for /api/ml/analyze-report
+# Legacy alias: /api/ml/analyze-report → /api/reports/analyze
 from routers.reports import analyze_report
 from fastapi import UploadFile, File, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
