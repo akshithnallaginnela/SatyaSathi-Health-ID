@@ -506,6 +506,63 @@ def generate_preventive_care(features: dict) -> list[dict]:
             "risk_horizon": ""
         })
 
+    # ── CHOLESTEROL (from blood report) ──
+    ldl = features.get("ldl")
+    total_chol = features.get("total_cholesterol")
+    if ldl is not None and ldl > 130:
+        urgency = "focus" if ldl > 160 else "watch"
+        care_items.append({
+            "category": "cholesterol", "urgency": urgency,
+            "current_status": f"LDL {ldl:.0f} mg/dL — {'High' if ldl > 160 else 'Borderline high'}",
+            "future_risk_message": f"LDL at {ldl:.0f} mg/dL increases heart disease risk over time. Oats, walnuts, and daily walks can lower it in 8 weeks.",
+            "prevention_steps": ["Eat oats for breakfast daily — lowers LDL by 5-10%", "30-min brisk walk daily"],
+            "risk_horizon": ""
+        })
+    elif total_chol is not None and total_chol > 200:
+        care_items.append({
+            "category": "cholesterol", "urgency": "watch",
+            "current_status": f"Total Cholesterol {total_chol:.0f} mg/dL — Borderline",
+            "future_risk_message": "Cholesterol is slightly elevated. Reducing fried food and adding oats can normalize it in 6-8 weeks.",
+            "prevention_steps": ["Replace fried snacks with nuts", "Add oats or barley to daily diet"],
+            "risk_horizon": ""
+        })
+
+    # ── LIVER / SGPT (from blood report) ──
+    sgpt = features.get("sgpt")
+    if sgpt is not None and sgpt > 45:
+        urgency = "focus" if sgpt > 80 else "watch"
+        care_items.append({
+            "category": "liver_health", "urgency": urgency,
+            "current_status": f"SGPT {sgpt:.0f} U/L — {'Elevated' if sgpt > 80 else 'Mildly elevated'}",
+            "future_risk_message": f"SGPT at {sgpt:.0f} U/L suggests liver stress. Avoiding alcohol and fried food can normalize it in 4-6 weeks.",
+            "prevention_steps": ["Avoid alcohol completely", "Turmeric milk daily — natural liver support"],
+            "risk_horizon": ""
+        })
+
+    # ── VITAMIN D (from blood report) ──
+    vit_d = features.get("vitamin_d")
+    if vit_d is not None and vit_d < 20:
+        urgency = "focus" if vit_d < 10 else "watch"
+        care_items.append({
+            "category": "vitamin_d", "urgency": urgency,
+            "current_status": f"Vitamin D {vit_d:.0f} ng/mL — {'Deficient' if vit_d < 10 else 'Insufficient'}",
+            "future_risk_message": f"Vitamin D at {vit_d:.0f} ng/mL affects bone strength and immunity. 15 min morning sunlight daily can help significantly.",
+            "prevention_steps": ["15 min morning sunlight (before 10am)", "Eggs and fatty fish 3x per week"],
+            "risk_horizon": ""
+        })
+
+    # ── VITAMIN B12 (from blood report) ──
+    vit_b12 = features.get("vitamin_b12")
+    if vit_b12 is not None and vit_b12 < 200:
+        urgency = "focus" if vit_b12 < 150 else "watch"
+        care_items.append({
+            "category": "vitamin_b12", "urgency": urgency,
+            "current_status": f"Vitamin B12 {vit_b12:.0f} pg/mL — {'Deficient' if vit_b12 < 150 else 'Low'}",
+            "future_risk_message": f"B12 at {vit_b12:.0f} pg/mL can cause fatigue and nerve issues. Daily eggs or dairy and a doctor-advised supplement can restore it.",
+            "prevention_steps": ["Eggs, paneer, or dairy every day", "Ask doctor about B12 supplement"],
+            "risk_horizon": ""
+        })
+
     # Post-process: risk scores + top_action
     for item in care_items:
         cat = item["category"]
@@ -525,6 +582,14 @@ def generate_preventive_care(features: dict) -> list[dict]:
         elif cat == "weight_bmi":
             b = features.get("bmi", 22)
             item["risk_score"] = min(85, max(5, int((b - 18) * 5)))
+        elif cat == "cholesterol":
+            ldl_v = features.get("ldl") or features.get("total_cholesterol", 180)
+            item["risk_score"] = min(85, max(5, int((ldl_v - 100) / 1.2)))
+        elif cat == "liver_health":
+            sgpt_v = features.get("sgpt", 40)
+            item["risk_score"] = min(85, max(5, int((sgpt_v - 20) / 0.8)))
+        elif cat in ("vitamin_d", "vitamin_b12"):
+            item["risk_score"] = 35
         else:
             item["risk_score"] = 25
         steps = item.get("prevention_steps", [])
@@ -570,11 +635,14 @@ def generate_daily_tasks(features: dict, user) -> list[dict]:
         return tasks
 
     bp_val = features.get("bp_systolic_latest") or features.get("bp_systolic_avg")
+    # Use manual sugar OR report glucose
     sugar_val = features.get("sugar_latest") or features.get("sugar_avg")
+    if not sugar_val:
+        sugar_val = features.get("fasting_glucose_report") or features.get("random_glucose_report")
     bmi = features.get("bmi")
     hb = features.get("hemoglobin")
     platelets = features.get("platelet_count")
-    report_glucose = features.get("fasting_glucose_report")
+    report_glucose = features.get("fasting_glucose_report") or features.get("random_glucose_report")
 
     # Walking task (always, coins based on health data)
     steps, walk_coins, duration = _get_step_target(features)
@@ -741,18 +809,51 @@ def generate_diet_plan(features: dict) -> dict | None:
         return None
 
     bmi = features.get("bmi")
-    bp_avg = features.get("bp_systolic_avg")
-    sugar_avg = features.get("sugar_avg")
+    # Use latest BP — avg or latest reading
+    bp_avg = features.get("bp_systolic_avg") or features.get("bp_systolic_latest")
+    # Use sugar from manual readings OR from report glucose
+    sugar_avg = features.get("sugar_avg") or features.get("fasting_glucose_report") or features.get("random_glucose_report")
     hb = features.get("hemoglobin")
     platelets = features.get("platelet_count")
     gender_enc = features.get("gender_enc", 1)
     hb_low = 13.5 if gender_enc == 1 else 12.0
-    report_glucose = features.get("fasting_glucose_report")
+    # Additional report markers
+    ldl = features.get("ldl")
+    tsh = features.get("tsh")
+    vit_d = features.get("vitamin_d")
+    vit_b12 = features.get("vitamin_b12")
+    creatinine = features.get("creatinine")
+    sgpt = features.get("sgpt")
 
     eat_more, reduce, avoid = [], [], []
     focus_parts, reason_parts = [], []
     hydration = 8
 
+    # Priority 1: Platelets (most urgent)
+    if platelets is not None and 0 < platelets < 150000:
+        focus_parts.append("platelet_support")
+        reason_parts.append(f"Supporting platelet recovery ({int(platelets):,}/cumm)")
+        eat_more.extend(["Fresh papaya daily", "Pomegranate seeds and juice", "Pumpkin and pumpkin seeds", "Lean protein: eggs, chicken, fish"])
+        avoid.extend(["Alcohol completely", "Aspirin and ibuprofen without doctor advice"])
+        hydration = max(hydration, 10)
+
+    # Priority 2: Hemoglobin
+    if hb is not None and hb < hb_low:
+        focus_parts.append("iron_boost")
+        reason_parts.append(f"Building up hemoglobin ({hb} g/dL)")
+        eat_more.extend(["Spinach, palak, methi daily", "Rajma, chana, masoor dal", "Jaggery instead of sugar", "Pomegranate and beetroot", "Dates and raisins as snacks"])
+        reduce.extend(["Tea right after meals — blocks iron absorption"])
+        hydration = max(hydration, 9)
+
+    # Priority 3: Blood Sugar (manual or from report)
+    if sugar_avg is not None and sugar_avg >= 100:
+        focus_parts.append("sugar_smart")
+        reason_parts.append(f"Helping your sugar levels ({sugar_avg:.0f} mg/dL)")
+        eat_more.extend(["Brown rice or millets (ragi, jowar, bajra)", "Bitter gourd — natural sugar support", "Methi seeds — soak overnight, eat morning", "Nuts as snacks (almonds, walnuts)"])
+        reduce.extend(["White rice to half a cup", "Only low-GI fruits (apple, guava)"])
+        avoid.extend(["Sugar in tea/coffee", "Fruit juices (even fresh ones)", "Maida products"])
+
+    # Priority 4: Blood Pressure
     if bp_avg is not None and bp_avg >= 120:
         focus_parts.append("heart_healthy")
         reason_parts.append(f"Supporting your BP ({bp_avg:.0f} mmHg)")
@@ -761,40 +862,42 @@ def generate_diet_plan(features: dict) -> dict | None:
         avoid.extend(["Pickles and papad", "Packaged chips and namkeen", "Instant noodles"])
         hydration = max(hydration, 10)
 
-    if sugar_avg is not None and sugar_avg >= 100:
-        focus_parts.append("sugar_smart")
-        reason_parts.append(f"Helping your sugar levels ({sugar_avg:.0f} mg/dL)")
-        eat_more.extend(["Brown rice or millets (ragi, jowar, bajra)", "Bitter gourd — natural sugar support", "Methi seeds — soak overnight, eat morning", "Nuts as snacks (almonds, walnuts)"])
-        reduce.extend(["White rice to half a cup", "Only low-GI fruits (apple, guava)"])
-        avoid.extend(["Sugar in tea/coffee", "Fruit juices (even fresh ones)", "Maida products"])
+    # Priority 5: Cholesterol (from report)
+    if ldl is not None and ldl > 130:
+        focus_parts.append("heart_healthy")
+        reason_parts.append(f"Managing cholesterol (LDL {ldl:.0f} mg/dL)")
+        eat_more.extend(["Oats and barley — lowers LDL naturally", "Walnuts and flaxseeds", "Olive oil instead of ghee for cooking"])
+        avoid.extend(["Fried food and trans fats", "Full-fat dairy in excess"])
 
-    if hb is not None and hb < hb_low:
-        focus_parts.append("iron_boost")
-        reason_parts.append(f"Building up your hemoglobin ({hb} g/dL)")
-        eat_more.extend(["Spinach, palak, methi daily", "Rajma, chana, masoor dal", "Jaggery instead of sugar", "Pomegranate and beetroot"])
-        reduce.extend(["Tea right after meals — blocks iron"])
-        hydration = max(hydration, 9)
+    # Priority 6: Liver (SGPT from report)
+    if sgpt is not None and sgpt > 45:
+        focus_parts.append("liver_support")
+        reason_parts.append(f"Supporting liver health (SGPT {sgpt:.0f} U/L)")
+        eat_more.extend(["Turmeric milk daily", "Amla (Indian gooseberry)", "Green tea"])
+        avoid.extend(["Alcohol completely", "Fried and oily food", "Packaged processed food"])
 
-    if platelets is not None and 0 < platelets < 150000:
-        focus_parts.append("platelet_support")
-        reason_parts.append(f"Supporting platelet recovery ({platelets:,})")
-        eat_more.extend(["Fresh papaya", "Pomegranate seeds and juice", "Pumpkin and pumpkin seeds"])
-        avoid.extend(["Alcohol completely"])
-        hydration = max(hydration, 10)
+    # Priority 7: Vitamin D deficiency (from report)
+    if vit_d is not None and vit_d < 20:
+        focus_parts.append("vitamin_boost")
+        reason_parts.append(f"Boosting Vitamin D ({vit_d:.0f} ng/mL)")
+        eat_more.extend(["Eggs (especially yolk)", "Fatty fish: salmon, sardines", "Fortified milk and cereals", "15 min morning sunlight daily"])
 
+    # Priority 8: Vitamin B12 deficiency (from report)
+    if vit_b12 is not None and vit_b12 < 200:
+        if "vitamin_boost" not in focus_parts:
+            focus_parts.append("vitamin_boost")
+        reason_parts.append(f"Boosting Vitamin B12 ({vit_b12:.0f} pg/mL)")
+        eat_more.extend(["Eggs, paneer, and dairy daily", "Chicken and fish if non-veg", "B12-fortified cereals"])
+
+    # Priority 9: BMI
     if bmi is not None and bmi >= 27:
         focus_parts.append("weight_friendly")
-        reason_parts.append(f"Supporting your weight goals (BMI {bmi})")
+        reason_parts.append(f"Supporting weight goals (BMI {bmi})")
         eat_more.extend(["Protein-rich breakfast (eggs, paneer)", "Salad before each meal", "Green tea instead of milk tea"])
         reduce.extend(["Portion sizes by 20%", "Fried food to twice a week"])
         avoid.extend(["Late night snacking", "Sugary drinks"])
 
-    if report_glucose and report_glucose >= 100 and not features.get("has_sugar_data"):
-        focus_parts.append("sugar_smart")
-        reason_parts.append(f"Report shows glucose at {report_glucose:.0f} mg/dL")
-        eat_more.extend(["Whole grains and millets", "Nuts and seeds as snacks"])
-        avoid.extend(["Refined sugar and sweets"])
-
+    # Fallback: balanced
     if not focus_parts:
         focus_parts.append("balanced_wellness")
         reason_parts.append("Maintaining your healthy vitals")
