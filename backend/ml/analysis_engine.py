@@ -156,22 +156,68 @@ def build_features(user, bp_readings, sugar_readings, report) -> dict:
         f["sugar_readings_count"] = 0
         f["sugar_trend"] = None
 
-    # Blood Report
+    # Blood Report — ALL markers
     f["has_report"] = False
     if report:
         f["has_report"] = True
+        # CBC RBC
         f["hemoglobin"] = float(report.hemoglobin) if report.hemoglobin else None
         f["rbc_count"] = float(report.rbc_count) if report.rbc_count else None
-        f["wbc_count"] = int(report.wbc_count) if report.wbc_count else None
-        f["platelet_count"] = int(report.platelet_count) if report.platelet_count else None
+        f["pcv"] = float(report.pcv) if report.pcv else None
+        f["mcv"] = float(report.mcv) if report.mcv else None
+        f["mch"] = float(report.mch) if report.mch else None
+        f["mchc"] = float(report.mchc) if report.mchc else None
+        f["rdw"] = float(report.rdw) if report.rdw else None
+        f["mpv"] = float(report.mpv) if report.mpv else None
+        # CBC WBC
+        f["wbc_count"] = float(report.wbc_count) if report.wbc_count else None
+        f["neutrophils_pct"] = float(report.neutrophils_pct) if report.neutrophils_pct else None
+        f["lymphocytes_pct"] = float(report.lymphocytes_pct) if report.lymphocytes_pct else None
+        f["eosinophils_pct"] = float(report.eosinophils_pct) if report.eosinophils_pct else None
+        f["monocytes_pct"] = float(report.monocytes_pct) if report.monocytes_pct else None
+        # Platelets
+        f["platelet_count"] = float(report.platelet_count) if report.platelet_count else None
+        # Sugar from report
         f["fasting_glucose_report"] = float(report.fasting_glucose) if report.fasting_glucose else None
+        f["random_glucose_report"] = float(report.random_glucose) if report.random_glucose else None
+        f["hba1c"] = float(report.hba1c) if report.hba1c else None
+        # Kidney
         f["creatinine"] = float(report.creatinine) if report.creatinine else None
         f["urea"] = float(report.urea) if report.urea else None
+        f["uric_acid"] = float(report.uric_acid) if report.uric_acid else None
+        f["egfr"] = float(report.egfr) if report.egfr else None
+        # Liver
+        f["sgpt"] = float(report.sgpt) if report.sgpt else None
+        f["sgot"] = float(report.sgot) if report.sgot else None
+        f["bilirubin_total"] = float(report.bilirubin_total) if report.bilirubin_total else None
+        f["alkaline_phosphatase"] = float(report.alkaline_phosphatase) if report.alkaline_phosphatase else None
+        f["albumin"] = float(report.albumin) if report.albumin else None
+        # Lipids
+        f["total_cholesterol"] = float(report.total_cholesterol) if report.total_cholesterol else None
+        f["hdl"] = float(report.hdl) if report.hdl else None
+        f["ldl"] = float(report.ldl) if report.ldl else None
+        f["triglycerides"] = float(report.triglycerides) if report.triglycerides else None
+        # Thyroid
+        f["tsh"] = float(report.tsh) if report.tsh else None
+        # Vitamins
+        f["vitamin_d"] = float(report.vitamin_d) if report.vitamin_d else None
+        f["vitamin_b12"] = float(report.vitamin_b12) if report.vitamin_b12 else None
+        f["ferritin"] = float(report.ferritin) if report.ferritin else None
+        f["iron"] = float(report.iron) if report.iron else None
+        # Electrolytes
+        f["sodium"] = float(report.sodium) if report.sodium else None
+        f["potassium"] = float(report.potassium) if report.potassium else None
+        f["calcium"] = float(report.calcium) if report.calcium else None
+        # Peripheral smear
+        f["peripheral_smear"] = report.peripheral_smear or None
     else:
-        f["hemoglobin"] = None
-        f["platelet_count"] = None
-        f["fasting_glucose_report"] = None
-        f["creatinine"] = None
+        for key in ["hemoglobin", "platelet_count", "wbc_count", "fasting_glucose_report",
+                    "random_glucose_report", "hba1c", "creatinine", "urea", "uric_acid",
+                    "egfr", "sgpt", "sgot", "bilirubin_total", "total_cholesterol",
+                    "hdl", "ldl", "triglycerides", "tsh", "vitamin_d", "vitamin_b12",
+                    "ferritin", "iron", "sodium", "potassium", "calcium", "pcv",
+                    "mcv", "rdw", "neutrophils_pct", "eosinophils_pct", "peripheral_smear"]:
+            f[key] = None
 
     f["has_vitals_data"] = f["has_bp_data"] or f["has_sugar_data"] or f["has_report"]
     return f
@@ -228,6 +274,36 @@ def calculate_health_index(features: dict) -> int:
     if platelets is not None:
         if platelets < 100000:   score -= 15
         elif platelets < 150000: score -= 8
+
+    # Liver (SGPT)
+    sgpt = features.get("sgpt")
+    if sgpt is not None:
+        if sgpt > 80:    score -= 10
+        elif sgpt > 45:  score -= 5
+
+    # Cholesterol
+    ldl = features.get("ldl")
+    if ldl is not None:
+        if ldl > 160:    score -= 10
+        elif ldl > 130:  score -= 5
+
+    # Thyroid
+    tsh = features.get("tsh")
+    if tsh is not None:
+        if tsh > 10 or tsh < 0.3:  score -= 8
+        elif tsh > 5 or tsh < 0.5: score -= 4
+
+    # Vitamin D
+    vit_d = features.get("vitamin_d")
+    if vit_d is not None:
+        if vit_d < 10:   score -= 8
+        elif vit_d < 20: score -= 4
+
+    # Vitamin B12
+    vit_b12 = features.get("vitamin_b12")
+    if vit_b12 is not None:
+        if vit_b12 < 150:  score -= 8
+        elif vit_b12 < 200: score -= 4
 
     # Lifestyle
     if features.get("smoking"):                    score -= 8

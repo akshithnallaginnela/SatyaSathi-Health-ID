@@ -102,6 +102,7 @@ class BloodReport(Base):
     lab_name = Column(String(100))
     report_date = Column(Date)
     
+    # CBC — RBC
     hemoglobin = Column(Float)
     rbc_count = Column(Float)
     pcv = Column(Float)
@@ -109,18 +110,69 @@ class BloodReport(Base):
     mch = Column(Float)
     mchc = Column(Float)
     rdw = Column(Float)
-    wbc_count = Column(Integer)
+    rdw_sd = Column(Float)
+    mpv = Column(Float)
+
+    # CBC — WBC
+    wbc_count = Column(Float)
     neutrophils_pct = Column(Float)
     lymphocytes_pct = Column(Float)
     monocytes_pct = Column(Float)
     eosinophils_pct = Column(Float)
     basophils_pct = Column(Float)
-    platelet_count = Column(Integer)
+    neutrophils_abs = Column(Float)
+    lymphocytes_abs = Column(Float)
+    monocytes_abs = Column(Float)
+    eosinophils_abs = Column(Float)
+
+    # Platelets
+    platelet_count = Column(Float)
+    p_lcr = Column(Float)
+
+    # Sugar
     fasting_glucose = Column(Float)
     random_glucose = Column(Float)
+    hba1c = Column(Float)
+
+    # Kidney
     urea = Column(Float)
     creatinine = Column(Float)
-    
+    uric_acid = Column(Float)
+    egfr = Column(Float)
+
+    # Liver
+    sgpt = Column(Float)
+    sgot = Column(Float)
+    bilirubin_total = Column(Float)
+    bilirubin_direct = Column(Float)
+    alkaline_phosphatase = Column(Float)
+    albumin = Column(Float)
+    total_protein = Column(Float)
+
+    # Lipids
+    total_cholesterol = Column(Float)
+    hdl = Column(Float)
+    ldl = Column(Float)
+    triglycerides = Column(Float)
+    vldl = Column(Float)
+
+    # Thyroid
+    tsh = Column(Float)
+    t3 = Column(Float)
+    t4 = Column(Float)
+
+    # Vitamins & Minerals
+    vitamin_d = Column(Float)
+    vitamin_b12 = Column(Float)
+    iron = Column(Float)
+    ferritin = Column(Float)
+    calcium = Column(Float)
+    sodium = Column(Float)
+    potassium = Column(Float)
+
+    # Peripheral smear
+    peripheral_smear = Column(Text)
+
     lab_interpretation = Column(Text)
     ocr_raw = Column(Text)
     uploaded_at = Column(DateTime, default=datetime.utcnow)
