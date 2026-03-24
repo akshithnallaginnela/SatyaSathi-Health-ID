@@ -12,6 +12,9 @@ load_dotenv()
 # PostgreSQL first, but defaults to async sqlite for local testing if no env var is provided
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///./vitalid.db")
 
+# Source of truth for SQLAlchemy Base
+from models.domain import Base
+
 connect_args = {"check_same_thread": False} if "sqlite" in DATABASE_URL else {}
 
 engine = create_async_engine(

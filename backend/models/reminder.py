@@ -5,7 +5,7 @@ Reminder model — user-created custom reminders with text messages.
 import uuid
 from datetime import datetime
 from sqlalchemy import Column, String, Boolean, DateTime, Text, ForeignKey
-from models.domain import Base, GUID
+from .domain import Base, GUID
 
 class Reminder(Base):
     __tablename__ = "reminders"
