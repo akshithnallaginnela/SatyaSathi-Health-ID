@@ -51,7 +51,6 @@ async def log_bp(
 
     # Trigger AI analysis in fresh session so it sees the new reading
     try:
-        from database import async_session
         async with async_session() as analysis_db:
             analysis = await run_full_analysis(user_id, analysis_db)
             await analysis_db.commit()
@@ -88,7 +87,6 @@ async def log_sugar(
 
     # Trigger AI analysis in fresh session so it sees the new reading
     try:
-        from database import async_session
         async with async_session() as analysis_db:
             analysis = await run_full_analysis(user_id, analysis_db)
             await analysis_db.commit()
@@ -167,7 +165,6 @@ async def log_bmi(
 
     # Trigger AI analysis in fresh session so it sees updated BMI
     try:
-        from database import async_session
         async with async_session() as analysis_db:
             await run_full_analysis(user_id, analysis_db)
             await analysis_db.commit()
