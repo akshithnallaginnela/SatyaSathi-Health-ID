@@ -221,7 +221,7 @@ def build_features(user, bp_readings, sugar_readings, report) -> dict:
 
     f["has_vitals_data"] = f["has_bp_data"] or f["has_sugar_data"] or f["has_report"]
 
-    # If no manual sugar readings but report has glucose — treat it as sugar data for analysis
+    # If no manual sugar readings but report has glucose — use it for diet/tasks
     if not f["has_sugar_data"] and f["has_report"]:
         rg = f.get("fasting_glucose_report") or f.get("random_glucose_report")
         if rg:
@@ -229,7 +229,7 @@ def build_features(user, bp_readings, sugar_readings, report) -> dict:
             f["sugar_avg"] = rg
             f["sugar_readings_count"] = 1
             f["sugar_trend"] = "just_started"
-            f["has_sugar_data"] = True  # treat report glucose as sugar data for diet/tasks
+            # Don't set has_sugar_data=True — keep it False so we know it's from report
 
     return f
 
@@ -809,10 +809,9 @@ def generate_diet_plan(features: dict) -> dict | None:
         return None
 
     bmi = features.get("bmi")
-    # Use latest BP — avg or latest reading
-    bp_avg = features.get("bp_systolic_avg") or features.get("bp_systolic_latest")
-    # Use sugar from manual readings OR from report glucose
-    sugar_avg = features.get("sugar_avg") or features.get("fasting_glucose_report") or features.get("random_glucose_report")
+    # Use LATEST readings for diet — not averages — so diet reflects current state
+    bp_latest = features.get("bp_systolic_latest") or features.get("bp_systolic_avg")
+    sugar_latest = features.get("sugar_latest") or features.get("fasting_glucose_report") or features.get("random_glucose_report")
     hb = features.get("hemoglobin")
     platelets = features.get("platelet_count")
     gender_enc = features.get("gender_enc", 1)
@@ -846,17 +845,17 @@ def generate_diet_plan(features: dict) -> dict | None:
         hydration = max(hydration, 9)
 
     # Priority 3: Blood Sugar (manual or from report)
-    if sugar_avg is not None and sugar_avg >= 100:
+    if sugar_latest is not None and sugar_latest >= 100:
         focus_parts.append("sugar_smart")
-        reason_parts.append(f"Helping your sugar levels ({sugar_avg:.0f} mg/dL)")
+        reason_parts.append(f"Helping your sugar levels ({sugar_latest:.0f} mg/dL)")
         eat_more.extend(["Brown rice or millets (ragi, jowar, bajra)", "Bitter gourd — natural sugar support", "Methi seeds — soak overnight, eat morning", "Nuts as snacks (almonds, walnuts)"])
         reduce.extend(["White rice to half a cup", "Only low-GI fruits (apple, guava)"])
         avoid.extend(["Sugar in tea/coffee", "Fruit juices (even fresh ones)", "Maida products"])
 
     # Priority 4: Blood Pressure
-    if bp_avg is not None and bp_avg >= 120:
+    if bp_latest is not None and bp_latest >= 121:
         focus_parts.append("heart_healthy")
-        reason_parts.append(f"Supporting your BP ({bp_avg:.0f} mmHg)")
+        reason_parts.append(f"Supporting your BP ({bp_latest:.0f} mmHg)")
         eat_more.extend(["Banana — natural potassium counters sodium", "Spinach and leafy greens", "Garlic — natural BP support", "Oats — helps reduce BP over time"])
         reduce.extend(["Extra salt — try lemon and herbs instead", "Tea/coffee to 1-2 cups daily"])
         avoid.extend(["Pickles and papad", "Packaged chips and namkeen", "Instant noodles"])
@@ -920,7 +919,8 @@ def generate_diet_plan(features: dict) -> dict | None:
 # ════════════════════════════════════════════════════════════════
 
 async def save_preventive_care(user_id: str, care_items: list[dict], db: AsyncSession):
-    await db.execute(delete(PreventiveCare).where(PreventiveCare.user_id == user_id))
+    await db.execute(delete(PreventiveCare).where(PreventiveCare.user_id == user_id).execution_options(synchronize_session="fetch"))
+    await db.flush()
     for item in care_items:
         db.add(PreventiveCare(
             user_id=user_id,
@@ -945,7 +945,9 @@ async def replace_todays_tasks(user_id: str, task_list: list[dict], db: AsyncSes
         .where(DailyTask.user_id == user_id)
         .where(DailyTask.task_date == datetime.date.today())
         .where(DailyTask.completed == False)
+        .execution_options(synchronize_session="fetch")
     )
+    await db.flush()
     for t in task_list:
         if t["task_type"] in completed_types:
             continue
@@ -963,7 +965,8 @@ async def replace_todays_tasks(user_id: str, task_list: list[dict], db: AsyncSes
         ))
 
 async def save_diet(user_id: str, diet: dict | None, db: AsyncSession):
-    await db.execute(delete(DietRecommendation).where(DietRecommendation.user_id == user_id))
+    await db.execute(delete(DietRecommendation).where(DietRecommendation.user_id == user_id).execution_options(synchronize_session="fetch"))
+    await db.flush()
     if diet is None:
         return
     db.add(DietRecommendation(
