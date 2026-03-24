@@ -163,9 +163,16 @@ async def log_bmi(
     if user.weight_kg and user.height_cm:
         user.bmi = round(user.weight_kg / ((user.height_cm / 100) ** 2), 2)
     
-    # Trigger AI analysis
-    await run_full_analysis(user_id, db)
     await db.commit()
+
+    # Trigger AI analysis in fresh session so it sees updated BMI
+    try:
+        from database import async_session
+        async with async_session() as analysis_db:
+            await run_full_analysis(user_id, analysis_db)
+            await analysis_db.commit()
+    except Exception as e:
+        print(f"⚠️ Analysis error after BMI log: {e}")
     
     return {
         "message": "BMI updated",
