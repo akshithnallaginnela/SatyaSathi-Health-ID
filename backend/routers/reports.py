@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc
 
-from database import get_db
+from database import get_db, async_session
 from models.domain import (
     BloodReport, UserDataStatus, User
 )
