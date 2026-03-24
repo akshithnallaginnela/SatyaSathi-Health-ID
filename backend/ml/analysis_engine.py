@@ -336,36 +336,31 @@ def generate_preventive_care(features: dict) -> list[dict]:
                 "urgency": "watch",
                 "current_status": f"BP slightly elevated — {bp_val:.0f} mmHg",
                 "future_risk_message": (
-                    f"Your BP is slightly above ideal ({bp_val:.0f} mmHg). "
-                    "Great news — this is the easiest stage to bring it back to normal! "
-                    "Simple changes like a 30-minute walk and cutting extra salt "
-                    "can drop it 5-8 mmHg in just 2 weeks."
+                    "Great news — this is the easiest stage to reset your score! "
+                    "Small changes like a short daily walk can drop your BP in just 2 weeks."
                 ),
                 "prevention_steps": [
-                    "A 30-min morning walk can bring this down naturally",
-                    "Try lemon instead of extra salt — tastes great too!",
-                    "Deep breathing for 5 min helps more than you think",
-                    "You're catching this early — that's the smart move"
+                    "A 30-min morning walk works wonders",
+                    "Try lemon instead of extra salt — tastes great!",
+                    "You're catching this early — very smart move 🎯"
                 ],
-                "risk_horizon": "2-3 weeks of simple changes can fix this"
+                "risk_horizon": "Simple changes = Fast results"
             })
         elif bp_val < 140:
             care_items.append({
                 "category": "blood_pressure",
                 "urgency": "focus",
-                "current_status": f"BP needs attention — {bp_val:.0f} mmHg",
+                "current_status": f"BP needs focus — {bp_val:.0f} mmHg",
                 "future_risk_message": (
-                    "Your BP needs some focus, but here's the encouraging part: "
-                    "at this level, lifestyle changes ALONE can bring it back to normal. "
-                    "Walking, eating right, and sleeping well are powerful medicine."
+                    "You're already taking the first step by tracking this! "
+                    "At this level, active walking and good sleep are powerful natural medicine."
                 ),
                 "prevention_steps": [
-                    "Start with a daily 30-min walk — it works like medication",
-                    "Cut packaged foods this week — they're loaded with hidden salt",
-                    "Sleep by 10:30 PM — your body repairs BP during sleep",
-                    "You've taken the first step by tracking — that's half the battle"
+                    "30-min brisk walk daily is your priority #1",
+                    "Avoid packaged foods this week (hidden salt)",
+                    "Sleep by 10:30 PM to help your body repair"
                 ],
-                "risk_horizon": "4-6 weeks of consistent effort"
+                "risk_horizon": "4 weeks of consistency to reset"
             })
         else:
             care_items.append({
@@ -373,18 +368,16 @@ def generate_preventive_care(features: dict) -> list[dict]:
                 "urgency": "act_now",
                 "current_status": f"High BP — {bp_val:.0f} mmHg",
                 "future_risk_message": (
-                    "Your BP is higher than ideal, but you're already taking the right steps "
-                    "by tracking it. Many people bring their BP down significantly with "
-                    "consistent daily walking and dietary changes. A check-in with your "
-                    "doctor can give you a clear action plan."
+                    "You're ahead of 90% of people by tracking this today. "
+                    "A quick doctor consult will give you a clear action plan "
+                    "to bring your BP to the healthy zone quickly."
                 ),
                 "prevention_steps": [
-                    "A doctor visit this week will give you clarity and confidence",
-                    "Walking daily is the single most effective natural treatment",
-                    "Reducing salt for just 2 weeks shows measurable improvement",
-                    "You're monitoring — that puts you ahead of 90% of people"
+                    "Visit your doctor this week for a clear plan",
+                    "Daily walking is your strongest natural tool",
+                    "Consistency is your secret weapon 💪"
                 ],
-                "risk_horizon": "Doctor guidance + lifestyle = fast results"
+                "risk_horizon": "Focus + Doctor's plan = Success"
             })
     
     # ── Blood Sugar Care (Use latest for immediate feedback) ──
@@ -398,16 +391,15 @@ def generate_preventive_care(features: dict) -> list[dict]:
                 "urgency": "great",
                 "current_status": f"Healthy sugar — {sugar_val:.0f} mg/dL 💚",
                 "future_risk_message": (
-                    "Your fasting sugar is in the healthy zone! "
-                    "This means your body is managing glucose efficiently. "
-                    "Keep up your current eating and exercise habits — they're working."
+                    "Perfect balance! Your body is managing glucose efficiently. "
+                    "Keep up your current eating and active habits — they're working great."
                 ),
                 "prevention_steps": [
                     "Your diet choices are keeping sugar in check",
-                    "Post-meal walks are a great habit to continue",
+                    "A quick walk after meals is a winning habit",
                     "Regular monitoring keeps you in control"
                 ],
-                "risk_horizon": "You're in the safe zone 🎯"
+                "risk_horizon": "Peak metabolic health zone"
             })
         elif sugar_val < 126:
             care_items.append({
@@ -415,18 +407,15 @@ def generate_preventive_care(features: dict) -> list[dict]:
                 "urgency": "watch",
                 "current_status": f"Sugar slightly elevated — {sugar_val:.0f} mg/dL",
                 "future_risk_message": (
-                    f"Your sugar is slightly above the ideal range. "
-                    "The fantastic news? Research shows that at this stage, "
-                    "lifestyle changes can fully reverse the trend in 8-12 weeks. "
-                    "You have complete control here."
+                    "You've caught this early! At this level, simple hacks like "
+                    "walking after lunch can reverse this trend in just 8-12 weeks."
                 ),
                 "prevention_steps": [
-                    "Switch to brown rice or millets — they taste great and help a lot",
-                    "A 10-min walk after meals reduces sugar spikes by 22%",
-                    "Try nuts as snacks instead of biscuits — equally satisfying",
-                    "You caught this early — that's the smartest health decision"
+                    "Walk for 10 min after meals — simple and effective",
+                    "Try brown rice or millets instead of white rice",
+                    "Stay hydrated to help your body process sugar naturally"
                 ],
-                "risk_horizon": "8-12 weeks of dietary changes can reverse this"
+                "risk_horizon": "8-12 weeks of simple hacks to reverse"
             })
         else:
             care_items.append({
@@ -434,18 +423,16 @@ def generate_preventive_care(features: dict) -> list[dict]:
                 "urgency": "focus",
                 "current_status": f"Sugar needs focus — {sugar_val:.0f} mg/dL",
                 "future_risk_message": (
-                    "Your sugar is above the ideal range, but you're already tracking it — "
-                    "that's the most important step. Many people in this range bring their "
-                    "sugar back to normal with consistent dietary changes and exercise. "
-                    "A doctor can also help you create a personalized plan."
+                    "You're already doing the right thing by tracking today. "
+                    "A doctor visit and a few diet tweaks will bring this back "
+                    "to your healthy zone quickly."
                 ),
                 "prevention_steps": [
-                    "Visit your doctor for an HbA1c test — it gives the 3-month picture",
-                    "Walking 30 min daily is as powerful as some medications",
-                    "Eating dinner before 7:30 PM helps your body process sugar better",
-                    "Small, frequent meals keep sugar more stable than big ones"
+                    "HbA1c test gives you the clear 3-month picture",
+                    "Daily brisk walking is as powerful as medicine",
+                    "Avoid sugary drinks this week for an immediate drop"
                 ],
-                "risk_horizon": "Doctor guidance + diet changes work best together"
+                "risk_horizon": "Focus + Simple tweaks = Success"
             })
     
     # ── BMI Care ──
@@ -459,36 +446,31 @@ def generate_preventive_care(features: dict) -> list[dict]:
                 "urgency": "watch",
                 "current_status": f"BMI {bmi} — room for improvement",
                 "future_risk_message": (
-                    f"Your BMI is {bmi}, which is slightly above ideal. "
-                    "Here's the encouraging part: losing just 3-5 kg can "
-                    "reduce your BP by 5 mmHg AND improve your sugar levels. "
-                    "Small, sustainable changes work better than crash diets."
+                    "Small wins lead to big results! Losing just 3-5 kg "
+                    "can naturally lower your BP and help you feel more energetic."
                 ),
                 "prevention_steps": [
-                    "Reduce portion sizes by just 20% — you won't even notice",
-                    "Add a salad before lunch — it fills you up naturally",
-                    "Replace sugary drinks with water or buttermilk",
-                    "Walking 10,000 steps is the easiest weight loss tool"
+                    "Smaller plates help with portion control",
+                    "A 30-min brisk walk daily is your best helper",
+                    "Consistency is better than perfection — keep going!"
                 ],
-                "risk_horizon": "3-5 kg loss in 2-3 months makes a big difference"
+                "risk_horizon": "Sustainable progress = Big results"
             })
         elif features.get("bmi_class") == "obese":
             care_items.append({
                 "category": "weight_bmi",
                 "urgency": "focus",
-                "current_status": f"BMI {bmi} — needs your attention",
+                "current_status": f"BMI {bmi} — Focus area",
                 "future_risk_message": (
-                    "Your weight needs some focus, and the best approach is "
-                    "gradual, sustainable changes. A doctor can help create "
-                    "a plan that works for YOUR body and lifestyle."
+                    "You've taken the lead by checking your BMI. A focused "
+                    "approach to walking and portion balance can reset your score rapidly."
                 ),
                 "prevention_steps": [
-                    "Start with a 20-min walk daily — build up gradually",
-                    "A doctor can help with a personalized weight plan",
-                    "Focus on protein-rich breakfast — reduces cravings all day",
-                    "Good sleep (7-8 hrs) prevents stress-related weight gain"
+                    "30-min brisk walk daily is your priority #1",
+                    "Cut sugary snacks this week for a quick energy boost",
+                    "Good sleep (7-8 hrs) helps your metabolism stay high"
                 ],
-                "risk_horizon": "Start small — every kg lost helps"
+                "risk_horizon": "Focus + Consistent steps = Success"
             })
     
     # ── Hemoglobin Care (from Report) ──
@@ -633,23 +615,22 @@ def generate_preventive_care(features: dict) -> list[dict]:
             val = features.get("sugar_latest") or features.get("sugar_avg", 90)
             if val and val > 0:
                 item["risk_score"] = min(95, max(10, int((val - 60) / 1.5)))
-            else:
-                item["risk_score"] = base
+                item["risk_score"] = 30
         elif cat == "hemoglobin":
             hb = features.get("hemoglobin")
             if hb:
                 hb_low = 13.5 if features.get("gender_enc") == 1 else 12.0
                 item["risk_score"] = min(90, max(10, int(100 - (hb / hb_low) * 80)))
             else:
-                item["risk_score"] = base
+                item["risk_score"] = 30
         elif cat == "weight_bmi":
             bmi = features.get("bmi", 25)
             if bmi:
                 item["risk_score"] = min(85, max(10, int((bmi - 18) * 5)))
             else:
-                item["risk_score"] = base
+                item["risk_score"] = 30
         else:
-            item["risk_score"] = base
+            item["risk_score"] = 30
         
         # Top action from first prevention step
         steps = item.get("prevention_steps", [])
@@ -660,7 +641,67 @@ def generate_preventive_care(features: dict) -> list[dict]:
 
 # ════════════════════════════════════════════════════════════════
 # 5. DAILY TASK GENERATION — ONLY from actual data
+#    COINS POLICY: Only monitorable tasks earn coins
+#    Monitorable = walking/steps, check BP, check sugar, drink water
+#    Non-monitorable = skip sugar, eat balanced, reduce portions (0 coins)
 # ════════════════════════════════════════════════════════════════
+
+def _get_step_target(features: dict) -> tuple[int, int, str]:
+    """Calculate step target based on ALL health data.
+    Returns (steps, coins, duration_text).
+    """
+    base_steps = 5000
+    coins = 15
+    
+    # BP influence
+    bp_val = features.get("bp_systolic_latest") or features.get("bp_systolic_avg")
+    if bp_val is not None:
+        if bp_val >= 140:
+            base_steps = max(base_steps, 10000)
+            coins = 25
+        elif bp_val >= 130:
+            base_steps = max(base_steps, 8000)
+            coins = 20
+        elif bp_val >= 120:
+            base_steps = max(base_steps, 7000)
+            coins = 18
+    
+    # Sugar influence
+    sugar_val = features.get("sugar_latest") or features.get("sugar_avg")
+    if sugar_val is not None and sugar_val >= 100:
+        base_steps = max(base_steps, 8000)
+        coins = max(coins, 20)
+    
+    # BMI influence
+    bmi = features.get("bmi")
+    if bmi is not None:
+        if bmi >= 30:
+            base_steps = max(base_steps, 10000)
+            coins = max(coins, 25)
+        elif bmi >= 27:
+            base_steps = max(base_steps, 8000)
+            coins = max(coins, 20)
+    
+    # Report influence — hemoglobin, platelets
+    hb = features.get("hemoglobin")
+    if hb is not None and hb < 11.0:
+        # Anemic patients should do lighter exercise
+        base_steps = min(base_steps, 5000)
+        coins = min(coins, 15)
+    
+    report_glucose = features.get("fasting_glucose_report")
+    if report_glucose and report_glucose >= 126:
+        base_steps = max(base_steps, 10000)
+        coins = max(coins, 25)
+    elif report_glucose and report_glucose >= 100:
+        base_steps = max(base_steps, 7000)
+        coins = max(coins, 18)
+    
+    minutes = base_steps // 400  # ~400 steps per minute of brisk walking
+    duration = f"{minutes} min / {base_steps:,} steps"
+    
+    return (base_steps, coins, duration)
+
 
 def generate_daily_tasks(features: dict, user) -> list[dict]:
     """
@@ -668,6 +709,8 @@ def generate_daily_tasks(features: dict, user) -> list[dict]:
     1. NO tasks before user has any vitals data
     2. Tasks are SPECIFIC to the data we have
     3. Each task explains WHY it's recommended
+    4. COINS ONLY for monitorable tasks (walking, check BP/sugar, water)
+    5. Non-monitorable guidance tasks get 0 coins
     """
     tasks = []
     
@@ -675,92 +718,114 @@ def generate_daily_tasks(features: dict, user) -> list[dict]:
     if not features.get("has_vitals_data"):
         return tasks  # Empty — dashboard will show the empty state card
     
-    # ── BP-Based Tasks (Use latest for immediate feedback) ──
+    # ══════════════════════════════════════════════
+    # MONITORABLE WALKING TASK (earns coins)
+    # Step target based on ALL health data
+    # ══════════════════════════════════════════════
+    steps, walk_coins, duration = _get_step_target(features)
+    
+    bp_val = features.get("bp_systolic_latest") or features.get("bp_systolic_avg")
+    sugar_val = features.get("sugar_latest") or features.get("sugar_avg")
+    bmi = features.get("bmi")
+    
+    # Build a dynamic 'why' message
+    why_parts = []
+    if bp_val and bp_val >= 120:
+        why_parts.append(f"BP {bp_val:.0f} mmHg")
+    if sugar_val and sugar_val >= 100:
+        why_parts.append(f"Sugar {sugar_val:.0f} mg/dL")
+    if bmi and bmi >= 25:
+        why_parts.append(f"BMI {bmi:.1f}")
+    report_glucose = features.get("fasting_glucose_report")
+    if report_glucose and report_glucose >= 100 and not sugar_val:
+        why_parts.append(f"Report glucose {report_glucose:.0f}")
+    
+    why_msg = f"Based on {', '.join(why_parts)}" if why_parts else "Walking maintains your healthy vitals"
+    why_msg += f" — {steps:,} steps helps naturally improve your numbers"
+    
+    tasks.append({
+        "task_type": "MORNING_WALK",
+        "task_name": f"Walk {steps:,} steps today",
+        "description": "Your personalized step goal based on your health report",
+        "why_this_task": why_msg,
+        "category": "exercise",
+        "time_of_day": "morning",
+        "duration_or_quantity": duration,
+        "coins_reward": walk_coins  # ✅ MONITORABLE — earns coins
+    })
+    
+    # ══════════════════════════════════════════════
+    # MONITORABLE: Check BP in 7 days (if BP patient)
+    # ══════════════════════════════════════════════
     if features.get("has_bp_data"):
-        bp_val = features.get("bp_systolic_latest") or features.get("bp_systolic_avg", 120)
-        
-        if bp_val >= 130:
+        bp_readings_count = features.get("bp_readings_count", 0)
+        if bp_val and bp_val >= 120:
             tasks.append({
-                "task_type": "MORNING_WALK",
-                "task_name": "Walk 10,000 steps today",
-                "description": "A brisk morning walk — your best BP medicine",
-                "why_this_task": f"Your current BP is {bp_val:.0f}. Walking for 30 min can reduce it by 5-8 mmHg naturally",
-                "category": "exercise",
+                "task_type": "CHECK_BP_7DAYS",
+                "task_name": "Check your BP this week",
+                "description": "Log a new BP reading to track your progress",
+                "why_this_task": f"BP at {bp_val:.0f} mmHg — regular monitoring helps you see if your lifestyle changes are working",
+                "category": "monitoring",
                 "time_of_day": "morning",
-                "duration_or_quantity": "30 min / 10,000 steps",
-                "coins_reward": 20
-            })
-            tasks.append({
-                "task_type": "LOW_SALT_MEAL",
-                "task_name": "Go low-salt today",
-                "description": "Use lemon and herbs instead of extra salt",
-                "why_this_task": f"BP at {bp_avg:.0f} — cutting sodium this week can lower it noticeably",
-                "category": "diet",
-                "time_of_day": "all_day",
-                "duration_or_quantity": "All meals today",
-                "coins_reward": 12
-            })
-        elif bp_avg >= 120:
-            tasks.append({
-                "task_type": "MORNING_WALK",
-                "task_name": "Walk 7,000 steps today",
-                "description": "Stay active to keep your BP in the healthy zone",
-                "why_this_task": f"Your BP is {bp_avg:.0f} — regular walking prevents it from creeping up",
-                "category": "exercise",
-                "time_of_day": "morning",
-                "duration_or_quantity": "25 min / 7,000 steps",
-                "coins_reward": 15
-            })
-        else:
-            tasks.append({
-                "task_type": "MORNING_WALK",
-                "task_name": "Daily walk — keep it up!",
-                "description": "Your BP is great, walking keeps it that way",
-                "why_this_task": "BP is healthy! Walking maintains it and boosts energy",
-                "category": "exercise",
-                "time_of_day": "morning",
-                "duration_or_quantity": "20 min / 5,000 steps",
-                "coins_reward": 12
+                "duration_or_quantity": "1 BP reading",
+                "coins_reward": 20  # ✅ MONITORABLE — earns coins
             })
     
-    # ── Sugar-Based Tasks ──
+    # ══════════════════════════════════════════════
+    # MONITORABLE: Check Sugar in 7 days (if sugar patient)
+    # ══════════════════════════════════════════════
     if features.get("has_sugar_data"):
-        sugar_val = features.get("sugar_latest") or features.get("sugar_avg", 100)
-        
-        if sugar_val >= 100:
+        if sugar_val and sugar_val >= 100:
             tasks.append({
-                "task_type": "POST_MEAL_WALK",
-                "task_name": "Walk 10 min after lunch",
-                "description": "This one habit reduces sugar spikes by 22%",
-                "why_this_task": f"Current sugar at {sugar_val:.0f} mg/dL — post-meal walking is the #1 natural sugar control",
-                "category": "exercise",
-                "time_of_day": "afternoon",
-                "duration_or_quantity": "10 minutes after eating",
-                "coins_reward": 10
+                "task_type": "CHECK_SUGAR_7DAYS",
+                "task_name": "Check fasting sugar this week",
+                "description": "Log a new fasting glucose reading to track progress",
+                "why_this_task": f"Sugar at {sugar_val:.0f} mg/dL — weekly monitoring shows if diet changes are working",
+                "category": "monitoring",
+                "time_of_day": "morning",
+                "duration_or_quantity": "1 fasting glucose reading",
+                "coins_reward": 20  # ✅ MONITORABLE — earns coins
             })
-            tasks.append({
-                "task_type": "NO_SUGAR_DAY",
-                "task_name": "Skip added sugar today",
-                "description": "No sugar in tea, coffee, or snacks",
-                "why_this_task": f"Fasting glucose at {sugar_avg:.0f} — reducing added sugar can lower it by 8-12 mg/dL in 3 weeks",
-                "category": "diet",
-                "time_of_day": "all_day",
-                "duration_or_quantity": "All day",
-                "coins_reward": 12
-            })
-        else:
-            tasks.append({
-                "task_type": "BALANCED_MEALS",
-                "task_name": "Eat balanced meals today",
-                "description": "Include protein, fibre, and vegetables with each meal",
-                "why_this_task": "Your sugar is healthy! A balanced diet keeps it stable",
-                "category": "diet",
-                "time_of_day": "all_day",
-                "duration_or_quantity": "3 balanced meals",
-                "coins_reward": 8
-            })
+    elif features.get("has_report") and report_glucose and report_glucose >= 100:
+        tasks.append({
+            "task_type": "CHECK_SUGAR_7DAYS",
+            "task_name": "Check fasting sugar this week",
+            "description": "Your report shows elevated glucose — log a reading to monitor it",
+            "why_this_task": f"Report glucose {report_glucose:.0f} mg/dL — weekly monitoring helps early detection",
+            "category": "monitoring",
+            "time_of_day": "morning",
+            "duration_or_quantity": "1 fasting glucose reading",
+            "coins_reward": 20  # ✅ MONITORABLE — earns coins
+        })
     
-    # ── Report-Based Tasks (ONLY if user has uploaded a report) ──
+    # ══════════════════════════════════════════════  
+    # NON-MONITORABLE: Guidance tasks (0 coins)
+    # ══════════════════════════════════════════════
+    if features.get("has_bp_data") and bp_val and bp_val >= 130:
+        tasks.append({
+            "task_type": "LOW_SALT_MEAL",
+            "task_name": "Go low-salt today",
+            "description": "Use lemon and herbs instead of extra salt",
+            "why_this_task": f"BP at {bp_val:.0f} — cutting sodium helps control blood pressure",
+            "category": "diet",
+            "time_of_day": "all_day",
+            "duration_or_quantity": "All meals today",
+            "coins_reward": 0  # ❌ NOT monitorable — no coins
+        })
+    
+    if features.get("has_sugar_data") and sugar_val and sugar_val >= 100:
+        tasks.append({
+            "task_type": "NO_SUGAR_DAY",
+            "task_name": "Skip added sugar today",
+            "description": "No sugar in tea, coffee, or snacks",
+            "why_this_task": f"Fasting glucose at {sugar_val:.0f} — reducing added sugar can lower it by 8-12 mg/dL",
+            "category": "diet",
+            "time_of_day": "all_day",
+            "duration_or_quantity": "All day",
+            "coins_reward": 0  # ❌ NOT monitorable — no coins
+        })
+    
+    # ── Report-Based Guidance Tasks (0 coins) ──
     if features.get("has_report"):
         hb = features.get("hemoglobin")
         if hb is not None:
@@ -774,7 +839,7 @@ def generate_daily_tasks(features: dict, user) -> list[dict]:
                     "category": "diet",
                     "time_of_day": "lunch",
                     "duration_or_quantity": "At least 1 iron-rich meal",
-                    "coins_reward": 10
+                    "coins_reward": 0  # ❌ NOT monitorable — no coins
                 })
         
         platelets = features.get("platelet_count")
@@ -787,25 +852,10 @@ def generate_daily_tasks(features: dict, user) -> list[dict]:
                 "category": "diet",
                 "time_of_day": "afternoon",
                 "duration_or_quantity": "1 bowl fresh papaya",
-                "coins_reward": 8
-            })
-        
-        # Report-based glucose task
-        report_glucose = features.get("fasting_glucose_report")
-        if report_glucose and report_glucose >= 100 and not features.get("has_sugar_data"):
-            tasks.append({
-                "task_type": "POST_MEAL_WALK",
-                "task_name": "Walk after meals",
-                "description": "Your report shows elevated glucose — walking helps control it",
-                "why_this_task": f"Report glucose at {report_glucose:.0f} mg/dL — post-meal walks reduce spikes by 22%",
-                "category": "exercise",
-                "time_of_day": "afternoon",
-                "duration_or_quantity": "10 min after each meal",
-                "coins_reward": 10
+                "coins_reward": 0  # ❌ NOT monitorable — no coins
             })
     
-    # ── BMI-Based Tasks ──
-    bmi = features.get("bmi")
+    # ── BMI-Based Guidance (0 coins) ──
     if bmi is not None and bmi > 27:
         tasks.append({
             "task_type": "PORTION_CONTROL",
@@ -815,10 +865,12 @@ def generate_daily_tasks(features: dict, user) -> list[dict]:
             "category": "diet",
             "time_of_day": "all_day",
             "duration_or_quantity": "All meals",
-            "coins_reward": 10
+            "coins_reward": 0  # ❌ NOT monitorable — no coins
         })
     
-    # ── Hydration (ONLY when tasks exist from other sources) ──
+    # ══════════════════════════════════════════════
+    # MONITORABLE: Hydration task (earns coins)
+    # ══════════════════════════════════════════════
     if len(tasks) > 0:
         hydration_glasses = 8
         if features.get("bp_systolic_avg") and features["bp_systolic_avg"] >= 130:
@@ -834,10 +886,10 @@ def generate_daily_tasks(features: dict, user) -> list[dict]:
             "category": "wellness",
             "time_of_day": "all_day",
             "duration_or_quantity": f"{hydration_glasses} glasses (250ml each)",
-            "coins_reward": 8
+            "coins_reward": 10  # ✅ MONITORABLE — earns coins
         })
     
-    # ── Stress-Based Tasks ──
+    # ── Stress-Based Wellness (0 coins - not verifiable) ──
     stress = features.get("stress_level", 5)
     if stress >= 7 and len(tasks) > 0:
         tasks.append({
@@ -848,7 +900,7 @@ def generate_daily_tasks(features: dict, user) -> list[dict]:
             "category": "wellness",
             "time_of_day": "evening",
             "duration_or_quantity": "5 minutes",
-            "coins_reward": 5
+            "coins_reward": 0  # ❌ NOT monitorable — no coins
         })
     
     return tasks

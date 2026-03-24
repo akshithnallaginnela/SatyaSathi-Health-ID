@@ -23,60 +23,65 @@ router = APIRouter(prefix="/api/ml", tags=["ML Analysis"])
 
 
 def _tasks_from_model_predictions(task_predictions: dict[str, bool], feat: dict) -> list[dict]:
-    """Map model predictions to tasks, with condition-specific base tasks."""
+    """Map model predictions to tasks, with condition-specific base tasks.
+    
+    COIN POLICY:
+    - MONITORABLE tasks (walking, water, check BP/sugar) → earn coins
+    - NON-MONITORABLE tasks (diet, avoid, sleep) → 0 coins (guidance only)
+    """
     mapping = {
         "task_iron_rich_diet": {
             "type": "IRON_DIET",
             "name": "Eat Iron-Rich Meal (Spinach/Lentils)",
-            "coins": 25,
+            "coins": 0,  # ❌ Not monitorable
             "time_slot": "afternoon"
         },
         "task_log_sugar": {
-            "type": "LOG_SUGAR",
-            "name": "Log Fasting Sugar (Weekly)",
-            "coins": 20,
+            "type": "CHECK_SUGAR_7DAYS",
+            "name": "Check Fasting Sugar This Week",
+            "coins": 20,  # ✅ Monitorable
             "time_slot": "morning"
         },
         "task_reduce_sugar_food": {
             "type": "AVOID_SUGAR",
             "name": "Zero Added Sugar Today",
-            "coins": 25,
+            "coins": 0,  # ❌ Not monitorable
             "time_slot": "evening"
         },
         "task_doctor_visit": {
             "type": "DOCTOR_VISIT",
             "name": "Book Doctor Follow-Up",
-            "coins": 30,
+            "coins": 0,  # ❌ Not monitorable
             "time_slot": "all_day"
         },
         "task_retest_in_2_weeks": {
             "type": "RETEST_2W",
             "name": "Schedule Retest in 2 Weeks",
-            "coins": 20,
+            "coins": 0,  # ❌ Not monitorable
             "time_slot": "all_day"
         },
         "task_light_exercise": {
             "type": "MORNING_WALK",
             "name": "20 Min Wellness Walk",
-            "coins": 20,
+            "coins": 20,  # ✅ Monitorable (steps)
             "time_slot": "morning"
         },
         "task_sleep_7_hours": {
             "type": "SLEEP_7H",
             "name": "Sleep 7+ Hours Tonight",
-            "coins": 15,
+            "coins": 0,  # ❌ Not monitorable
             "time_slot": "evening"
         },
         "task_hydration_8_glasses": {
             "type": "WATER_INTAKE",
             "name": "Drink 8 Glasses Water",
-            "coins": 15,
+            "coins": 10,  # ✅ Monitorable
             "time_slot": "all_day"
         },
         "task_stress_management": {
             "type": "DEEP_BREATHING",
             "name": "5 Min Deep Breathing",
-            "coins": 15,
+            "coins": 0,  # ❌ Not monitorable
             "time_slot": "evening"
         },
     }
@@ -89,23 +94,31 @@ def _tasks_from_model_predictions(task_predictions: dict[str, bool], feat: dict)
     glucose = feat.get("fasting_glucose", 95.0)
     bmi = feat.get("bmi", 23.0)
 
+    # Monitorable walking task based on report values
+    if bmi >= 25.0 or glucose > 100:
+        step_target = 10000 if (bmi >= 30 or glucose > 126) else 8000
+        tasks_dict["MORNING_WALK"] = {
+            "type": "MORNING_WALK",
+            "name": f"Walk {step_target:,} Steps Today",
+            "coins": 25 if step_target >= 10000 else 20,  # ✅ Monitorable
+            "time_slot": "morning"
+        }
+    
     if hb < 12.0:
-        tasks_dict["IRON_DIET"] = {"type": "IRON_DIET", "name": "Eat Iron-Rich Meal (Spinach/Lentils)", "coins": 25, "time_slot": "afternoon"}
-        tasks_dict["WATER_INTAKE"] = {"type": "WATER_INTAKE", "name": "Drink 8 Glasses Water", "coins": 15, "time_slot": "all_day"}
+        tasks_dict["IRON_DIET"] = {"type": "IRON_DIET", "name": "Eat Iron-Rich Meal (Spinach/Lentils)", "coins": 0, "time_slot": "afternoon"}
+        tasks_dict["WATER_INTAKE"] = {"type": "WATER_INTAKE", "name": "Drink 10 Glasses Water", "coins": 10, "time_slot": "all_day"}
     if platelets < 150000:
-        tasks_dict["AVOID_INJURY"] = {"type": "AVOID_INJURY", "name": "Avoid Contact Sports & Injury Risk", "coins": 20, "time_slot": "all_day"}
-        tasks_dict["DOCTOR_VISIT"] = {"type": "DOCTOR_VISIT", "name": "Book Doctor Follow-Up (Low Platelets)", "coins": 30, "time_slot": "all_day"}
-        tasks_dict["WATER_INTAKE"] = {"type": "WATER_INTAKE", "name": "Drink 8 Glasses Water", "coins": 15, "time_slot": "all_day"}
+        tasks_dict["AVOID_INJURY"] = {"type": "AVOID_INJURY", "name": "Avoid Contact Sports & Injury Risk", "coins": 0, "time_slot": "all_day"}
+        tasks_dict["DOCTOR_VISIT"] = {"type": "DOCTOR_VISIT", "name": "Book Doctor Follow-Up (Low Platelets)", "coins": 0, "time_slot": "all_day"}
+        tasks_dict["WATER_INTAKE"] = {"type": "WATER_INTAKE", "name": "Drink 10 Glasses Water", "coins": 10, "time_slot": "all_day"}
     if glucose > 100:
-        tasks_dict["AVOID_SUGAR"] = {"type": "AVOID_SUGAR", "name": "Zero Added Sugar Today", "coins": 25, "time_slot": "all_day"}
-        tasks_dict["LOG_SUGAR"] = {"type": "LOG_SUGAR", "name": "Log Fasting Sugar (Weekly)", "coins": 20, "time_slot": "morning"}
-    if bmi >= 25.0:
-        tasks_dict["MORNING_WALK"] = {"type": "MORNING_WALK", "name": "30 Min Brisk Walk (BMI Management)", "coins": 20, "time_slot": "morning"}
+        tasks_dict["AVOID_SUGAR"] = {"type": "AVOID_SUGAR", "name": "Zero Added Sugar Today", "coins": 0, "time_slot": "all_day"}
+        tasks_dict["CHECK_SUGAR_7DAYS"] = {"type": "CHECK_SUGAR_7DAYS", "name": "Check Fasting Sugar This Week", "coins": 20, "time_slot": "morning"}
 
     # If no condition-specific tasks yet, add universal wellness tasks
     if not tasks_dict:
-        tasks_dict["WATER_INTAKE"] = {"type": "WATER_INTAKE", "name": "Drink 8 Glasses Water", "coins": 15, "time_slot": "all_day"}
-        tasks_dict["DEEP_BREATHING"] = {"type": "DEEP_BREATHING", "name": "5 Min Deep Breathing", "coins": 15, "time_slot": "evening"}
+        tasks_dict["WATER_INTAKE"] = {"type": "WATER_INTAKE", "name": "Drink 8 Glasses Water", "coins": 10, "time_slot": "all_day"}
+        tasks_dict["MORNING_WALK"] = {"type": "MORNING_WALK", "name": "Walk 5,000 Steps Today", "coins": 15, "time_slot": "morning"}
 
     # Add model-predicted tasks on top
     for key, enabled in (task_predictions or {}).items():
@@ -114,6 +127,7 @@ def _tasks_from_model_predictions(task_predictions: dict[str, bool], feat: dict)
             tasks_dict[task_obj["type"]] = task_obj
 
     return list(tasks_dict.values())
+
 
 
 def _build_precautions_from_diet(diet_focus: str, overall_signal: str, feat: dict) -> list[str]:

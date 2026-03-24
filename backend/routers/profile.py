@@ -11,7 +11,6 @@ from models.domain import User, CoinLedger
 from security.jwt_handler import get_current_user_id
 
 router = APIRouter(prefix="/api/profile", tags=["Profile"])
-settings_router = APIRouter(prefix="/api/settings", tags=["Settings"])
 
 UPLOAD_DIR = os.path.join(os.getcwd(), "uploads", "profiles")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
@@ -67,13 +66,4 @@ async def upload_photo(
     
     return {"photo_url": user.profile_photo_url, "profile_photo_url": user.profile_photo_url}
 
-@settings_router.get("/")
-async def get_settings(user_id: str = Depends(get_current_user_id), db: AsyncSession = Depends(get_db)):
-    # For prototype, return basic user flags
-    result = await db.execute(select(User).where(User.id == user_id))
-    user = result.scalar_one_or_none()
-    return {
-        "notifications_enabled": True,
-        "privacy_mode": False,
-        "language": "en"
-    }
+

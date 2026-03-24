@@ -25,6 +25,9 @@ async def get_dashboard_summary(
     # 1. Get User and Status
     user = await get_user(user_id, db)
     
+    import uuid
+    user_id = uuid.UUID(str(user_id))
+    
     status_res = await db.execute(select(UserDataStatus).where(UserDataStatus.user_id == user_id))
     status = status_res.scalar_one_or_none()
 
@@ -34,6 +37,7 @@ async def get_dashboard_summary(
         select(DailyTask).where(DailyTask.user_id == user_id, DailyTask.task_date == today)
     )
     tasks = tasks_res.scalars().all()
+    print(f"📊 Dashboard Summary for {user_id}: Found {len(tasks)} tasks for {today}")
 
     # 3. Get Preventive Care
     care_res = await db.execute(
@@ -124,8 +128,9 @@ async def get_dashboard_summary(
             has_vitals = True
             data_sources.append("Report")
     
-    # BMI is supplementary info, not a vitals trigger
+    # BMI is part of data trigger
     if user and user.bmi:
+        has_vitals = True
         data_sources.append("BMI")
 
     # 12. Determine highest urgency from care items  

@@ -77,7 +77,7 @@ function App() {
         {/* Main Content Area */}
         <div className="flex-1 overflow-y-auto no-scrollbar bg-[#FAFAFA]">
           <AnimatePresence mode="wait">
-            {activeTab === 'dashboard' && <DashboardScreen key="dash" />}
+            {activeTab === 'dashboard' && <DashboardScreen key="dash" onLogout={handleLogout} />}
             {activeTab === 'missions' && <MissionsScreen key="miss" />}
             {activeTab === 'vitals' && <VitalsScreen key="vit" />}
             {activeTab === 'myid' && <MyIDScreen key="id" user={user} onLogout={handleLogout} onReportUploaded={() => setActiveTab('dashboard')} />}

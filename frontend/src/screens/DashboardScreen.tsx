@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { Flame, CheckCircle2, MapPin, Activity, Heart } from 'lucide-react';
-import { dashboardAPI, clinicsAPI, tasksAPI } from '../services/api.ts';
+import { dashboardAPI, clinicsAPI, tasksAPI, clearTokens } from '../services/api.ts';
 
 // ── Score theme helper ─────────────────────────────────────────────────────
 
@@ -38,7 +38,7 @@ function getScoreTheme(score: number) {
   };
 }
 
-export default function DashboardScreen() {
+export default function DashboardScreen({ onLogout }: { onLogout: () => void; key?: string }) {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [clinics, setClinics] = useState<any[]>([]);
@@ -49,8 +49,13 @@ export default function DashboardScreen() {
       const res = await dashboardAPI.getSummary();
       setData(res);
       lastFetchRef.current = Date.now();
-    } catch (e) {
+    } catch (e: any) {
       console.error("Dashboard fetch error", e);
+      // Auto-logout if session is invalid or user not found
+      if (e.status === 401 || e.status === 404 || e.message?.includes('401') || e.message?.includes('404')) {
+        clearTokens();
+        onLogout();
+      }
     } finally {
       setLoading(false);
     }
@@ -235,22 +240,29 @@ export default function DashboardScreen() {
             </div>
             <div className="grid grid-cols-2 gap-3">
               {todaysTasks.map((task: any, idx: number) => {
-                const reward = task.coins_reward || 15;
+                const reward = task.coins_reward || task.coins || 0;
+                const isMonitorable = reward > 0;
                 return (
                   <div key={task.id || idx} 
-                       onClick={() => !task.completed && completeTask(task.id, reward)}
-                       className={`p-4 rounded-[20px] aspect-square border-[1.5px] transition-all bg-white relative cursor-pointer ${
-                         task.completed ? 'border-[#E8F1F1] opacity-50' : 'border-border-teal shadow-sm hover:border-primary-teal'
+                       onClick={() => !task.completed && isMonitorable && completeTask(task.id, reward)}
+                       className={`p-4 rounded-[20px] aspect-square border-[1.5px] transition-all bg-white relative ${
+                         task.completed ? 'border-[#E8F1F1] opacity-50' : isMonitorable ? 'border-border-teal shadow-sm hover:border-primary-teal cursor-pointer' : 'border-[#F0E8D8] shadow-sm'
                        }`}>
                     <div className="flex justify-between items-start">
-                      <div className={`w-6 h-6 rounded-full flex items-center justify-center ${task.completed ? 'bg-primary-teal' : 'border border-gray-200'}`}>
+                      <div className={`w-6 h-6 rounded-full flex items-center justify-center ${task.completed ? 'bg-primary-teal' : isMonitorable ? 'border border-gray-200' : 'border border-[#E8D8B8]'}`}>
                         {task.completed && <CheckCircle2 size={14} className="text-white" />}
                       </div>
-                      <div className="bg-white shadow-sm text-[9px] font-extrabold text-[#D4AF37] border border-[#F4E3A0] px-2 py-0.5 rounded-full flex items-center gap-1">
-                        <div className="w-1 h-1 bg-[#FFD700] rounded-full" /> +{reward}
-                      </div>
+                      {isMonitorable ? (
+                        <div className="bg-white shadow-sm text-[9px] font-extrabold text-[#D4AF37] border border-[#F4E3A0] px-2 py-0.5 rounded-full flex items-center gap-1">
+                          <div className="w-1 h-1 bg-[#FFD700] rounded-full" /> +{reward}
+                        </div>
+                      ) : (
+                        <div className="bg-[#FFF8EE] text-[9px] font-extrabold text-[#C8A060] border border-[#F4E3A0] px-2 py-0.5 rounded-full">
+                          💡 Tip
+                        </div>
+                      )}
                     </div>
-                    <h4 className={`font-extrabold text-[13px] leading-tight mt-4 ${task.completed ? 'text-gray-400 line-through' : 'text-dark-teal'}`}>
+                    <h4 className={`font-extrabold text-[13px] leading-tight mt-4 ${task.completed ? 'text-gray-400 line-through' : isMonitorable ? 'text-dark-teal' : 'text-[#8B7355]'}`}>
                       {task.task_name || 'Health Task'}
                     </h4>
                   </div>

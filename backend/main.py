@@ -17,7 +17,8 @@ from routers.vitals import router as vitals_router
 from routers.dashboard import router as dashboard_router
 from routers.tasks import router as tasks_router
 from routers.reports import router as reports_router
-from routers.profile import router as profile_router, settings_router
+from routers.profile import router as profile_router
+from routers.settings import router as settings_router
 from routers.clinics import router as clinics_router
 from routers.coins import router as coins_router
 from routers.notifications import router as notifications_router

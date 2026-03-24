@@ -35,5 +35,6 @@ async def get_db():
 
 async def create_tables():
     from models.domain import Base
+    from models.reminder import Reminder  # Ensure reminder table is created
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)

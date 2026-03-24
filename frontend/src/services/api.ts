@@ -254,5 +254,13 @@ export const settingsAPI = {
 
 export const notificationsAPI = {
   list: () => apiFetch('/notifications/'),
-  createTest: () => apiFetch('/notifications/test', { method: 'POST' }),
+  create: (data: { title: string; message: string; reminder_time: string; reminder_type?: string; is_recurring?: boolean }) =>
+    apiFetch('/notifications/', { method: 'POST', body: JSON.stringify(data) }),
+  update: (id: string, data: { title?: string; message?: string; reminder_time?: string; is_active?: boolean; is_recurring?: boolean }) =>
+    apiFetch(`/notifications/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  delete: (id: string) =>
+    apiFetch(`/notifications/${id}`, { method: 'DELETE' }),
+  check: () => apiFetch('/notifications/check'),
+  initWaterReminders: () =>
+    apiFetch('/notifications/init-water-reminders', { method: 'POST' }),
 };

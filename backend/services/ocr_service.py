@@ -62,44 +62,44 @@ async def extract_report_values(file_path: str) -> dict:
     try:
         import google.generativeai as genai
         genai.configure(api_key=api_key)
-        model = genai.GenerativeModel("gemini-1.5-flash")
+        model = genai.GenerativeModel("gemini-1.5-flash-latest")
         
         base_prompt = """
-You are a highly precise medical data extraction AI. Extract values from this Indian medical lab report.
-The report is likely from Drlogy, Metropolis, SRL, Dr Lal PathLabs, Apollo, or a local hospital.
+You are a highly precise medical data extraction AI. Your task is to extract structured health markers from Indian medical lab reports.
+The report could be from major labs like Drlogy, Metropolis, SRL, Dr Lal PathLabs, Apollo, or a local diagnostic center.
 
-Extract ONLY these specific values. If a value is not present or unsure, use null.
-{
-  "hemoglobin": number,
-  "rbc_count": number,
-  "pcv": number,
-  "mcv": number,
-  "mch": number,
-  "mchc": number,
-  "rdw": number,
-  "wbc_count": number,
-  "neutrophils_pct": number,
-  "lymphocytes_pct": number,
-  "monocytes_pct": number,
-  "eosinophils_pct": number,
-  "basophils_pct": number,
-  "platelet_count": number,
-  "fasting_glucose": number,
-  "random_glucose": number,
-  "urea": number,
-  "creatinine": number,
-  "lab_name": string,
-  "report_date": string,
-  "lab_interpretation": string
-}
+Extract ONLY these specific values into a JSON object. If a value is missing or unreadable, use null.
+Fields:
+- "hemoglobin": number (e.g. 13.5)
+- "rbc_count": number (e.g. 4.5)
+- "pcv": number (e.g. 40.0)
+- "mcv": number (e.g. 85.0)
+- "mch": number (e.g. 28.0)
+- "mchc": number (e.g. 33.0)
+- "rdw": number (e.g. 12.5)
+- "wbc_count": number (e.g. 7500)
+- "neutrophils_pct": number (e.g. 60.0)
+- "lymphocytes_pct": number (e.g. 30.0)
+- "monocytes_pct": number (e.g. 5.0)
+- "eosinophils_pct": number (e.g. 3.0)
+- "basophils_pct": number (e.g. 1.0)
+- "platelet_count": number (e.g. 250000)
+- "fasting_glucose": number (e.g. 95.0)
+- "random_glucose": number (e.g. 110.0)
+- "urea": number (e.g. 25.0)
+- "creatinine": number (e.g. 0.9)
+- "lab_name": string
+- "report_date": string (ISO format preferred)
+- "lab_interpretation": string (Short summary of findings)
 
-Extraction Rules:
-1. Hemoglobin: Look for Hb, HGB, Haemoglobin. Units are usually g/dL. Value like 12.5.
-2. Platelets: Look for PLT, Platelet Count. If the report says 1.5, it likely means 1.5 Lakhs. Convert to 150000 cells/cumm.
-3. Glucose: fasting_glucose is FBS, random_glucose is RBS.
-4. If the report says 'Anemia' or 'Low hemoglobin', ensure value is captured.
+STRATEGIES FOR ACCURACY:
+1. HEMOGLOBIN: Look for 'Hb', 'HGB', 'Haemoglobin'. Units: g/dL.
+2. PLATELETS: Look for 'PLT', 'Platelet Count'. If the value is like '1.5' or '2.0', check if units are 'Lakhs'. Convert to cells/cumm (e.g., 1.5 Lakhs -> 150000).
+3. GLUCOSE: 'FBS' or 'Fasting Blood Sugar' -> fasting_glucose. 'RBS' or 'Random Blood Sugar' -> random_glucose.
+4. WHITE BLOOD CELLS: 'WBC', 'Total Leucocyte Count' or 'TLC'.
+5. CREATININE/UREA: Usually under 'Kidney Function Test' or 'KFT'.
 
-Return ONLY valid JSON. No markdown, no triple backticks, no explanation.
+RESPONSE FORMAT: Return ONLY the raw JSON object. No explanation, no backticks, no markdown.
 """
         
         if media_type == "application/pdf":
