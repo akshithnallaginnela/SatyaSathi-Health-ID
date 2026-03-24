@@ -1,68 +1,68 @@
-/**
- * My ID Screen — Health ID card, profile info, custom reminders, and quick actions.
- */
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Shield, CreditCard, Activity, LogOut, ChevronRight, Bell, Settings, UploadCloud, Plus, X, Trash2, Clock, Droplets } from 'lucide-react';
-import { profileAPI, coinsAPI, clearTokens, notificationsAPI, settingsAPI, mlAPI } from '../services/api.ts';
+import {
+  Shield, CreditCard, Activity, LogOut, Bell, UploadCloud,
+  Plus, X, Trash2, Droplets, Lock, Download, ChevronRight,
+  Eye, EyeOff, User as UserIcon, Edit3, Check
+} from 'lucide-react';
+import { profileAPI, coinsAPI, clearTokens, notificationsAPI, mlAPI } from '../services/api.ts';
 
-export default function MyIDScreen({ user, onLogout, onReportUploaded }: { user: any; onLogout: () => void; onReportUploaded?: () => void; key?: string | number }) {
+type ModalType = 'reminder' | 'password' | 'editProfile' | null;
+
+export default function MyIDScreen({ user, onLogout, onReportUploaded }: {
+  user: any; onLogout: () => void; onReportUploaded?: () => void;
+}) {
   const [profile, setProfile] = useState<any>(user);
   const [coins, setCoins] = useState(0);
-  const [activity, setActivity] = useState<any>({ coin_transactions: [], completed_tasks: [] });
-  const [settings, setSettings] = useState<any>({ notifications_enabled: true, reminder_enabled: true, reminder_time: '08:00', language: 'en' });
-  const [savingSettings, setSavingSettings] = useState(false);
-  const [reportType, setReportType] = useState<'blood_test_report' | 'blood_sugar_report'>('blood_test_report');
-  const [reportFile, setReportFile] = useState<File | null>(null);
-  const [uploadingReport, setUploadingReport] = useState(false);
-  const [reportResult, setReportResult] = useState<any>(null);
-  const [noticeMsg, setNoticeMsg] = useState('');
-
-  // Reminder state
+  const [activity, setActivity] = useState<any>({ completed_tasks: [] });
   const [reminders, setReminders] = useState<any[]>([]);
-  const [showReminderModal, setShowReminderModal] = useState(false);
-  const [newReminder, setNewReminder] = useState({ title: '', message: '', reminder_time: '08:00', is_recurring: true });
-  const [creatingReminder, setCreatingReminder] = useState(false);
+  const [modal, setModal] = useState<ModalType>(null);
+  const [notice, setNotice] = useState('');
+  const [noticeOk, setNoticeOk] = useState(false);
 
-  // Reminder check interval
+  // Report upload
+  const [reportFile, setReportFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadResult, setUploadResult] = useState<any>(null);
+
+  // Reminder form
+  const [newReminder, setNewReminder] = useState({ title: '', message: '', reminder_time: '08:00', is_recurring: true });
+  const [savingReminder, setSavingReminder] = useState(false);
+
+  // Password form
+  const [pwForm, setPwForm] = useState({ old: '', new: '', confirm: '' });
+  const [showPw, setShowPw] = useState({ old: false, new: false });
+  const [savingPw, setSavingPw] = useState(false);
+
+  // Edit profile form
+  const [editForm, setEditForm] = useState({ full_name: '', weight_kg: '', height_cm: '' });
+  const [savingEdit, setSavingEdit] = useState(false);
+
+  // Downloading
+  const [downloading, setDownloading] = useState(false);
+
   const reminderCheckRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     (async () => {
       try {
-        const [p, c, a, s] = await Promise.all([profileAPI.get(), coinsAPI.getBalance(), profileAPI.getActivity(), settingsAPI.get()]);
+        const [p, c, a] = await Promise.all([profileAPI.get(), coinsAPI.getBalance(), profileAPI.getActivity()]);
         setProfile(p);
         setCoins(c.total_balance);
         setActivity(a);
-        setSettings(s);
+        setEditForm({ full_name: p.full_name || '', weight_kg: p.weight_kg || '', height_cm: p.height_cm || '' });
       } catch (e) { console.error(e); }
     })();
-
-    // Load reminders
     loadReminders();
-
-    // Request notification permission
-    if ('Notification' in window && Notification.permission === 'default') {
-      Notification.requestPermission();
-    }
-
-    // Check for due reminders every 60 seconds
+    if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission();
     reminderCheckRef.current = setInterval(checkDueReminders, 60000);
-    // Also check immediately
     checkDueReminders();
-
-    return () => {
-      if (reminderCheckRef.current) clearInterval(reminderCheckRef.current);
-    };
+    return () => { if (reminderCheckRef.current) clearInterval(reminderCheckRef.current); };
   }, []);
 
   const loadReminders = async () => {
-    try {
-      const data = await notificationsAPI.list();
-      setReminders(Array.isArray(data) ? data : []);
-    } catch (e) {
-      console.error('Failed to load reminders:', e);
-    }
+    try { const d = await notificationsAPI.list(); setReminders(Array.isArray(d) ? d : []); }
+    catch (e) { console.error(e); }
   };
 
   const checkDueReminders = async () => {
@@ -70,92 +70,92 @@ export default function MyIDScreen({ user, onLogout, onReportUploaded }: { user:
       const due = await notificationsAPI.check();
       if (Array.isArray(due) && due.length > 0) {
         for (const r of due) {
-          showBrowserNotification(r.title, r.message);
+          if ('Notification' in window && Notification.permission === 'granted') {
+            new Notification(r.title, { body: r.message, tag: r.title });
+          }
         }
       }
-    } catch (e) {
-      // Silently fail — check runs every minute
-    }
+    } catch (_) {}
   };
 
-  const showBrowserNotification = (title: string, message: string) => {
-    if ('Notification' in window && Notification.permission === 'granted') {
-      new Notification(title, {
-        body: message,
-        icon: '💊',
-        tag: title, // Prevent duplicate notifications
-      });
-    } else {
-      // Fallback: show in-page alert
-      setNoticeMsg(`🔔 ${title}: ${message}`);
-      setTimeout(() => setNoticeMsg(''), 10000);
-    }
-  };
-
-  const createReminder = async () => {
-    if (!newReminder.title.trim() || !newReminder.message.trim()) {
-      setNoticeMsg('Please enter both a title and notification message.');
-      return;
-    }
-    setCreatingReminder(true);
-    setNoticeMsg('');
-    try {
-      await notificationsAPI.create({
-        title: newReminder.title,
-        message: newReminder.message,
-        reminder_time: newReminder.reminder_time,
-        reminder_type: 'custom',
-        is_recurring: newReminder.is_recurring,
-      });
-      setNoticeMsg('✅ Reminder created! You\'ll get a notification at the set time.');
-      setShowReminderModal(false);
-      setNewReminder({ title: '', message: '', reminder_time: '08:00', is_recurring: true });
-      loadReminders();
-    } catch (e: any) {
-      setNoticeMsg('❌ Failed to create reminder: ' + (e?.message || 'Unknown error'));
-    } finally {
-      setCreatingReminder(false);
-    }
-  };
-
-  const deleteReminder = async (id: string) => {
-    try {
-      await notificationsAPI.delete(id);
-      setReminders(reminders.filter((r: any) => r.id !== id));
-      setNoticeMsg('Reminder deleted.');
-    } catch (e) {
-      setNoticeMsg('Failed to delete reminder.');
-    }
-  };
-
-  const initials = profile?.full_name ? profile.full_name.split(' ').map((w: string) => w[0]).join('').toUpperCase() : 'U';
-
-  const handleLogout = () => { clearTokens(); onLogout(); };
-
-  const saveSettings = async () => {
-    setSavingSettings(true);
-    setNoticeMsg('');
-    try {
-      const updated = await settingsAPI.update(settings);
-      setSettings(updated);
-      setNoticeMsg('Settings saved successfully.');
-    } catch (e) {
-      setNoticeMsg('Failed to save settings.');
-    } finally {
-      setSavingSettings(false);
-    }
+  const showNotice = (msg: string, ok = false) => {
+    setNotice(msg); setNoticeOk(ok);
+    setTimeout(() => setNotice(''), 4000);
   };
 
   const uploadReport = async () => {
-    if (!reportFile) {
-      setNoticeMsg('Please choose a report document first.');
-      return;
-    }
-    setUploadingReport(true);
-    setNoticeMsg('');
-    setReportResult(null);
+    if (!reportFile) { showNotice('Choose a report file first'); return; }
+    setUploading(true); setUploadResult(null);
     try {
-      const res = await mlAPI.analyzeReport(reportFile, reportType);
+      const res = await mlAPI.analyzeReport(reportFile);
+      setUploadResult(res);
+      setReportFile(null);
+      try { await notificationsAPI.initWaterReminders(); loadReminders(); } catch (_) {}
+      localStorage.setItem('vitalid_data_updated', Date.now().toString());
+      window.dispatchEvent(new Event('report-uploaded'));
+      showNotice('Report analyzed! Dashboard updated.', true);
+      if (onReportUploaded) onReportUploaded();
+    } catch (e: any) {
+      showNotice(e?.message || 'Upload failed. Check your connection and try again.');
+    } finally { setUploading(false); }
+  };
+
+  const createReminder = async () => {
+    if (!newReminder.title.trim() || !newReminder.message.trim()) { showNotice('Enter title and message'); return; }
+    setSavingReminder(true);
+    try {
+      await notificationsAPI.create({ ...newReminder, reminder_type: 'custom' });
+      setModal(null);
+      setNewReminder({ title: '', message: '', reminder_time: '08:00', is_recurring: true });
+      loadReminders();
+      showNotice('Reminder created!', true);
+    } catch (e: any) { showNotice(e?.message || 'Failed to create reminder'); }
+    finally { setSavingReminder(false); }
+  };
+
+  const deleteReminder = async (id: string) => {
+    try { await notificationsAPI.delete(id); setReminders(r => r.filter(x => x.id !== id)); }
+    catch (_) {}
+  };
+
+  const changePassword = async () => {
+    if (!pwForm.old || !pwForm.new) { showNotice('Fill all fields'); return; }
+    if (pwForm.new.length < 8) { showNotice('New password must be 8+ characters'); return; }
+    if (pwForm.new !== pwForm.confirm) { showNotice('Passwords do not match'); return; }
+    setSavingPw(true);
+    try {
+      await profileAPI.changePassword(pwForm.old, pwForm.new);
+      setModal(null);
+      setPwForm({ old: '', new: '', confirm: '' });
+      showNotice('Password changed successfully!', true);
+    } catch (e: any) { showNotice(e?.message || 'Failed to change password'); }
+    finally { setSavingPw(false); }
+  };
+
+  const saveProfile = async () => {
+    setSavingEdit(true);
+    try {
+      const updated = await profileAPI.update({
+        full_name: editForm.full_name,
+        weight_kg: editForm.weight_kg ? Number(editForm.weight_kg) : undefined,
+        height_cm: editForm.height_cm ? Number(editForm.height_cm) : undefined,
+      });
+      setProfile(updated);
+      setModal(null);
+      showNotice('Profile updated!', true);
+    } catch (e: any) { showNotice(e?.message || 'Failed to update profile'); }
+    finally { setSavingEdit(false); }
+  };
+
+  const downloadReport = async () => {
+    setDownloading(true);
+    try {
+      const data = await profileAPI.downloadReport();
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = `vitalid_report_${profile?.health_id || 'export'}.json`;
+      a.click(s = await mlAPI.analyzeReport(reportFile, reportType);
       setReportResult(res);
       setNoticeMsg('Report uploaded and analyzed successfully.');
       
