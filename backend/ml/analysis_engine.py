@@ -339,7 +339,7 @@ def generate_preventive_care(features: dict) -> list[dict]:
     bp_sys = features.get("bp_systolic_latest") or features.get("bp_systolic_avg")
     bp_dia = features.get("bp_diastolic_latest") or features.get("bp_diastolic_avg")
     if bp_sys is not None:
-        if bp_sys < 120 and (bp_dia is None or bp_dia < 80):
+        if bp_sys <= 120 and (bp_dia is None or bp_dia <= 80):
             care_items.append({
                 "category": "blood_pressure",
                 "urgency": "great",
