@@ -392,6 +392,19 @@ export default function DashboardScreen({ onLogout }: { onLogout: () => void; ke
                   </ul>
                 </div>
               )}
+              {dietPlan.avoid?.length > 0 && (
+                <div className="bg-white border border-[#E8F1F1] border-l-4 border-l-red-400 rounded-2xl p-4 min-w-[200px] shadow-sm">
+                  <span className="text-[9px] font-bold bg-red-100 text-red-600 px-2 py-0.5 rounded-full mb-2 inline-block">AVOID</span>
+                  <h4 className="text-dark-teal font-extrabold text-sm mb-2">Skip These</h4>
+                  <ul className="space-y-1">
+                    {dietPlan.avoid.slice(0, 4).map((f: any, i: number) => (
+                      <li key={i} className="text-[11px] text-muted-teal font-medium flex items-center gap-1.5">
+                        <div className="w-1 h-1 bg-red-400 rounded-full" /> {f}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
           </div>
         )}
 
