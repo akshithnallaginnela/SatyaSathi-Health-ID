@@ -323,398 +323,204 @@ def calculate_health_index(features: dict) -> int:
 
 def generate_preventive_care(features: dict) -> list[dict]:
     """
-    Each item tells the user:
-    - What their current data suggests about their FUTURE health
-    - What specific risk they face in 6 months / 1 year / 5 years
-    - What they can do NOW to prevent that future outcome
+    Preventive care — short 2-line positive messages per health metric.
+    Correct BP thresholds: <120 normal, 120-129 elevated, 130-139 stage1, >=140 stage2.
     """
     care_items = []
     if not features.get("has_vitals_data"):
         return care_items
 
-    age = features.get("age") or 35
-    gender = features.get("gender", "male")
     smoking = features.get("smoking", False)
     family_hx_heart = features.get("family_hx_heart", False)
     family_hx_diabetes = features.get("family_hx_diabetes", False)
     bmi = features.get("bmi")
 
-    # ── BLOOD PRESSURE — Future Risk ──
-    bp_val = features.get("bp_systolic_latest") or features.get("bp_systolic_avg")
-    bp_trend = features.get("bp_trend", "steady")
-    if bp_val is not None:
-        if bp_val < 120:
-            # Normal BP — predict what keeps it good
-            future_risk = (
-                f"Your BP is in the ideal range today. "
-                f"At your current trajectory, you have a {'high' if (smoking or family_hx_heart) else 'low'} "
-                f"risk of developing hypertension in the next 5 years. "
-                f"{'Family history of heart disease increases this risk — stay proactive.' if family_hx_heart else 'Keep this up and your heart health at 60 will thank you.'}"
-            )
-            steps = [
-                "Continue daily 30-min walks — this is your #1 protection",
-                "Keep sodium under 2g/day to maintain this range",
-                "Annual BP check is enough at this level",
-            ]
-            if smoking:
-                steps.insert(0, "Quitting smoking will cut your future heart risk by 50%")
+    # ── BLOOD PRESSURE ──
+    bp_sys = features.get("bp_systolic_latest") or features.get("bp_systolic_avg")
+    bp_dia = features.get("bp_diastolic_latest") or features.get("bp_diastolic_avg")
+    if bp_sys is not None:
+        if bp_sys < 120 and (bp_dia is None or bp_dia < 80):
             care_items.append({
                 "category": "blood_pressure",
                 "urgency": "great",
-                "current_status": f"BP {bp_val:.0f} mmHg — Ideal ✅",
-                "future_risk_message": future_risk,
-                "prevention_steps": steps,
-                "risk_horizon": "5-year outlook: Low risk if habits maintained"
+                "current_status": f"BP {bp_sys:.0f}/{int(bp_dia or 0)} mmHg — Normal ✅",
+                "future_risk_message": "Your blood pressure is in the ideal range. Keep up daily walks and a low-salt diet to maintain this.",
+                "prevention_steps": ["Continue 30-min daily walks", "Keep sodium under 2g/day"],
+                "risk_horizon": ""
             })
-        elif bp_val < 130:
-            trend_note = " and it's been rising" if bp_trend == "rising" else ""
-            future_risk = (
-                f"Your BP is slightly elevated at {bp_val:.0f} mmHg{trend_note}. "
-                f"If this continues without change, there is a 40-60% chance of developing "
-                f"Stage 1 hypertension within 12-18 months. "
-                f"The good news — at this stage, lifestyle changes alone can fully reverse this. "
-                f"People who act now avoid medication 80% of the time."
-            )
+        elif bp_sys < 130:
             care_items.append({
                 "category": "blood_pressure",
                 "urgency": "watch",
-                "current_status": f"BP {bp_val:.0f} mmHg — Slightly elevated",
-                "future_risk_message": future_risk,
-                "prevention_steps": [
-                    "30-min brisk walk daily can drop BP by 5-8 mmHg in 4 weeks",
-                    "Reduce salt — swap to lemon and herbs",
-                    "Check BP again in 2 weeks to see your progress",
-                    "Stress management: 10 min of deep breathing daily",
-                ],
-                "risk_horizon": "12-18 months to Stage 1 hypertension if unchanged"
+                "current_status": f"BP {bp_sys:.0f}/{int(bp_dia or 0)} mmHg — Slightly elevated",
+                "future_risk_message": "BP is mildly elevated. A 30-min daily walk and reducing salt can bring it back to normal in 4 weeks.",
+                "prevention_steps": ["30-min brisk walk daily", "Reduce salt — use lemon and herbs instead"],
+                "risk_horizon": ""
             })
-        elif bp_val < 140:
-            future_risk = (
-                f"At {bp_val:.0f} mmHg, you are in Stage 1 hypertension. "
-                f"Without intervention, this level doubles your risk of stroke and heart attack "
-                f"over the next 5 years. "
-                f"The encouraging part — consistent walking and diet changes can bring this "
-                f"to normal range within 8-12 weeks, often without medication."
-            )
+        elif bp_sys < 140:
             care_items.append({
                 "category": "blood_pressure",
                 "urgency": "focus",
-                "current_status": f"BP {bp_val:.0f} mmHg — Stage 1 Hypertension",
-                "future_risk_message": future_risk,
-                "prevention_steps": [
-                    "Daily 30-min brisk walk is as effective as one BP tablet",
-                    "DASH diet: more fruits, vegetables, less salt",
-                    "Recheck BP every week — track your improvement",
-                    "Doctor consultation recommended within 4 weeks",
-                ],
-                "risk_horizon": "5-year stroke risk: 2x higher if untreated"
+                "current_status": f"BP {bp_sys:.0f}/{int(bp_dia or 0)} mmHg — Stage 1 Hypertension",
+                "future_risk_message": "Stage 1 hypertension detected. Consistent walking and DASH diet can normalize this in 8-12 weeks.",
+                "prevention_steps": ["Daily 30-min brisk walk", "DASH diet: more fruits, less salt"],
+                "risk_horizon": ""
             })
         else:
-            future_risk = (
-                f"BP at {bp_val:.0f} mmHg is Stage 2 hypertension. "
-                f"At this level, the risk of stroke in the next 3 years is significantly elevated. "
-                f"Kidney damage and heart enlargement can begin silently within 1-2 years. "
-                f"A doctor visit this week will give you a clear plan — "
-                f"most people at this stage see dramatic improvement within 30 days of treatment."
-            )
             care_items.append({
                 "category": "blood_pressure",
                 "urgency": "act_now",
-                "current_status": f"BP {bp_val:.0f} mmHg — Stage 2 Hypertension",
-                "future_risk_message": future_risk,
-                "prevention_steps": [
-                    "See a doctor this week — do not delay",
-                    "Daily walking is your strongest natural tool alongside medication",
-                    "Eliminate pickles, papad, and packaged food immediately",
-                    "Check BP daily and log it here",
-                ],
-                "risk_horizon": "3-year stroke risk: Significantly elevated"
+                "current_status": f"BP {bp_sys:.0f}/{int(bp_dia or 0)} mmHg — Stage 2 Hypertension",
+                "future_risk_message": "BP needs immediate attention. Please consult a doctor this week — most people see improvement within 30 days.",
+                "prevention_steps": ["See a doctor this week", "Eliminate pickles, papad, and packaged food"],
+                "risk_horizon": ""
             })
 
-    # ── BLOOD SUGAR — Future Risk ──
+    # ── BLOOD SUGAR ──
     sugar_val = features.get("sugar_latest") or features.get("sugar_avg")
     sugar_trend = features.get("sugar_trend", "steady")
     if sugar_val is not None:
         if sugar_val < 100:
-            future_risk = (
-                f"Your fasting sugar is {sugar_val:.0f} mg/dL — perfectly normal. "
-                f"{'With family history of diabetes, your lifetime risk is 2-3x higher than average. ' if family_hx_diabetes else ''}"
-                f"Maintaining this level now prevents Type 2 diabetes for decades. "
-                f"People with consistently normal sugar at your age have a 70% lower lifetime diabetes risk."
-            )
+            msg = "Your blood sugar is perfectly normal. Post-meal walks keep insulin sensitivity high long-term."
+            if family_hx_diabetes:
+                msg = "Sugar is normal — great! With family history of diabetes, keep up walks and avoid sugary drinks."
             care_items.append({
-                "category": "blood_sugar",
-                "urgency": "great",
+                "category": "blood_sugar", "urgency": "great",
                 "current_status": f"Sugar {sugar_val:.0f} mg/dL — Normal ✅",
-                "future_risk_message": future_risk,
-                "prevention_steps": [
-                    "Post-meal walks (even 10 min) keep insulin sensitivity high",
-                    "Avoid sugary drinks — they spike sugar silently",
-                    "Annual fasting sugar test is sufficient at this level",
-                ],
-                "risk_horizon": "Lifetime diabetes risk: Low if habits maintained"
+                "future_risk_message": msg,
+                "prevention_steps": ["10-min walk after meals", "Avoid sugary drinks"],
+                "risk_horizon": ""
             })
         elif sugar_val < 126:
-            trend_note = " and trending upward" if sugar_trend == "rising" else ""
-            future_risk = (
-                f"Fasting sugar at {sugar_val:.0f} mg/dL{trend_note} is in the pre-diabetic range. "
-                f"Without lifestyle changes, 15-30% of people at this level develop Type 2 diabetes "
-                f"within 3-5 years. "
-                f"The powerful news — the Diabetes Prevention Program showed that "
-                f"walking 150 min/week and losing 5-7% body weight reduces this risk by 58%. "
-                f"You have a real window to prevent this completely."
-            )
             care_items.append({
-                "category": "blood_sugar",
-                "urgency": "watch",
+                "category": "blood_sugar", "urgency": "watch",
                 "current_status": f"Sugar {sugar_val:.0f} mg/dL — Pre-diabetic range",
-                "future_risk_message": future_risk,
-                "prevention_steps": [
-                    "Walk 30 min after dinner — most effective sugar-lowering habit",
-                    "Replace white rice with millets or brown rice",
-                    "Recheck fasting sugar in 4 weeks to see your progress",
-                    "HbA1c test gives you the 3-month average picture",
-                ],
-                "risk_horizon": "3-5 years to Type 2 diabetes if unchanged"
+                "future_risk_message": "Sugar is in the pre-diabetic range. Walking 30 min after dinner and switching to millets can reverse this.",
+                "prevention_steps": ["Walk 30 min after dinner", "Replace white rice with millets or brown rice"],
+                "risk_horizon": ""
             })
         else:
-            future_risk = (
-                f"Fasting sugar at {sugar_val:.0f} mg/dL indicates diabetes. "
-                f"Without treatment, this level causes nerve damage (neuropathy) within 5-7 years, "
-                f"kidney damage within 10 years, and significantly increases heart disease risk. "
-                f"The encouraging reality — with proper management, most people with diabetes "
-                f"live full, healthy lives and can even achieve remission with lifestyle changes."
-            )
             care_items.append({
-                "category": "blood_sugar",
-                "urgency": "focus",
-                "current_status": f"Sugar {sugar_val:.0f} mg/dL — Diabetic range",
-                "future_risk_message": future_risk,
-                "prevention_steps": [
-                    "HbA1c test immediately — gives your 3-month sugar average",
-                    "Doctor consultation this week for a management plan",
-                    "Daily 30-min walk is as powerful as metformin for early diabetes",
-                    "Eliminate sugary drinks and fruit juices completely",
-                ],
-                "risk_horizon": "5-7 years to nerve damage if unmanaged"
+                "category": "blood_sugar", "urgency": "focus",
+                "current_status": f"Sugar {sugar_val:.0f} mg/dL — High",
+                "future_risk_message": "Sugar levels are high. A doctor visit and daily 30-min walk are the two most impactful steps right now.",
+                "prevention_steps": ["Doctor consultation this week", "Daily 30-min walk — as effective as early medication"],
+                "risk_horizon": ""
             })
 
-    # ── HEMOGLOBIN — Future Risk ──
+    # ── HEMOGLOBIN (from blood report) ──
     hb = features.get("hemoglobin")
     if hb is not None:
         hb_low = 13.5 if features.get("gender_enc") == 1 else 12.0
         if hb >= hb_low:
             care_items.append({
-                "category": "hemoglobin",
-                "urgency": "great",
+                "category": "hemoglobin", "urgency": "great",
                 "current_status": f"Hemoglobin {hb} g/dL — Healthy ✅",
-                "future_risk_message": (
-                    f"Your hemoglobin is in the healthy range at {hb} g/dL. "
-                    f"Good hemoglobin means your organs are getting optimal oxygen. "
-                    f"Maintaining iron-rich foods in your diet will keep this stable for years. "
-                    f"Women are at higher risk of iron deficiency after 40 — keep monitoring annually."
-                ),
-                "prevention_steps": [
-                    "Continue iron-rich foods: spinach, dal, eggs, jaggery",
-                    "Vitamin C with meals boosts iron absorption",
-                    "Annual CBC check is sufficient",
-                ],
-                "risk_horizon": "Annual monitoring recommended"
+                "future_risk_message": "Hemoglobin is healthy — your blood is carrying oxygen well. Keep eating iron-rich foods regularly.",
+                "prevention_steps": ["Iron-rich foods: spinach, dal, eggs", "Vitamin C with meals boosts absorption"],
+                "risk_horizon": ""
             })
         elif hb >= hb_low - 1.5:
             care_items.append({
-                "category": "hemoglobin",
-                "urgency": "watch",
+                "category": "hemoglobin", "urgency": "watch",
                 "current_status": f"Hemoglobin {hb} g/dL — Mildly low",
-                "future_risk_message": (
-                    f"Hemoglobin at {hb} g/dL is mildly below normal. "
-                    f"If this continues declining, you risk moderate anemia within 3-6 months — "
-                    f"causing persistent fatigue, reduced immunity, and poor concentration. "
-                    f"In pregnant women or those planning pregnancy, low hemoglobin significantly "
-                    f"increases complications. The fix is straightforward: consistent iron-rich diet "
-                    f"for 6-8 weeks typically restores levels completely."
-                ),
-                "prevention_steps": [
-                    "Daily iron-rich meal: spinach dal, rajma, or eggs",
-                    "Eat citrus fruit with iron foods — triples absorption",
-                    "Avoid tea/coffee for 1 hour after meals",
-                    "Retest CBC in 6-8 weeks to confirm improvement",
-                ],
-                "risk_horizon": "3-6 months to moderate anemia if diet unchanged"
+                "future_risk_message": "Hemoglobin is slightly low. Daily iron-rich meals with citrus fruit can restore it in 6-8 weeks.",
+                "prevention_steps": ["Daily iron-rich meal: spinach dal, rajma, or eggs", "Eat citrus with iron foods — triples absorption"],
+                "risk_horizon": ""
             })
         else:
             care_items.append({
-                "category": "hemoglobin",
-                "urgency": "focus",
-                "current_status": f"Hemoglobin {hb} g/dL — Significantly low",
-                "future_risk_message": (
-                    f"Hemoglobin at {hb} g/dL is significantly below normal. "
-                    f"Without treatment, severe anemia can develop within 2-3 months, "
-                    f"causing heart strain as it works harder to compensate for low oxygen. "
-                    f"Long-term severe anemia increases heart failure risk. "
-                    f"Iron supplementation under medical guidance can restore levels in 4-6 weeks."
-                ),
-                "prevention_steps": [
-                    "Doctor visit this week — iron deficiency vs other causes needs diagnosis",
-                    "Iron supplement (if prescribed) works in 4-6 weeks",
-                    "Iron-rich foods every single day: spinach, lentils, jaggery, pomegranate",
-                    "Avoid calcium supplements with iron — they compete for absorption",
-                ],
-                "risk_horizon": "2-3 months to severe anemia without treatment"
+                "category": "hemoglobin", "urgency": "focus",
+                "current_status": f"Hemoglobin {hb} g/dL — Low",
+                "future_risk_message": "Hemoglobin is significantly low. Please see a doctor — iron supplements can restore levels in 4-6 weeks.",
+                "prevention_steps": ["Doctor visit this week", "Iron-rich foods daily: spinach, lentils, pomegranate"],
+                "risk_horizon": ""
             })
 
-    # ── PLATELETS — Future Risk ──
+    # ── PLATELETS (from blood report) ──
     platelets = features.get("platelet_count")
     if platelets is not None and platelets > 0:
         if platelets >= 150000:
             care_items.append({
-                "category": "platelets",
-                "urgency": "great",
+                "category": "platelets", "urgency": "great",
                 "current_status": f"Platelets {platelets:,}/cumm — Normal ✅",
-                "future_risk_message": (
-                    f"Your platelet count is healthy at {platelets:,}/cumm. "
-                    f"Normal platelets mean your blood clots properly and your bone marrow is functioning well. "
-                    f"Staying hydrated and avoiding alcohol keeps platelet production stable long-term."
-                ),
-                "prevention_steps": [
-                    "Stay well hydrated — 8-10 glasses daily",
-                    "Annual CBC check is sufficient",
-                ],
-                "risk_horizon": "Annual monitoring recommended"
+                "future_risk_message": "Platelet count is healthy. Stay hydrated and avoid alcohol to keep it stable.",
+                "prevention_steps": ["Stay hydrated — 8-10 glasses daily", "Annual CBC check is sufficient"],
+                "risk_horizon": ""
             })
         elif platelets >= 100000:
             care_items.append({
-                "category": "platelets",
-                "urgency": "watch",
+                "category": "platelets", "urgency": "watch",
                 "current_status": f"Platelets {platelets:,}/cumm — Mildly low",
-                "future_risk_message": (
-                    f"Platelets at {platelets:,}/cumm are mildly below the normal range of 150,000+. "
-                    f"If this continues declining, you risk easy bruising and slower wound healing within months. "
-                    f"Below 50,000 becomes a medical emergency. "
-                    f"A retest in 2-3 weeks will confirm if this is temporary (common after viral illness) "
-                    f"or a trend that needs medical attention."
-                ),
-                "prevention_steps": [
-                    "Retest CBC in 2-3 weeks — this is the most important step",
-                    "Eat fresh papaya daily — traditionally supports platelet production",
-                    "Drink 10+ glasses of water daily",
-                    "Avoid alcohol and NSAIDs (ibuprofen, aspirin) until retest",
-                ],
-                "risk_horizon": "2-3 weeks: retest to confirm trend"
+                "future_risk_message": "Platelets are slightly low. Eat fresh papaya daily and retest in 2-3 weeks to confirm the trend.",
+                "prevention_steps": ["Eat fresh papaya daily", "Retest CBC in 2-3 weeks"],
+                "risk_horizon": ""
             })
         else:
             care_items.append({
-                "category": "platelets",
-                "urgency": "act_now",
+                "category": "platelets", "urgency": "act_now",
                 "current_status": f"Platelets {platelets:,}/cumm — Critically low",
-                "future_risk_message": (
-                    f"Platelets at {platelets:,}/cumm is critically low. "
-                    f"Below 100,000 significantly increases risk of spontaneous bleeding — "
-                    f"including internal bleeding — within days to weeks without treatment. "
-                    f"This requires immediate medical evaluation to identify the cause "
-                    f"(dengue, ITP, bone marrow issue) and begin appropriate treatment."
-                ),
-                "prevention_steps": [
-                    "See a doctor TODAY — do not delay",
-                    "Avoid all blood-thinning medications (aspirin, ibuprofen)",
-                    "Avoid contact sports or activities with injury risk",
-                    "Papaya leaf extract — natural support while awaiting doctor",
-                ],
-                "risk_horizon": "Immediate medical attention required"
+                "future_risk_message": "Platelet count is critically low. Please see a doctor today — avoid NSAIDs and contact sports.",
+                "prevention_steps": ["See a doctor TODAY", "Avoid aspirin, ibuprofen, and contact sports"],
+                "risk_horizon": ""
             })
 
-    # ── BMI — Future Risk ──
+    # ── BMI ──
     if bmi is not None:
         if features.get("bmi_class") == "overweight":
-            future_risk = (
-                f"BMI of {bmi} puts you in the overweight range. "
-                f"Research shows that overweight individuals have a 2-3x higher risk of "
-                f"developing Type 2 diabetes and hypertension within 10 years. "
-                f"Losing just 5-7% of body weight (about {round((bmi - 24) * ((features.get('height_cm', 170)/100)**2), 1)} kg) "
-                f"reduces diabetes risk by 58% and significantly lowers BP."
-            )
             care_items.append({
-                "category": "weight_bmi",
-                "urgency": "watch",
+                "category": "weight_bmi", "urgency": "watch",
                 "current_status": f"BMI {bmi} — Overweight",
-                "future_risk_message": future_risk,
-                "prevention_steps": [
-                    "30-min brisk walk daily — most sustainable weight loss tool",
-                    "Smaller plates reduce calorie intake by 20% effortlessly",
-                    "Replace sugary drinks with water or green tea",
-                ],
-                "risk_horizon": "10-year diabetes/hypertension risk: 2-3x higher"
+                "future_risk_message": "BMI is in the overweight range. A 30-min daily walk and smaller portions can bring it to normal in 3 months.",
+                "prevention_steps": ["30-min brisk walk daily", "Use a smaller plate — reduces intake by 20%"],
+                "risk_horizon": ""
             })
         elif features.get("bmi_class") == "obese":
-            future_risk = (
-                f"BMI of {bmi} is in the obese range. "
-                f"At this level, the risk of Type 2 diabetes is 7x higher than normal weight. "
-                f"Joint damage, sleep apnea, and fatty liver disease are likely within 5 years if unchanged. "
-                f"The positive reality — even a 10% weight reduction dramatically reduces all these risks "
-                f"and most people feel significantly better within 8-12 weeks of consistent effort."
-            )
             care_items.append({
-                "category": "weight_bmi",
-                "urgency": "focus",
+                "category": "weight_bmi", "urgency": "focus",
                 "current_status": f"BMI {bmi} — Obese",
-                "future_risk_message": future_risk,
-                "prevention_steps": [
-                    "Daily 30-min walk is your #1 priority",
-                    "Consult a dietitian for a sustainable meal plan",
-                    "Cut sugary snacks and drinks first — biggest impact",
-                    "Sleep 7-8 hours — poor sleep drives weight gain",
-                ],
-                "risk_horizon": "5-year risk: Diabetes 7x, joint damage, fatty liver"
+                "future_risk_message": "BMI needs attention. Even a 10% weight reduction significantly improves energy, BP, and sugar levels.",
+                "prevention_steps": ["Daily 30-min walk is your #1 priority", "Cut sugary drinks and snacks first"],
+                "risk_horizon": ""
             })
 
-    # ── CREATININE — Future Kidney Risk ──
+    # ── CREATININE (from blood report) ──
     creatinine = features.get("creatinine")
     if creatinine is not None and creatinine > 1.2:
         care_items.append({
-            "category": "kidney_health",
-            "urgency": "watch",
+            "category": "kidney_health", "urgency": "watch",
             "current_status": f"Creatinine {creatinine} mg/dL — Slightly elevated",
-            "future_risk_message": (
-                f"Creatinine at {creatinine} mg/dL is slightly above normal (0.7-1.2). "
-                f"If this trend continues, kidney function may decline by 10-15% per year, "
-                f"potentially leading to chronic kidney disease within 5-10 years. "
-                f"Staying well hydrated and reducing protein-heavy meals can stabilize this. "
-                f"A follow-up test in 3 months will show if this is a trend or a one-time reading."
-            ),
-            "prevention_steps": [
-                "Drink 10+ glasses of water daily — kidneys need hydration",
-                "Reduce red meat and heavy protein meals",
-                "Avoid NSAIDs (ibuprofen) — they stress kidneys",
-                "Follow-up creatinine test in 3 months",
-            ],
-            "risk_horizon": "5-10 years to CKD if trend continues"
+            "future_risk_message": "Creatinine is slightly above normal. Drink 10+ glasses of water daily and retest in 3 months.",
+            "prevention_steps": ["Drink 10+ glasses of water daily", "Avoid ibuprofen — it stresses kidneys"],
+            "risk_horizon": ""
         })
 
-    # Post-process: add risk scores
+    # Post-process: risk scores + top_action
     for item in care_items:
         cat = item["category"]
         if cat == "blood_pressure":
-            val = features.get("bp_systolic_latest") or features.get("bp_systolic_avg", 120)
-            item["risk_score"] = min(95, max(10, int((val - 90) / 0.8)))
+            val = features.get("bp_systolic_latest") or features.get("bp_systolic_avg", 115)
+            item["risk_score"] = min(95, max(5, int((val - 90) / 0.8)))
         elif cat == "blood_sugar":
             val = features.get("sugar_latest") or features.get("sugar_avg", 90)
-            item["risk_score"] = min(95, max(10, int((val - 60) / 1.5))) if val else 30
+            item["risk_score"] = min(95, max(5, int((val - 60) / 1.5))) if val else 20
         elif cat == "hemoglobin":
-            hb_v = features.get("hemoglobin")
+            hb_v = features.get("hemoglobin", 14)
             hb_low = 13.5 if features.get("gender_enc") == 1 else 12.0
-            item["risk_score"] = min(90, max(10, int(100 - (hb_v / hb_low) * 80))) if hb_v else 30
+            item["risk_score"] = min(90, max(5, int(100 - (hb_v / hb_low) * 80)))
         elif cat == "platelets":
             p = features.get("platelet_count", 200000)
-            item["risk_score"] = min(95, max(10, int(100 - (p / 200000) * 70))) if p else 30
+            item["risk_score"] = min(95, max(5, int(100 - (p / 200000) * 70)))
         elif cat == "weight_bmi":
-            b = features.get("bmi", 25)
-            item["risk_score"] = min(85, max(10, int((b - 18) * 5))) if b else 30
+            b = features.get("bmi", 22)
+            item["risk_score"] = min(85, max(5, int((b - 18) * 5)))
         else:
-            item["risk_score"] = 30
+            item["risk_score"] = 25
         steps = item.get("prevention_steps", [])
         item["top_action"] = steps[0] if steps else "Monitor regularly"
 
     return care_items
+
 
 
 # ════════════════════════════════════════════════════════════════
