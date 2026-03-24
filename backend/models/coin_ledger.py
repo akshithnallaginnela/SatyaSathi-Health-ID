@@ -8,13 +8,14 @@ from typing import Optional
 from pydantic import BaseModel
 from sqlalchemy import Column, String, Integer, Boolean, DateTime, ForeignKey
 from database import Base
+from models.domain import GUID
 
 
 class CoinLedger(Base):
     __tablename__ = "coin_ledger"
 
-    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    user_id = Column(String(36), ForeignKey("users.id"), nullable=False, index=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    user_id = Column(GUID(), ForeignKey("users.id"), nullable=False, index=True)
     amount = Column(Integer, nullable=False)  # positive=earned, negative=redeemed
     activity_type = Column(String(50), nullable=False)  # LOG_BP, CLINIC_VISIT, REDEEM, etc.
     tx_hash = Column(String(100), nullable=True)  # blockchain transaction hash

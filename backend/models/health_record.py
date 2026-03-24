@@ -9,6 +9,7 @@ from decimal import Decimal
 from pydantic import BaseModel, Field
 from sqlalchemy import Column, String, Integer, DateTime, Numeric, ForeignKey
 from database import Base
+from models.domain import GUID
 
 
 # ─── SQLAlchemy Models ───
@@ -16,8 +17,8 @@ from database import Base
 class VitalsLog(Base):
     __tablename__ = "vitals_log"
 
-    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    user_id = Column(String(36), ForeignKey("users.id"), nullable=False, index=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    user_id = Column(GUID(), ForeignKey("users.id"), nullable=False, index=True)
     systolic = Column(Integer, nullable=True)
     diastolic = Column(Integer, nullable=True)
     pulse = Column(Integer, nullable=True)
@@ -31,8 +32,8 @@ class VitalsLog(Base):
 class BodyMetrics(Base):
     __tablename__ = "body_metrics"
 
-    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    user_id = Column(String(36), ForeignKey("users.id"), nullable=False, index=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    user_id = Column(GUID(), ForeignKey("users.id"), nullable=False, index=True)
     weight_kg = Column(Numeric(5, 2), nullable=True)
     height_cm = Column(Numeric(5, 1), nullable=True)
     bmi = Column(Numeric(4, 1), nullable=True)
