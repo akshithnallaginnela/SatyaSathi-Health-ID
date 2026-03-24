@@ -47,15 +47,18 @@ async def log_bp(
     )
     db.add(new_reading)
     await _update_status(user_id, "bp", db)
-    
-    # Trigger AI analysis
+    await db.commit()
+
+    # Trigger AI analysis in fresh session so it sees the new reading
     try:
-        analysis = await run_full_analysis(user_id, db)
-        print(f"✅ BP logged + analysis: health_index={analysis.get('health_index') if analysis else 'N/A'}, tasks={len(analysis.get('tasks',[])) if analysis else 0}")
+        from database import async_session
+        async with async_session() as analysis_db:
+            analysis = await run_full_analysis(user_id, analysis_db)
+            await analysis_db.commit()
+        print(f"✅ BP logged + analysis: health_index={analysis.get('health_index') if analysis else 'N/A'}, tasks={len(analysis.get('tasks',[])) if analysis else 0}, diet={analysis.get('diet',{}).get('focus_type') if analysis else 'None'}")
     except Exception as e:
         print(f"⚠️ Analysis error after BP log: {e}")
         analysis = None
-    await db.commit()
     
     return {
         "message": "BP logged and analysis updated",
@@ -81,15 +84,18 @@ async def log_sugar(
     )
     db.add(new_reading)
     await _update_status(user_id, "sugar", db)
-    
-    # Trigger AI analysis
+    await db.commit()
+
+    # Trigger AI analysis in fresh session so it sees the new reading
     try:
-        analysis = await run_full_analysis(user_id, db)
-        print(f"✅ Sugar logged + analysis: health_index={analysis.get('health_index') if analysis else 'N/A'}, tasks={len(analysis.get('tasks',[])) if analysis else 0}")
+        from database import async_session
+        async with async_session() as analysis_db:
+            analysis = await run_full_analysis(user_id, analysis_db)
+            await analysis_db.commit()
+        print(f"✅ Sugar logged + analysis: health_index={analysis.get('health_index') if analysis else 'N/A'}, tasks={len(analysis.get('tasks',[])) if analysis else 0}, diet={analysis.get('diet',{}).get('focus_type') if analysis else 'None'}")
     except Exception as e:
         print(f"⚠️ Analysis error after Sugar log: {e}")
         analysis = None
-    await db.commit()
     
     return {
         "message": "Sugar logged and analysis updated",

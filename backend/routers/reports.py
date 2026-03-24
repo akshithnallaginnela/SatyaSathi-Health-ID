@@ -157,17 +157,21 @@ async def analyze_report(
     
     await db.flush()
     
-    print(f"📋 Report saved for user {user_id}")
-    print(f"📊 Extracted values: hemoglobin={extracted.get('hemoglobin')}, "
-          f"platelets={extracted.get('platelet_count')}, "
-          f"glucose={extracted.get('fasting_glucose')}")
+    print(f"📋 Report flushed for user {user_id}, hemoglobin={extracted.get('hemoglobin')}, platelets={extracted.get('platelet_count')}")
 
-    # 6. Trigger Full ML Analysis
+    # 6. Commit FIRST so the report is visible to the analysis query
+    await db.commit()
+
+    # 7. Trigger Full ML Analysis in a fresh session
     try:
-        analysis = await run_full_analysis(user_id, db)
+        from database import async_session
+        async with async_session() as analysis_db:
+            analysis = await run_full_analysis(user_id, analysis_db)
+            await analysis_db.commit()
         print(f"✅ Analysis complete: health_index={analysis.get('health_index') if analysis else 'None'}, "
               f"tasks={len(analysis.get('tasks', [])) if analysis else 0}, "
-              f"care_items={len(analysis.get('preventive_care', [])) if analysis else 0}")
+              f"care_items={len(analysis.get('preventive_care', [])) if analysis else 0}, "
+              f"diet={analysis.get('diet', {}).get('focus_type') if analysis else 'None'}")
     except Exception as e:
         print(f"❌ Analysis pipeline error: {e}")
         import traceback
@@ -197,8 +201,6 @@ async def analyze_report(
             print(f"💧 Created {len(water_hours)} water reminders for user {user_id}")
     except Exception as e:
         print(f"⚠️ Water reminders creation error: {e}")
-    
-    await db.commit()
     
     return {
         "message": "Report analyzed successfully",
