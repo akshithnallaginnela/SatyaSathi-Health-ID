@@ -164,3 +164,289 @@ export default function MyIDScreen({ user, onLogout, onReportUploaded }: {
   const initials = profile?.full_name ? profile.full_name.split(' ').map((w: string) => w[0]).join('').toUpperCase().slice(0, 2) : 'U';
   const inputClass = "w-full mt-1 px-4 py-3 bg-[#F2FDFB] border border-[#C8F0EC] rounded-2xl font-bold text-sm text-[#1A3A38] outline-none focus:border-[#26C6BF]";
   const labelClass = "text-[#7ECCC7] text-[10px] font-extrabold uppercase tracking-wider";
+
+  return (
+    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="pb-32">
+
+      {/* Header */}
+      <div className="bg-[#26C6BF] pt-12 pb-16 px-6 relative overflow-hidden">
+        <div className="absolute top-[-50px] right-[-50px] w-48 h-48 bg-[#1EB5AE] rounded-full opacity-40 blur-2xl"/>
+        <h1 className="text-white text-2xl font-extrabold relative z-10">My Health ID</h1>
+        <p className="text-[#B2EFEB] text-sm relative z-10">Your digital identity</p>
+      </div>
+
+      {/* ID Card */}
+      <div className="px-6 -mt-8 relative z-20">
+        <div className="bg-white border-[1.5px] border-[#C8F0EC] rounded-[24px] p-6 shadow-lg">
+          <div className="flex items-center gap-4 mb-4">
+            <label className="relative group w-16 h-16 rounded-full overflow-hidden shrink-0 shadow-md cursor-pointer">
+              <div className="w-full h-full bg-[#26C6BF] flex items-center justify-center text-white font-extrabold text-xl">
+                {profile?.profile_photo_url ? (
+                  <img src={profile.profile_photo_url.startsWith('/') ? `http://localhost:8000${profile.profile_photo_url}` : profile.profile_photo_url}
+                    alt={profile?.full_name} className="w-full h-full object-cover"/>
+                ) : initials}
+              </div>
+              <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                <span className="text-[9px] text-white font-bold">Edit</span>
+              </div>
+              <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
+                const file = e.target.files?.[0]; if (!file) return;
+                try { const u = await profileAPI.uploadPhoto(file); setProfile((p: any) => ({ ...p, profile_photo_url: u.profile_photo_url })); }
+                catch (_) {}
+              }}/>
+            </label>
+            <div className="flex-1">
+              <h2 className="text-[#1A3A38] font-extrabold text-lg">{profile?.full_name || 'User'}</h2>
+              <p className="text-[#7ECCC7] text-xs font-semibold">{profile?.phone_number}</p>
+            </div>
+            <button onClick={() => setModal('editProfile')} className="w-8 h-8 bg-[#F2FDFB] border border-[#C8F0EC] rounded-full flex items-center justify-center">
+              <Edit3 size={14} className="text-[#26C6BF]"/>
+            </button>
+          </div>
+
+          <div className="bg-[#F2FDFB] rounded-2xl p-4 mb-4">
+            <div className="flex items-center gap-2 mb-1">
+              <CreditCard size={14} className="text-[#26C6BF]"/>
+              <span className="text-[10px] font-extrabold text-[#7ECCC7] uppercase tracking-wider">Health ID</span>
+            </div>
+            <p className="text-[#1A3A38] font-extrabold text-lg tracking-wider font-mono">{profile?.health_id || '—'}</p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="bg-[#F2FDFB] rounded-xl p-3">
+              <span className="text-[9px] font-extrabold text-[#7ECCC7] uppercase">Gender</span>
+              <p className="text-[#1A3A38] font-bold text-sm capitalize">{profile?.gender || '—'}</p>
+            </div>
+            <div className="bg-[#F2FDFB] rounded-xl p-3">
+              <span className="text-[9px] font-extrabold text-[#7ECCC7] uppercase">Aadhaar</span>
+              <div className="flex items-center gap-1">
+                {profile?.aadhaar_verified
+                  ? <><Shield size={12} className="text-[#26C6BF]"/><span className="text-[#1A3A38] font-bold text-sm">XXXX {profile.aadhaar_last4}</span></>
+                  : <span className="text-[#7ECCC7] text-sm">Not linked</span>}
+              </div>
+            </div>
+            {profile?.bmi && (
+              <div className="bg-[#F2FDFB] rounded-xl p-3">
+                <span className="text-[9px] font-extrabold text-[#7ECCC7] uppercase">BMI</span>
+                <p className="text-[#1A3A38] font-bold text-sm">{Number(profile.bmi).toFixed(1)}</p>
+              </div>
+            )}
+            {profile?.weight_kg && (
+              <div className="bg-[#F2FDFB] rounded-xl p-3">
+                <span className="text-[9px] font-extrabold text-[#7ECCC7] uppercase">Weight</span>
+                <p className="text-[#1A3A38] font-bold text-sm">{profile.weight_kg} kg</p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Coin Balance */}
+      <div className="px-6 mt-4">
+        <div className="bg-white border-[1.5px] border-[#C8F0EC] rounded-[20px] p-5 flex items-center justify-between">
+          <div>
+            <span className="text-[10px] font-extrabold text-[#7ECCC7] uppercase tracking-wider">Total Coins</span>
+            <div className="flex items-center gap-2 mt-1">
+              <div className="w-4 h-4 bg-[#FFD700] rounded-full shadow-[0_0_8px_rgba(255,215,0,0.5)]"/>
+              <span className="text-[#1A3A38] font-extrabold text-2xl">{coins}</span>
+            </div>
+          </div>
+          <span className="text-[10px] font-extrabold text-[#26C6BF] bg-[#F2FDFB] px-3 py-1.5 rounded-full border border-[#C8F0EC]">Active</span>
+        </div>
+      </div>
+
+      {/* Upload Report */}
+      <div className="px-6 mt-4">
+        <h3 className="text-[#26C6BF] text-[10px] font-extrabold uppercase tracking-widest mb-3">Upload Blood Report</h3>
+        <div className="bg-white border border-[#C8F0EC] rounded-2xl p-4 space-y-3">
+          <label className="border-2 border-dashed border-[#C8F0EC] rounded-xl p-4 flex flex-col items-center justify-center cursor-pointer bg-[#F2FDFB] hover:border-[#26C6BF] transition-colors">
+            <UploadCloud size={24} className="text-[#26C6BF] mb-2"/>
+            <span className="text-xs font-semibold text-[#1A3A38] text-center px-2">
+              {reportFile ? reportFile.name : 'Choose report image (JPG/PNG/PDF)'}
+            </span>
+            <input type="file" accept="image/jpeg,image/png,image/webp,application/pdf" className="hidden"
+              onChange={e => { setReportFile(e.target.files?.[0] || null); setUploadResult(null); }}/>
+          </label>
+
+          <button onClick={uploadReport} disabled={uploading || !reportFile}
+            className="w-full bg-[#26C6BF] text-white rounded-xl py-3 font-bold text-sm disabled:opacity-50 flex items-center justify-center gap-2">
+            {uploading ? (
+              <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"/> Analyzing report...</>
+            ) : 'Upload & Analyze'}
+          </button>
+
+          {uploadResult?.ml_analysis && (
+            <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+              className="bg-[#F2FDFB] border border-[#C8F0EC] rounded-xl p-3">
+              <p className="text-xs font-extrabold text-[#26C6BF] uppercase mb-1">Analysis Complete</p>
+              <p className="text-sm font-semibold text-[#1A3A38]">{uploadResult.ml_analysis.summary}</p>
+              {(uploadResult.positive_precautions || []).slice(0, 3).map((tip: string, i: number) => (
+                <p key={i} className="text-xs text-[#1A3A38] mt-1">• {tip}</p>
+              ))}
+            </motion.div>
+          )}
+        </div>
+      </div>
+
+      {/* Reminders */}
+      <div className="px-6 mt-4">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-[#26C6BF] text-[10px] font-extrabold uppercase tracking-widest">Reminders</h3>
+          <button onClick={() => setModal('reminder')} className="bg-[#26C6BF] text-white rounded-full w-7 h-7 flex items-center justify-center shadow-sm">
+            <Plus size={14}/>
+          </button>
+        </div>
+        <div className="space-y-2">
+          {reminders.length === 0 ? (
+            <div className="bg-[#F2FDFB] border border-[#C8F0EC] rounded-2xl p-4 text-center">
+              <Bell size={20} className="text-[#7ECCC7] mx-auto mb-2"/>
+              <p className="text-[#7ECCC7] text-xs">No reminders. Tap + to create one.</p>
+            </div>
+          ) : reminders.slice(0, 6).map((r: any) => (
+            <div key={r.id} className="bg-white border border-[#C8F0EC] rounded-2xl p-3 flex items-center justify-between">
+              <div className="flex items-center gap-3 flex-1 min-w-0">
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${r.reminder_type === 'water' ? 'bg-blue-50' : 'bg-[#F2FDFB]'}`}>
+                  {r.reminder_type === 'water' ? <Droplets size={14} className="text-blue-500"/> : <Bell size={14} className="text-[#26C6BF]"/>}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[#1A3A38] text-xs font-bold truncate">{r.title}</p>
+                  <p className="text-[#7ECCC7] text-[10px] truncate">{r.message}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <span className="text-[10px] font-extrabold text-[#26C6BF] bg-[#F2FDFB] px-2 py-0.5 rounded-full">{r.reminder_time}</span>
+                {r.reminder_type !== 'water' && (
+                  <button onClick={() => deleteReminder(r.id)} className="text-red-300 hover:text-red-500 transition-colors"><Trash2 size={12}/></button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Recent Activity */}
+      <div className="px-6 mt-4">
+        <h3 className="text-[#26C6BF] text-[10px] font-extrabold uppercase tracking-widest mb-3">Recent Activity</h3>
+        <div className="space-y-2">
+          {activity.completed_tasks.slice(0, 5).map((t: any) => (
+            <div key={t.id} className="bg-white border border-[#C8F0EC] rounded-2xl p-3 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Activity size={14} className="text-[#26C6BF]"/>
+                <span className="text-[#1A3A38] text-xs font-semibold">{t.name}</span>
+              </div>
+              <span className="text-[#26C6BF] text-[10px] font-extrabold">+{t.coins}</span>
+            </div>
+          ))}
+          {activity.completed_tasks.length === 0 && (
+            <p className="text-[#7ECCC7] text-xs text-center py-4">No activity yet. Complete some missions!</p>
+          )}
+        </div>
+      </div>
+
+      {/* Account Settings */}
+      <div className="px-6 mt-4 mb-6">
+        <h3 className="text-[#26C6BF] text-[10px] font-extrabold uppercase tracking-widest mb-3">Account</h3>
+        <div className="bg-white border border-[#C8F0EC] rounded-2xl overflow-hidden">
+          <button onClick={() => setModal('password')}
+            className="w-full p-4 flex items-center justify-between hover:bg-[#F2FDFB] transition-colors border-b border-[#F0F0F0]">
+            <div className="flex items-center gap-3"><Lock size={16} className="text-[#26C6BF]"/><span className="text-[#1A3A38] font-semibold text-sm">Change Password</span></div>
+            <ChevronRight size={14} className="text-[#7ECCC7]"/>
+          </button>
+          <button onClick={downloadReport} disabled={downloading}
+            className="w-full p-4 flex items-center justify-between hover:bg-[#F2FDFB] transition-colors border-b border-[#F0F0F0]">
+            <div className="flex items-center gap-3">
+              {downloading ? <div className="w-4 h-4 border-2 border-[#26C6BF] border-t-transparent rounded-full animate-spin"/> : <Download size={16} className="text-[#26C6BF]"/>}
+              <span className="text-[#1A3A38] font-semibold text-sm">{downloading ? 'Downloading...' : 'Download Health Report'}</span>
+            </div>
+            <ChevronRight size={14} className="text-[#7ECCC7]"/>
+          </button>
+          <button onClick={() => { clearTokens(); onLogout(); }}
+            className="w-full p-4 flex items-center justify-between hover:bg-red-50 transition-colors">
+            <div className="flex items-center gap-3"><LogOut size={16} className="text-red-400"/><span className="text-[#1A3A38] font-semibold text-sm">Log Out</span></div>
+            <ChevronRight size={14} className="text-[#7ECCC7]"/>
+          </button>
+        </div>
+        {notice && (
+          <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+            className={`text-xs font-semibold px-1 pt-2 ${noticeOk ? 'text-[#26C6BF]' : 'text-red-500'}`}>
+            {notice}
+          </motion.p>
+        )}
+      </div>
+
+      {/* ── Modals ── */}
+      <AnimatePresence>
+        {modal && (
+          <div className="fixed inset-0 bg-[#1A3A38]/40 backdrop-blur-sm flex items-end justify-center z-50 p-4 pb-24">
+            <motion.div initial={{ y: 300, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 300, opacity: 0 }}
+              className="bg-white w-full max-w-[400px] rounded-[32px] p-6 shadow-2xl">
+              <div className="flex justify-between items-center mb-5">
+                <h2 className="text-[#1A3A38] font-extrabold text-xl">
+                  {modal === 'reminder' ? 'Create Reminder' : modal === 'password' ? 'Change Password' : 'Edit Profile'}
+                </h2>
+                <button onClick={() => setModal(null)} className="text-[#7ECCC7] bg-[#F2FDFB] p-2 rounded-full"><X size={20}/></button>
+              </div>
+
+              {modal === 'reminder' && (
+                <div className="space-y-4">
+                  <div><label className={labelClass}>Title</label><input placeholder="e.g. Take BP tablet" value={newReminder.title} onChange={e => setNewReminder({ ...newReminder, title: e.target.value })} className={inputClass}/></div>
+                  <div><label className={labelClass}>Message</label><textarea placeholder="e.g. Take your morning BP tablet with water" value={newReminder.message} onChange={e => setNewReminder({ ...newReminder, message: e.target.value })} className={inputClass + " resize-none h-20"}/></div>
+                  <div><label className={labelClass}>Time</label><input type="time" value={newReminder.reminder_time} onChange={e => setNewReminder({ ...newReminder, reminder_time: e.target.value })} className={inputClass}/></div>
+                  <label className="flex items-center gap-3 text-sm font-semibold text-[#1A3A38]">
+                    <input type="checkbox" checked={newReminder.is_recurring} onChange={e => setNewReminder({ ...newReminder, is_recurring: e.target.checked })} className="accent-[#26C6BF]"/>
+                    Repeat daily
+                  </label>
+                  <button onClick={createReminder} disabled={savingReminder} className="w-full bg-[#26C6BF] text-white font-bold py-4 rounded-2xl disabled:opacity-50">
+                    {savingReminder ? 'Creating...' : '🔔 Create Reminder'}
+                  </button>
+                </div>
+              )}
+
+              {modal === 'password' && (
+                <div className="space-y-4">
+                  {(['old', 'new', 'confirm'] as const).map((field) => (
+                    <div key={field}>
+                      <label className={labelClass}>{field === 'old' ? 'Current Password' : field === 'new' ? 'New Password' : 'Confirm New Password'}</label>
+                      <div className="relative">
+                        <input type={showPw[field as 'old' | 'new'] ? 'text' : 'password'}
+                          placeholder="••••••••" value={pwForm[field]}
+                          onChange={e => setPwForm({ ...pwForm, [field]: e.target.value })}
+                          className={inputClass + " pr-10"}/>
+                        {field !== 'confirm' && (
+                          <button type="button" onClick={() => setShowPw(s => ({ ...s, [field]: !s[field as 'old' | 'new'] }))}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 mt-0.5 text-[#7ECCC7]">
+                            {showPw[field as 'old' | 'new'] ? <EyeOff size={16}/> : <Eye size={16}/>}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                  <button onClick={changePassword} disabled={savingPw} className="w-full bg-[#26C6BF] text-white font-bold py-4 rounded-2xl disabled:opacity-50">
+                    {savingPw ? 'Saving...' : 'Change Password'}
+                  </button>
+                </div>
+              )}
+
+              {modal === 'editProfile' && (
+                <div className="space-y-4">
+                  <div><label className={labelClass}>Full Name</label><input placeholder="Your name" value={editForm.full_name} onChange={e => setEditForm({ ...editForm, full_name: e.target.value })} className={inputClass}/></div>
+                  <div className="flex gap-3">
+                    <div className="flex-1"><label className={labelClass}>Weight (kg)</label><input type="number" placeholder="72" value={editForm.weight_kg} onChange={e => setEditForm({ ...editForm, weight_kg: e.target.value })} className={inputClass}/></div>
+                    <div className="flex-1"><label className={labelClass}>Height (cm)</label><input type="number" placeholder="175" value={editForm.height_cm} onChange={e => setEditForm({ ...editForm, height_cm: e.target.value })} className={inputClass}/></div>
+                  </div>
+                  {editForm.weight_kg && editForm.height_cm && (() => {
+                    const bmiVal = Number(editForm.weight_kg) / ((Number(editForm.height_cm) / 100) ** 2);
+                    return <p className="text-[#26C6BF] text-xs font-bold text-center">Calculated BMI: {bmiVal.toFixed(1)}</p>;
+                  })()}
+                  <button onClick={saveProfile} disabled={savingEdit} className="w-full bg-[#26C6BF] text-white font-bold py-4 rounded-2xl disabled:opacity-50">
+                    {savingEdit ? 'Saving...' : 'Save Changes'}
+                  </button>
+                </div>
+              )}
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+    </motion.div>
+  );
+}
