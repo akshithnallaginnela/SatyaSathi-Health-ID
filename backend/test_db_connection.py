@@ -13,7 +13,8 @@ async def test():
     try:
         engine = create_async_engine(DATABASE_URL, echo=False)
         async with engine.connect() as conn:
-            result = await conn.execute("SELECT 1")
+            from sqlalchemy import text
+            result = await conn.execute(text("SELECT 1"))
             print("✅ Connection successful!")
             print(f"✅ Database is responding")
         await engine.dispose()
