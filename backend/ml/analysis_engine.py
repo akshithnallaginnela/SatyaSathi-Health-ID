@@ -694,6 +694,26 @@ def generate_preventive_care(features: dict) -> list[dict]:
             item["risk_score"] = min(85, max(5, int((sgpt_v - 20) / 0.8)))
         elif cat in ("vitamin_d", "vitamin_b12"):
             item["risk_score"] = 35
+        elif cat == "immune_system":
+            wbc_v = features.get("wbc_count", 7000)
+            if wbc_v < 4000:
+                item["risk_score"] = min(75, max(20, int((4000 - wbc_v) / 40)))
+            else:
+                item["risk_score"] = min(60, max(20, int((wbc_v - 11000) / 100)))
+        elif cat == "thyroid":
+            tsh_v = features.get("tsh", 2.5)
+            if tsh_v > 5:
+                item["risk_score"] = min(80, max(30, int((tsh_v - 5) * 8)))
+            else:
+                item["risk_score"] = min(80, max(30, int((0.5 - tsh_v) * 50)))
+        elif cat == "triglycerides":
+            trig_v = features.get("triglycerides", 150)
+            item["risk_score"] = min(85, max(20, int((trig_v - 100) / 2)))
+        elif cat == "hdl_cholesterol":
+            hdl_v = features.get("hdl", 50)
+            item["risk_score"] = min(70, max(20, int((50 - hdl_v) * 2)))
+        elif cat == "anemia_type":
+            item["risk_score"] = 45
         else:
             item["risk_score"] = 25
         steps = item.get("prevention_steps", [])
