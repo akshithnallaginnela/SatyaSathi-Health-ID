@@ -68,11 +68,12 @@ async def analyze_report(
         print(f"{'='*50}\n")
         
     except Exception as e:
-        print(f"❌ Gemini OCR ERROR: {str(e)}")
+        error_msg = f"OCR failed: {str(e)}"
+        print(f"❌ {error_msg}")
         import traceback
         traceback.print_exc()
-        # Fallback empty result so we don't 500
-        extracted = {"lab_name": "Extraction Failed", "message": f"Could not extract details: {str(e)}"}
+        # Return error immediately so user knows OCR failed
+        raise HTTPException(status_code=500, detail=error_msg)
 
     # 4. Save to DB
     report = BloodReport(
