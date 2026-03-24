@@ -6,6 +6,16 @@ import { dashboardAPI, clinicsAPI, tasksAPI, clearTokens } from '../services/api
 // ── Score theme helper ─────────────────────────────────────────────────────
 
 function getScoreTheme(score: number) {
+  if (score === 0) return {
+    ringStroke: '#26C6BF',
+    ringBg: 'rgba(38,198,191,0.15)',
+    badgeBg: '#F2FDFB',
+    badgeText: '#26C6BF',
+    label: 'Log vitals to see score',
+    emoji: '📊',
+    glow: '#26C6BF',
+    headerBlob: '#26C6BF',
+  };
   if (score < 50) return {
     ringStroke: '#EF4444',
     ringBg: 'rgba(239,68,68,0.2)',
@@ -21,7 +31,7 @@ function getScoreTheme(score: number) {
     ringBg: 'rgba(245,158,11,0.2)',
     badgeBg: '#FEF3C7',
     badgeText: '#D97706',
-    label: 'Moderate attention',
+    label: 'Moderate — keep going',
     emoji: '🟡',
     glow: '#F59E0B',
     headerBlob: '#FCD34D',
@@ -113,7 +123,22 @@ export default function DashboardScreen({ onLogout }: { onLogout: () => void; ke
   };
 
   if (loading) {
-    return <div className="flex justify-center items-center h-full"><p className="text-muted-teal text-sm">Loading dashboard...</p></div>;
+    return (
+      <div className="flex flex-col justify-center items-center h-full gap-3">
+        <div className="w-10 h-10 border-4 border-primary-teal border-t-transparent rounded-full animate-spin"/>
+        <p className="text-muted-teal text-sm font-semibold">Loading dashboard...</p>
+      </div>
+    );
+  }
+
+  if (!data) {
+    return (
+      <div className="flex flex-col justify-center items-center h-full gap-4 px-8 text-center">
+        <p className="text-dark-teal font-bold text-base">Could not load dashboard</p>
+        <p className="text-muted-teal text-sm">Make sure the backend is running on port 8000.</p>
+        <button onClick={fetchDashboard} className="bg-primary-teal text-white px-6 py-2.5 rounded-2xl font-bold text-sm">Retry</button>
+      </div>
+    );
   }
 
   const user = data?.user || { name: 'User', initials: 'U', profile_photo_url: null };
