@@ -316,7 +316,7 @@ export default function DashboardScreen({ onLogout }: { onLogout: () => void; ke
           ) : (
             <div className="space-y-6">
               {(preventive.all_care_items || []).map((item: any, idx: number) => {
-                const categoryLabel: any = { blood_pressure: 'BP Health', blood_sugar: 'Sugar/Glucose', weight_bmi: 'Body Composition', hemoglobin: 'Blood Health (Hb)', platelets: 'Platelets', kidney_health: 'Kidney Health' };
+                const categoryLabel: any = { blood_pressure: 'BP Health', blood_sugar: 'Sugar/Glucose', weight_bmi: 'Body Composition', hemoglobin: 'Blood Health (Hb)', platelets: 'Platelets', kidney_health: 'Kidney Health', cholesterol: 'Cholesterol', liver_health: 'Liver Health', vitamin_d: 'Vitamin D', vitamin_b12: 'Vitamin B12' };
                 const scoreValue = item.risk_score || 30;
                 let barColor = 'bg-primary-teal';
                 if (scoreValue > 70) barColor = 'bg-[#FF6B6B]';
