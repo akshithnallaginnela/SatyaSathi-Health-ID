@@ -639,3 +639,385 @@ def generate_preventive_care(features: dict) -> list[dict]:
         item["top_action"] = steps[0] if steps else "Monitor regularly"
 
     return care_items
+
+
+# ════════════════════════════════════════════════════════════════
+# 5. DAILY TASKS — Present actions based on current data
+# ════════════════════════════════════════════════════════════════
+
+def _get_step_target(features: dict) -> tuple[int, int, str]:
+    base_steps = 5000
+    coins = 15
+    bp_val = features.get("bp_systolic_latest") or features.get("bp_systolic_avg")
+    if bp_val:
+        if bp_val >= 140:    base_steps = max(base_steps, 10000); coins = 25
+        elif bp_val >= 130:  base_steps = max(base_steps, 8000);  coins = 20
+        elif bp_val >= 120:  base_steps = max(base_steps, 7000);  coins = 18
+    sugar_val = features.get("sugar_latest") or features.get("sugar_avg")
+    if sugar_val and sugar_val >= 100:
+        base_steps = max(base_steps, 8000); coins = max(coins, 20)
+    bmi = features.get("bmi")
+    if bmi:
+        if bmi >= 30:    base_steps = max(base_steps, 10000); coins = max(coins, 25)
+        elif bmi >= 27:  base_steps = max(base_steps, 8000);  coins = max(coins, 20)
+    hb = features.get("hemoglobin")
+    if hb and hb < 11.0:
+        base_steps = min(base_steps, 5000); coins = min(coins, 15)
+    report_glucose = features.get("fasting_glucose_report")
+    if report_glucose:
+        if report_glucose >= 126:   base_steps = max(base_steps, 10000); coins = max(coins, 25)
+        elif report_glucose >= 100: base_steps = max(base_steps, 7000);  coins = max(coins, 18)
+    minutes = base_steps // 400
+    return (base_steps, coins, f"{minutes} min / {base_steps:,} steps")
+
+
+def generate_daily_tasks(features: dict, user) -> list[dict]:
+    tasks = []
+    if not features.get("has_vitals_data"):
+        return tasks
+
+    bp_val = features.get("bp_systolic_latest") or features.get("bp_systolic_avg")
+    sugar_val = features.get("sugar_latest") or features.get("sugar_avg")
+    bmi = features.get("bmi")
+    hb = features.get("hemoglobin")
+    platelets = features.get("platelet_count")
+    report_glucose = features.get("fasting_glucose_report")
+
+    # Walking task (always, coins based on health data)
+    steps, walk_coins, duration = _get_step_target(features)
+    why_parts = []
+    if bp_val and bp_val >= 120:    why_parts.append(f"BP {bp_val:.0f} mmHg")
+    if sugar_val and sugar_val >= 100: why_parts.append(f"Sugar {sugar_val:.0f} mg/dL")
+    if bmi and bmi >= 25:           why_parts.append(f"BMI {bmi:.1f}")
+    if report_glucose and report_glucose >= 100 and not sugar_val:
+        why_parts.append(f"Report glucose {report_glucose:.0f}")
+    why_msg = (f"Based on {', '.join(why_parts)} — " if why_parts else "") + f"{steps:,} steps helps naturally improve your numbers"
+    tasks.append({
+        "task_type": "MORNING_WALK",
+        "task_name": f"Walk {steps:,} steps today",
+        "description": "Your personalized step goal based on your health data",
+        "why_this_task": why_msg,
+        "category": "exercise",
+        "time_of_day": "morning",
+        "duration_or_quantity": duration,
+        "coins_reward": walk_coins
+    })
+
+    # BP monitoring task
+    if features.get("has_bp_data") and bp_val and bp_val >= 120:
+        tasks.append({
+            "task_type": "CHECK_BP_7DAYS",
+            "task_name": "Log your BP this week",
+            "description": "Track your blood pressure to see if lifestyle changes are working",
+            "why_this_task": f"BP at {bp_val:.0f} mmHg — regular monitoring shows your progress",
+            "category": "monitoring",
+            "time_of_day": "morning",
+            "duration_or_quantity": "1 BP reading",
+            "coins_reward": 20
+        })
+
+    # Sugar monitoring task
+    if features.get("has_sugar_data") and sugar_val and sugar_val >= 100:
+        tasks.append({
+            "task_type": "CHECK_SUGAR_7DAYS",
+            "task_name": "Log fasting sugar this week",
+            "description": "Track your glucose to see if diet changes are working",
+            "why_this_task": f"Sugar at {sugar_val:.0f} mg/dL — weekly monitoring shows trends",
+            "category": "monitoring",
+            "time_of_day": "morning",
+            "duration_or_quantity": "1 fasting glucose reading",
+            "coins_reward": 20
+        })
+    elif features.get("has_report") and report_glucose and report_glucose >= 100:
+        tasks.append({
+            "task_type": "CHECK_SUGAR_7DAYS",
+            "task_name": "Log fasting sugar this week",
+            "description": "Your report shows elevated glucose — log a reading to monitor it",
+            "why_this_task": f"Report glucose {report_glucose:.0f} mg/dL — weekly monitoring helps early detection",
+            "category": "monitoring",
+            "time_of_day": "morning",
+            "duration_or_quantity": "1 fasting glucose reading",
+            "coins_reward": 20
+        })
+
+    # BP diet guidance (0 coins)
+    if features.get("has_bp_data") and bp_val and bp_val >= 130:
+        tasks.append({
+            "task_type": "LOW_SALT_MEAL",
+            "task_name": "Go low-salt today",
+            "description": "Use lemon and herbs instead of extra salt",
+            "why_this_task": f"BP at {bp_val:.0f} — cutting sodium helps control blood pressure naturally",
+            "category": "diet",
+            "time_of_day": "all_day",
+            "duration_or_quantity": "All meals today",
+            "coins_reward": 0
+        })
+
+    # Sugar diet guidance (0 coins)
+    if features.get("has_sugar_data") and sugar_val and sugar_val >= 100:
+        tasks.append({
+            "task_type": "NO_SUGAR_DAY",
+            "task_name": "Skip added sugar today",
+            "description": "No sugar in tea, coffee, or snacks",
+            "why_this_task": f"Fasting glucose at {sugar_val:.0f} — reducing added sugar can lower it by 8-12 mg/dL",
+            "category": "diet",
+            "time_of_day": "all_day",
+            "duration_or_quantity": "All day",
+            "coins_reward": 0
+        })
+
+    # Hemoglobin task (0 coins)
+    if features.get("has_report") and hb is not None:
+        hb_low = 13.5 if features.get("gender_enc") == 1 else 12.0
+        if hb < hb_low:
+            tasks.append({
+                "task_type": "IRON_RICH_MEAL",
+                "task_name": "Eat iron-rich food today",
+                "description": "Spinach dal, dates, pomegranate, or eggs",
+                "why_this_task": f"Hemoglobin at {hb} g/dL — daily iron-rich food boosts it in 6 weeks",
+                "category": "diet",
+                "time_of_day": "lunch",
+                "duration_or_quantity": "At least 1 iron-rich meal",
+                "coins_reward": 0
+            })
+
+    # Platelet task (0 coins)
+    if features.get("has_report") and platelets is not None and 0 < platelets < 150000:
+        tasks.append({
+            "task_type": "EAT_PAPAYA",
+            "task_name": "Eat fresh papaya today",
+            "description": "Papaya supports natural platelet production",
+            "why_this_task": f"Platelets at {platelets:,} — papaya is traditionally linked to platelet recovery",
+            "category": "diet",
+            "time_of_day": "afternoon",
+            "duration_or_quantity": "1 bowl fresh papaya",
+            "coins_reward": 0
+        })
+
+    # BMI guidance (0 coins)
+    if bmi is not None and bmi > 27:
+        tasks.append({
+            "task_type": "PORTION_CONTROL",
+            "task_name": "Reduce portions by 20% today",
+            "description": "Use a slightly smaller plate — you won't miss it",
+            "why_this_task": f"BMI is {bmi} — small portion reduction leads to sustainable weight loss",
+            "category": "diet",
+            "time_of_day": "all_day",
+            "duration_or_quantity": "All meals",
+            "coins_reward": 0
+        })
+
+    # Hydration (coins — monitorable)
+    if tasks:
+        hydration_glasses = 8
+        if bp_val and bp_val >= 130:                                hydration_glasses = 10
+        if platelets is not None and platelets < 150000:            hydration_glasses = 10
+        tasks.append({
+            "task_type": "WATER_INTAKE",
+            "task_name": f"Drink {hydration_glasses} glasses of water",
+            "description": "Stay hydrated through the day",
+            "why_this_task": "Hydration supports BP, kidney function, and overall health",
+            "category": "wellness",
+            "time_of_day": "all_day",
+            "duration_or_quantity": f"{hydration_glasses} glasses (250ml each)",
+            "coins_reward": 10
+        })
+
+    # Stress breathing (0 coins)
+    if features.get("stress_level", 5) >= 7 and tasks:
+        tasks.append({
+            "task_type": "DEEP_BREATHING",
+            "task_name": "5-min deep breathing",
+            "description": "Slow belly breathing — calms your nervous system",
+            "why_this_task": f"Stress level {features.get('stress_level')}/10 — deep breathing lowers cortisol and BP",
+            "category": "wellness",
+            "time_of_day": "evening",
+            "duration_or_quantity": "5 minutes",
+            "coins_reward": 0
+        })
+
+    return tasks
+
+
+# ════════════════════════════════════════════════════════════════
+# 6. DIET PLAN
+# ════════════════════════════════════════════════════════════════
+
+def generate_diet_plan(features: dict) -> dict | None:
+    if not features.get("has_vitals_data"):
+        return None
+
+    bmi = features.get("bmi")
+    bp_avg = features.get("bp_systolic_avg")
+    sugar_avg = features.get("sugar_avg")
+    hb = features.get("hemoglobin")
+    platelets = features.get("platelet_count")
+    gender_enc = features.get("gender_enc", 1)
+    hb_low = 13.5 if gender_enc == 1 else 12.0
+    report_glucose = features.get("fasting_glucose_report")
+
+    eat_more, reduce, avoid = [], [], []
+    focus_parts, reason_parts = [], []
+    hydration = 8
+
+    if bp_avg is not None and bp_avg >= 120:
+        focus_parts.append("heart_healthy")
+        reason_parts.append(f"Supporting your BP ({bp_avg:.0f} mmHg)")
+        eat_more.extend(["Banana — natural potassium counters sodium", "Spinach and leafy greens", "Garlic — natural BP support", "Oats — helps reduce BP over time"])
+        reduce.extend(["Extra salt — try lemon and herbs instead", "Tea/coffee to 1-2 cups daily"])
+        avoid.extend(["Pickles and papad", "Packaged chips and namkeen", "Instant noodles"])
+        hydration = max(hydration, 10)
+
+    if sugar_avg is not None and sugar_avg >= 100:
+        focus_parts.append("sugar_smart")
+        reason_parts.append(f"Helping your sugar levels ({sugar_avg:.0f} mg/dL)")
+        eat_more.extend(["Brown rice or millets (ragi, jowar, bajra)", "Bitter gourd — natural sugar support", "Methi seeds — soak overnight, eat morning", "Nuts as snacks (almonds, walnuts)"])
+        reduce.extend(["White rice to half a cup", "Only low-GI fruits (apple, guava)"])
+        avoid.extend(["Sugar in tea/coffee", "Fruit juices (even fresh ones)", "Maida products"])
+
+    if hb is not None and hb < hb_low:
+        focus_parts.append("iron_boost")
+        reason_parts.append(f"Building up your hemoglobin ({hb} g/dL)")
+        eat_more.extend(["Spinach, palak, methi daily", "Rajma, chana, masoor dal", "Jaggery instead of sugar", "Pomegranate and beetroot"])
+        reduce.extend(["Tea right after meals — blocks iron"])
+        hydration = max(hydration, 9)
+
+    if platelets is not None and 0 < platelets < 150000:
+        focus_parts.append("platelet_support")
+        reason_parts.append(f"Supporting platelet recovery ({platelets:,})")
+        eat_more.extend(["Fresh papaya", "Pomegranate seeds and juice", "Pumpkin and pumpkin seeds"])
+        avoid.extend(["Alcohol completely"])
+        hydration = max(hydration, 10)
+
+    if bmi is not None and bmi >= 27:
+        focus_parts.append("weight_friendly")
+        reason_parts.append(f"Supporting your weight goals (BMI {bmi})")
+        eat_more.extend(["Protein-rich breakfast (eggs, paneer)", "Salad before each meal", "Green tea instead of milk tea"])
+        reduce.extend(["Portion sizes by 20%", "Fried food to twice a week"])
+        avoid.extend(["Late night snacking", "Sugary drinks"])
+
+    if report_glucose and report_glucose >= 100 and not features.get("has_sugar_data"):
+        focus_parts.append("sugar_smart")
+        reason_parts.append(f"Report shows glucose at {report_glucose:.0f} mg/dL")
+        eat_more.extend(["Whole grains and millets", "Nuts and seeds as snacks"])
+        avoid.extend(["Refined sugar and sweets"])
+
+    if not focus_parts:
+        focus_parts.append("balanced_wellness")
+        reason_parts.append("Maintaining your healthy vitals")
+        eat_more.extend(["Seasonal vegetables with every meal", "2-3 fruits daily", "Whole grains instead of refined", "Lean protein with every meal"])
+        reduce.extend(["Fried foods to twice a week", "Packaged food"])
+        avoid.extend(["Sugary drinks", "Trans fats"])
+
+    return {
+        "focus_type": " + ".join(focus_parts),
+        "reason": ". ".join(reason_parts),
+        "eat_more": list(dict.fromkeys(eat_more)),
+        "reduce": list(dict.fromkeys(reduce)),
+        "avoid": list(dict.fromkeys(avoid)),
+        "hydration_goal": hydration
+    }
+
+
+# ════════════════════════════════════════════════════════════════
+# 7. PERSISTENCE
+# ════════════════════════════════════════════════════════════════
+
+async def save_preventive_care(user_id: str, care_items: list[dict], db: AsyncSession):
+    await db.execute(delete(PreventiveCare).where(PreventiveCare.user_id == user_id))
+    for item in care_items:
+        db.add(PreventiveCare(
+            user_id=user_id,
+            category=item["category"],
+            urgency=item["urgency"],
+            current_value=item["current_status"],
+            future_risk_message=item["future_risk_message"],
+            prevention_steps=json.dumps(item["prevention_steps"]),
+            risk_horizon=item["risk_horizon"]
+        ))
+
+async def replace_todays_tasks(user_id: str, task_list: list[dict], db: AsyncSession):
+    result = await db.execute(
+        select(DailyTask)
+        .where(DailyTask.user_id == user_id)
+        .where(DailyTask.task_date == datetime.date.today())
+        .where(DailyTask.completed == True)
+    )
+    completed_types = {t.task_type for t in result.scalars().all()}
+    await db.execute(
+        delete(DailyTask)
+        .where(DailyTask.user_id == user_id)
+        .where(DailyTask.task_date == datetime.date.today())
+        .where(DailyTask.completed == False)
+    )
+    for t in task_list:
+        if t["task_type"] in completed_types:
+            continue
+        db.add(DailyTask(
+            user_id=user_id,
+            task_type=t["task_type"],
+            task_name=t["task_name"],
+            description=t["description"],
+            why_this_task=t["why_this_task"],
+            category=t["category"],
+            time_of_day=t["time_of_day"],
+            duration_or_quantity=t["duration_or_quantity"],
+            coins_reward=t["coins_reward"],
+            task_date=datetime.date.today()
+        ))
+
+async def save_diet(user_id: str, diet: dict | None, db: AsyncSession):
+    await db.execute(delete(DietRecommendation).where(DietRecommendation.user_id == user_id))
+    if diet is None:
+        return
+    db.add(DietRecommendation(
+        user_id=user_id,
+        focus_type=diet["focus_type"],
+        reason=diet["reason"],
+        eat_more=json.dumps(diet["eat_more"]),
+        reduce=json.dumps(diet["reduce"]),
+        avoid=json.dumps(diet["avoid"]),
+        hydration_goal_glasses=diet["hydration_goal"]
+    ))
+
+async def update_analysis_status(user_id: str, db: AsyncSession):
+    result = await db.execute(select(UserDataStatus).where(UserDataStatus.user_id == user_id))
+    status = result.scalar_one_or_none()
+    if status:
+        status.last_analysis_at = datetime.datetime.utcnow()
+        status.analysis_ready = True
+
+
+# ════════════════════════════════════════════════════════════════
+# 8. MAIN PIPELINE
+# ════════════════════════════════════════════════════════════════
+
+async def run_full_analysis(user_id: str, db: AsyncSession):
+    user = await get_user(user_id, db)
+    if not user:
+        return None
+
+    bp_readings = await get_bp_readings(user_id, db)
+    sugar_readings = await get_sugar_readings(user_id, db)
+    latest_report = await get_latest_report(user_id, db)
+
+    features = build_features(user, bp_readings, sugar_readings, latest_report)
+    health_index = calculate_health_index(features)
+    preventive = generate_preventive_care(features)
+    tasks = generate_daily_tasks(features, user)
+    diet = generate_diet_plan(features)
+
+    print(f"🔬 Analysis: health_index={health_index}, care={len(preventive)}, tasks={len(tasks)}, diet={diet.get('focus_type') if diet else 'None'}")
+
+    await save_preventive_care(user_id, preventive, db)
+    await replace_todays_tasks(user_id, tasks, db)
+    await save_diet(user_id, diet, db)
+    await update_analysis_status(user_id, db)
+    await db.flush()
+
+    return {
+        "health_index": health_index,
+        "preventive_care": preventive,
+        "tasks": tasks,
+        "diet": diet
+    }
