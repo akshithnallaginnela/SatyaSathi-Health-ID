@@ -99,33 +99,119 @@ def _clean_json_text(text: str) -> str:
 
 
 EXTRACTION_PROMPT = """
-You are a highly precise medical data extraction AI specializing in Indian lab reports.
+You are a highly precise medical data extraction AI specializing in Indian lab reports from ALL major labs.
 Extract ALL available health values from this report into a JSON object.
 
-IMPORTANT RULES:
-1. Return ONLY raw JSON — no markdown, no explanation, no backticks.
+SUPPORTED LAB FORMATS:
+- Drlogy Pathology Lab (Mumbai, Bihar, etc.)
+- SRN Diagnostics (Indore)
+- Apollo Diagnostics (Shri Ram Hospital)
+- Bio Rad Lab
+- Healthians
+- Redcliffe Labs
+- Metropolis, Thyrocare, SRL, Dr. Lal PathLabs
+- Local diagnostic centers
+- Hospital lab reports
+
+CRITICAL EXTRACTION RULES:
+1. Return ONLY raw JSON — no markdown, no explanation, no backticks, no code blocks.
 2. Use null for any value not present in the report.
-3. All numeric values must be numbers (not strings).
-4. For platelet_count: if value is in Lakhs (e.g. "1.5 L" or "1.5 Lakhs"), multiply by 100000. If in thousands (e.g. "150 K"), multiply by 1000.
-5. For wbc_count: if in thousands (e.g. "7.5 K" or "7.5 th/cumm"), multiply by 1000.
-6. For rbc_count: value is in millions/cumm (e.g. 4.5 to 6.0 range).
-7. HCT and PCV are the same — use pcv field.
-8. TLC = Total Leucocyte Count = wbc_count.
-9. POLYMORPHS = Neutrophils = neutrophils_pct.
-10. For peripheral smear findings, capture as a short text string.
+3. All numeric values must be numbers (not strings) — remove commas, units, and text.
+4. Handle ALL unit variations and naming conventions.
+
+UNIT CONVERSIONS & ALIASES:
+- Platelet Count:
+  * If "150000" or "1.5 Lakhs" or "1.5 L" → multiply by 100000 → 150000
+  * If "150 K" or "150 thousands" → multiply by 1000 → 150000
+  * If "150" with unit "10^3/μL" or "10^3/cumm" → multiply by 1000 → 150000
+  * If "160000" or plain number → use as-is
+  * Common range: 150000-410000 /cumm
+
+- WBC Count (TLC):
+  * If "9000" or "9 K" or "9 thousands" → use 9000
+  * If "8.63" with unit "10^3/μL" → multiply by 1000 → 8630
+  * If "4.84" with unit "th/cumm" → multiply by 1000 → 4840
+  * TLC = Total Leucocyte Count = WBC Count
+  * Common range: 4000-11000 /cumm
+
+- RBC Count:
+  * Always in millions/cumm
+  * If "5.2" → use 5.2 (NOT 5200000)
+  * If "4.00" → use 4.0
+  * Common range: 4.5-6.5 million/cumm for males, 4.0-6.0 for females
+
+- Hemoglobin:
+  * Always in g/dL
+  * If "12.5" → use 12.5
+  * If "10.6" → use 10.6
+  * Common range: 13-17 g/dL for males, 12-15 g/dL for females
+
+- PCV/HCT/Hematocrit:
+  * Always in %
+  * PCV = HCT = Hematocrit (same field)
+  * If "57.5" → use 57.5
+  * If "33.4" → use 33.4
+  * Common range: 40-54% for males, 36-46% for females
+
+- Glucose:
+  * Random Glucose: "GLUCOSE, RANDOM" or "RBS" or "Random Blood Sugar"
+  * Fasting Glucose: "FBS" or "Fasting Blood Sugar" or "Fasting Glucose"
+  * Always in mg/dL
+  * If "105" → use 105
+  * Common range: 70-140 mg/dL (random), 70-100 mg/dL (fasting)
+
+- Creatinine:
+  * "CREATININE, SERUM" or "Serum Creatinine"
+  * Always in mg/dL
+  * If "0.80" → use 0.8
+  * Common range: 0.5-1.04 mg/dL
+
+- Urea:
+  * "UREA, SERUM" or "Blood Urea"
+  * Always in mg/dL
+  * If "22.80" → use 22.8
+  * Common range: 15-38 mg/dL
+
+FIELD NAME ALIASES (map these to correct fields):
+- POLYMORPHS / Neutrophils → neutrophils_pct
+- TLC / Total WBC / TOTAL COUNT (WBC) → wbc_count
+- PLT / Platelet Count / PLATELET COUNT → platelet_count
+- Hb / HGB / HEMOGLOBIN → hemoglobin
+- HCT / PCV / Packed Cell Volume → pcv
+- RDW-CV / RDW → rdw
+- RDW-SD / RDWSD → rdw_sd
+- PDW → use for mpv if MPV not present
+- P-LCR / PLCR → p_lcr
+- Absolute Neutrophil Count → neutrophils_abs
+- Absolute Lymphocyte Count → lymphocytes_abs
+- RBC Morphology / Peripheral Blood Smear → peripheral_smear
+
+SPECIAL CASES:
+- If platelet count shows "Marked Reduced On Smear" → extract numeric value if present, else null
+- If peripheral smear shows "Anisocytosis(+)" or "Neutrophilic Leucocytosis" → capture as string
+- If report has multiple pages, extract ALL values from all pages
+- If value is marked "Low", "High", "Borderline" → extract the numeric value only
+- If reference range is shown (e.g. "13.0 - 17.0") → ignore range, extract only the result value
+
+LAB-SPECIFIC NOTES:
+- Drlogy: Uses "Ok", "Low", "High", "Borderline" labels — extract numeric value
+- SRN Diagnostics: Uses "10^6/μL" for RBC, "10^3/μL" for WBC/Platelets
+- Apollo: Uses "mg/dL" for most biochemistry, "/cumm" for CBC
+- Healthians: Uses "th/cumm" for WBC, "thou/μL" for platelets
+- Redcliffe: Uses "10^6/μl" for RBC, "10^3/μl" for WBC
 
 Extract these fields:
 {
   "hemoglobin": number,           // Hb, HGB, Haemoglobin — g/dL
-  "rbc_count": number,            // RBC, Total RBC Count — million/cumm
+  "rbc_count": number,            // RBC, Total RBC Count — million/cumm (NOT multiplied)
   "pcv": number,                  // PCV, HCT, Hematocrit — %
-  "mcv": number,                  // MCV — fL
-  "mch": number,                  // MCH — pg
-  "mchc": number,                 // MCHC — g/dL
+  "mcv": number,                  // MCV, Mean Corpuscular Volume — fL
+  "mch": number,                  // MCH, Mean Corpuscular Hemoglobin — pg
+  "mchc": number,                 // MCHC, Mean Corpuscular Hemoglobin Concentration — g/dL or %
   "rdw": number,                  // RDW, RDW-CV — %
   "rdw_sd": number,               // RDW-SD — fL
   "mpv": number,                  // MPV, Mean Platelet Volume — fL
-  "wbc_count": number,            // WBC, TLC, Total Leucocyte Count — /cumm
+  "wbc_count": number,            // WBC, TLC, Total Leucocyte Count — /cumm (convert to absolute)
   "neutrophils_pct": number,      // Neutrophils, Polymorphs — %
   "lymphocytes_pct": number,      // Lymphocytes — %
   "monocytes_pct": number,        // Monocytes — %
@@ -135,13 +221,13 @@ Extract these fields:
   "lymphocytes_abs": number,      // Absolute Lymphocyte Count — /cumm
   "monocytes_abs": number,        // Absolute Monocyte Count — /cumm
   "eosinophils_abs": number,      // Absolute Eosinophil Count — /cumm
-  "platelet_count": number,       // PLT, Platelet Count — /cumm (convert if in Lakhs/K)
+  "platelet_count": number,       // PLT, Platelet Count — /cumm (convert to absolute count)
   "p_lcr": number,                // P-LCR, Platelet Large Cell Ratio — %
   "fasting_glucose": number,      // FBS, Fasting Blood Sugar, Fasting Glucose — mg/dL
-  "random_glucose": number,       // RBS, Random Blood Sugar, Random Glucose — mg/dL
+  "random_glucose": number,       // RBS, Random Blood Sugar, Random Glucose, GLUCOSE RANDOM — mg/dL
   "hba1c": number,                // HbA1c, Glycated Hemoglobin — %
-  "urea": number,                 // Urea, Blood Urea — mg/dL
-  "creatinine": number,           // Creatinine, Serum Creatinine — mg/dL
+  "urea": number,                 // Urea, Blood Urea, UREA SERUM — mg/dL
+  "creatinine": number,           // Creatinine, Serum Creatinine, CREATININE SERUM — mg/dL
   "uric_acid": number,            // Uric Acid — mg/dL
   "egfr": number,                 // eGFR — mL/min/1.73m2
   "sgpt": number,                 // SGPT, ALT — U/L
@@ -166,11 +252,28 @@ Extract these fields:
   "calcium": number,              // Calcium — mg/dL
   "sodium": number,               // Sodium — mEq/L
   "potassium": number,            // Potassium — mEq/L
-  "peripheral_smear": string,     // Any peripheral smear findings as text
-  "lab_name": string,             // Name of the laboratory
-  "report_date": string,          // Date of report
-  "lab_interpretation": string    // Doctor's interpretation/conclusion if present
+  "peripheral_smear": string,     // Any peripheral smear findings as text (e.g. "Anisocytosis(+)", "Neutrophilic Leucocytosis")
+  "lab_name": string,             // Name of the laboratory (e.g. "DRLOGY PATHOLOGY LAB", "SRN DIAGNOSTICS", "Apollo Diagnostics")
+  "report_date": string,          // Date of report in any format
+  "lab_interpretation": string    // Doctor's interpretation/conclusion if present (e.g. "Further confirm for Anemia")
 }
+
+EXAMPLES FROM REAL REPORTS:
+1. Drlogy Report: "Hemoglobin (Hb): 12.5, Low, 13.0-17.0 g/dL" → hemoglobin: 12.5
+2. SRN Report: "PLATELET COUNT: 150, 10^3/μL" → platelet_count: 150000
+3. Apollo Report: "GLUCOSE, RANDOM: 105 mg/dL" → random_glucose: 105
+4. Bio Rad Lab: "Platelet Count: 160000 /cumm" → platelet_count: 160000
+5. Healthians: "TLC: 4.84 th/cumm" → wbc_count: 4840
+6. Redcliffe: "Hemoglobin: 12.8 g/dL" → hemoglobin: 12.8
+
+VALIDATION:
+- Hemoglobin: 8-20 g/dL (typical range)
+- RBC: 3.5-7.0 million/cumm
+- WBC: 3000-15000 /cumm
+- Platelets: 50000-500000 /cumm
+- If extracted value is outside these ranges by 10x, check unit conversion
+
+Return ONLY the JSON object, nothing else.
 """
 
 
