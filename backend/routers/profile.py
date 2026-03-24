@@ -23,7 +23,22 @@ async def get_profile(user_id: str = Depends(get_current_user_id), db: AsyncSess
     user = result.scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    return user
+    return {
+        "id": str(user.id),
+        "health_id": user.health_id,
+        "full_name": user.full_name,
+        "phone_number": user.phone_number,
+        "gender": user.gender,
+        "date_of_birth": str(user.date_of_birth) if user.date_of_birth else None,
+        "bmi": float(user.bmi) if user.bmi else None,
+        "weight_kg": float(user.weight_kg) if user.weight_kg else None,
+        "height_cm": float(user.height_cm) if user.height_cm else None,
+        "waist_cm": float(user.waist_cm) if user.waist_cm else None,
+        "profile_photo_url": user.profile_photo_url,
+        "aadhaar_verified": bool(user.aadhaar_verified) if hasattr(user, 'aadhaar_verified') else False,
+        "aadhaar_last4": getattr(user, 'aadhaar_last4', None),
+        "created_at": str(user.created_at) if hasattr(user, 'created_at') and user.created_at else None,
+    }
 
 
 @router.put("/update")
@@ -54,7 +69,20 @@ async def update_profile(
     if user.weight_kg and user.height_cm:
         user.bmi = round(user.weight_kg / ((user.height_cm / 100) ** 2), 2)
     await db.commit()
-    return user
+    return {
+        "id": str(user.id),
+        "health_id": user.health_id,
+        "full_name": user.full_name,
+        "phone_number": user.phone_number,
+        "gender": user.gender,
+        "date_of_birth": str(user.date_of_birth) if user.date_of_birth else None,
+        "bmi": float(user.bmi) if user.bmi else None,
+        "weight_kg": float(user.weight_kg) if user.weight_kg else None,
+        "height_cm": float(user.height_cm) if user.height_cm else None,
+        "profile_photo_url": user.profile_photo_url,
+        "aadhaar_verified": bool(user.aadhaar_verified) if hasattr(user, 'aadhaar_verified') else False,
+        "aadhaar_last4": getattr(user, 'aadhaar_last4', None),
+    }
 
 
 class PasswordChange(BaseModel):

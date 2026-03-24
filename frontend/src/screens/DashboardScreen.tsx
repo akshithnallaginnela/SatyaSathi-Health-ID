@@ -300,14 +300,14 @@ export default function DashboardScreen({ onLogout }: { onLogout: () => void; ke
         {/* 4. PREVENTIVE ANALYTICS */}
         <div className="bg-white border-[1.5px] border-border-teal rounded-[28px] p-6 shadow-sm">
           <div className="flex items-center justify-between mb-1">
-            <h3 className="text-dark-teal font-extrabold text-[18px] leading-tight">Body Health & Insights</h3>
+            <h3 className="text-dark-teal font-extrabold text-[18px] leading-tight">Future Health Predictions</h3>
             {hasReport && (
               <span className="bg-[#E8F9F7] text-primary-teal text-[9px] font-bold px-2 py-0.5 rounded-full border border-teal-border/30">
-                Medical Report Included
+                Report Included
               </span>
             )}
           </div>
-          <p className="text-[#A0A0A0] text-[11px] font-semibold italic mb-6">AI-driven analysis — not a diagnosis.</p>
+          <p className="text-[#A0A0A0] text-[11px] font-semibold italic mb-6">What your data predicts — not a diagnosis.</p>
 
           {!hasData ? (
              <div className="py-6 text-center bg-gray-50 rounded-2xl border border-dashed border-gray-200">
@@ -322,16 +322,33 @@ export default function DashboardScreen({ onLogout }: { onLogout: () => void; ke
                 if (scoreValue > 70) barColor = 'bg-[#FF6B6B]';
                 else if (scoreValue > 40) barColor = 'bg-[#FFB84D]';
 
+                // Urgency badge config
+                const urgencyConfig: any = {
+                  great:    { label: '✅ On Track',    bg: '#DCFCE7', color: '#15803D' },
+                  watch:    { label: '👀 Watch',       bg: '#FEF3C7', color: '#D97706' },
+                  focus:    { label: '⚠️ Focus',       bg: '#FEE2E2', color: '#DC2626' },
+                  act_now:  { label: '🚨 Act Now',     bg: '#FEE2E2', color: '#B91C1C' },
+                };
+                const ub = urgencyConfig[item.urgency] || urgencyConfig.watch;
+
                 return (
                   <div key={idx}>
-                    <div className="flex justify-between items-center mb-1.5">
+                    <div className="flex justify-between items-start mb-1.5">
                       <span className="text-[11px] font-bold text-dark-teal uppercase tracking-tight">{categoryLabel[item.category] || item.category}</span>
-                      <span className="text-[11px] font-extrabold text-dark-teal">{item.current_status}</span>
+                      <span className="text-[9px] font-extrabold px-2 py-0.5 rounded-full" style={{ background: ub.bg, color: ub.color }}>{ub.label}</span>
                     </div>
+                    <p className="text-[11px] font-semibold text-muted-teal mb-2">{item.current_status}</p>
                     <div className="h-2.5 w-full bg-gray-100 rounded-full overflow-hidden mb-3">
                       <motion.div initial={{ width: 0 }} animate={{ width: `${scoreValue}%` }} transition={{ duration: 1 }} className={`h-full rounded-full ${barColor}`} />
                     </div>
                     <p className="text-[13px] text-dark-teal/80 font-medium leading-normal mb-2">{item.future_risk_message}</p>
+                    {/* Risk horizon timeline badge */}
+                    {(item.horizon || item.risk_horizon) && (
+                      <div className="flex items-center gap-1.5 bg-[#F8F4FF] border border-purple-100 px-2.5 py-1.5 rounded-xl mb-2">
+                        <span className="text-purple-400 text-[10px]">🕐</span>
+                        <span className="text-[10px] font-bold text-purple-600">{item.horizon || item.risk_horizon}</span>
+                      </div>
+                    )}
                     {item.top_action && (
                       <div className="inline-flex items-center gap-1.5 bg-[#F0FDFB] border border-teal-border/20 px-2 py-1 rounded-lg">
                         <div className="w-1 h-1 bg-primary-teal rounded-full" />
@@ -375,7 +392,6 @@ export default function DashboardScreen({ onLogout }: { onLogout: () => void; ke
                   </ul>
                 </div>
               )}
-            </div>
           </div>
         )}
 
