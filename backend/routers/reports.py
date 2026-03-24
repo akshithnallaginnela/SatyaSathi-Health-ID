@@ -142,8 +142,18 @@ async def analyze_report(
     if not status:
         status = UserDataStatus(user_id=user_id)
         db.add(status)
-    status.has_report = True
-    status.report_count += 1
+
+    # Only mark has_report=True if we actually extracted health values
+    health_keys = ["hemoglobin", "rbc_count", "wbc_count", "platelet_count",
+                   "fasting_glucose", "random_glucose", "creatinine", "urea",
+                   "hba1c", "sgpt", "total_cholesterol", "tsh", "vitamin_d", "vitamin_b12"]
+    extracted_health_count = sum(1 for k in health_keys if extracted.get(k) is not None)
+    if extracted_health_count > 0:
+        status.has_report = True
+        status.report_count += 1
+        print(f"✅ Report marked valid — {extracted_health_count} health values extracted")
+    else:
+        print(f"⚠️ OCR extracted 0 health values — report saved but not marked as valid data source")
     
     await db.flush()
     
