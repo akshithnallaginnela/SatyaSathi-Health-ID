@@ -132,6 +132,30 @@ async def analyze_report(
         import traceback
         traceback.print_exc()
         analysis = None
+    # 7. Auto-create water reminders (hourly from 8AM to 9PM)
+    try:
+        from models.reminder import Reminder
+        from sqlalchemy import select as sel
+        existing_water = await db.execute(
+            sel(Reminder).where(Reminder.user_id == user_id, Reminder.reminder_type == "water")
+        )
+        if len(existing_water.scalars().all()) < 5:
+            water_hours = ["08:00", "09:00", "10:00", "11:00", "12:00", "13:00",
+                           "14:00", "15:00", "16:00", "17:00", "18:00", "19:00",
+                           "20:00", "21:00"]
+            for hour in water_hours:
+                db.add(Reminder(
+                    user_id=user_id,
+                    title="💧 Drink Water",
+                    message="Time to hydrate! Drink a glass of water.",
+                    reminder_time=hour,
+                    reminder_type="water",
+                    is_recurring=True,
+                    is_active=True,
+                ))
+            print(f"💧 Created {len(water_hours)} water reminders for user {user_id}")
+    except Exception as e:
+        print(f"⚠️ Water reminders creation error: {e}")
     
     await db.commit()
     
