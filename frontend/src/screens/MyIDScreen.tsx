@@ -166,7 +166,7 @@ export default function MyIDScreen({ user, onLogout, onReportUploaded }: {
   const labelClass = "text-[#7ECCC7] text-[10px] font-extrabold uppercase tracking-wider";
 
   return (
-    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="pb-32">
+    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="relative pb-32">
 
       {/* Header */}
       <div className="bg-[#26C6BF] pt-12 pb-16 px-6 relative overflow-hidden">
@@ -377,9 +377,9 @@ export default function MyIDScreen({ user, onLogout, onReportUploaded }: {
       {/* ── Modals ── */}
       <AnimatePresence>
         {modal && (
-          <div className="fixed inset-0 bg-[#1A3A38]/40 backdrop-blur-sm flex items-end justify-center z-50 p-4 pb-24">
+          <div className="absolute inset-0 bg-[#1A3A38]/40 backdrop-blur-sm flex items-end justify-center z-50 pb-20 px-4">
             <motion.div initial={{ y: 300, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 300, opacity: 0 }}
-              className="bg-white w-full max-w-[400px] rounded-[32px] p-6 shadow-2xl">
+              className="bg-white w-full rounded-[32px] p-6 shadow-2xl">
               <div className="flex justify-between items-center mb-5">
                 <h2 className="text-[#1A3A38] font-extrabold text-xl">
                   {modal === 'reminder' ? 'Create Reminder' : modal === 'password' ? 'Change Password' : 'Edit Profile'}

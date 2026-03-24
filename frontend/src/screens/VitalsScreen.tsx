@@ -8,7 +8,8 @@ type LogTab = 'BP' | 'SUGAR' | 'BMI';
 function getBPStatus(sys: number, dia: number) {
   if (sys < 120 && dia < 80) return { label: 'Normal', color: '#22C55E', bg: '#DCFCE7' };
   if (sys < 130 && dia < 80) return { label: 'Elevated', color: '#F59E0B', bg: '#FEF3C7' };
-  if (sys < 140 || dia < 90) return { label: 'High Stage 1', color: '#EF4444', bg: '#FEE2E2' };
+  if (sys < 140 && dia < 90) return { label: 'High Stage 1', color: '#EF4444', bg: '#FEE2E2' };
+  if (sys >= 140 || dia >= 90) return { label: 'High Stage 1', color: '#EF4444', bg: '#FEE2E2' };
   return { label: 'High Stage 2', color: '#DC2626', bg: '#FEE2E2' };
 }
 
@@ -107,10 +108,10 @@ export default function VitalsScreen() {
   const labelClass = "text-[#7ECCC7] text-[10px] font-extrabold uppercase tracking-wider";
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="relative bg-[#FAFAFA] min-h-full pb-32">
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="relative bg-[#FAFAFA] min-h-full pb-4 flex flex-col">
 
       {/* Header */}
-      <div className="bg-[#26C6BF] w-full pt-16 pb-10 px-6 rounded-b-[30px] shadow-sm">
+      <div className="bg-[#26C6BF] w-full pt-16 pb-10 px-6 rounded-b-[30px] shadow-sm shrink-0">
         <h1 className="text-white text-[26px] font-extrabold">Health Vitals</h1>
         <p className="text-[#C8F0EC] text-[15px] font-medium mt-1">Track your key health metrics</p>
       </div>
@@ -254,18 +255,20 @@ export default function VitalsScreen() {
         </div>
       </div>
 
-      {/* FAB */}
-      <button onClick={() => setShowModal(true)}
-        className="fixed bottom-28 right-6 w-16 h-16 bg-[#26C6BF] text-white rounded-[24px] shadow-[0_8px_20px_rgba(38,198,191,0.4)] flex items-center justify-center hover:scale-105 transition-transform z-40">
-        <Plus size={32}/>
-      </button>
+      {/* FAB — sticky at bottom of scroll area */}
+      <div className="sticky bottom-4 flex justify-end px-6 pb-2 pointer-events-none">
+        <button onClick={() => setShowModal(true)}
+          className="pointer-events-auto w-14 h-14 bg-[#26C6BF] text-white rounded-[20px] shadow-[0_8px_24px_rgba(38,198,191,0.5)] flex items-center justify-center hover:scale-105 active:scale-95 transition-transform z-40">
+          <Plus size={28}/>
+        </button>
+      </div>
 
       {/* Log Modal */}
       <AnimatePresence>
         {showModal && (
-          <div className="fixed inset-0 bg-[#1A3A38]/40 backdrop-blur-sm flex items-end justify-center z-50 p-4 pb-24">
+          <div className="absolute inset-0 bg-[#1A3A38]/50 backdrop-blur-sm flex items-end justify-center z-50 pb-20 px-4">
             <motion.div initial={{ y: 300, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 300, opacity: 0 }}
-              className="bg-white w-full max-w-[400px] rounded-[32px] p-6 shadow-2xl">
+              className="bg-white w-full rounded-[32px] p-6 shadow-2xl">
               <div className="flex justify-between items-center mb-5">
                 <h2 className="text-[#1A3A38] font-extrabold text-xl">Log Vitals</h2>
                 <button onClick={() => { setShowModal(false); setNotice(''); }} className="text-[#7ECCC7] bg-[#F2FDFB] p-2 rounded-full"><X size={20}/></button>

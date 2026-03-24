@@ -405,6 +405,7 @@ export default function DashboardScreen({ onLogout }: { onLogout: () => void; ke
                   </ul>
                 </div>
               )}
+            </div>
           </div>
         )}
 
