@@ -6,16 +6,17 @@ import uuid
 from datetime import datetime, date
 from typing import Optional, Dict, Any
 from pydantic import BaseModel
-from sqlalchemy import Column, String, Integer, Boolean, DateTime, Date, ForeignKey
+from sqlalchemy import Column, String, Integer, Boolean, DateTime, Date, ForeignKey, Text
 from sqlalchemy.dialects.sqlite import JSON
 from database import Base
+from models.domain import GUID
 
 
 class DailyTask(Base):
     __tablename__ = "daily_tasks"
 
-    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    user_id = Column(String(36), ForeignKey("users.id"), nullable=False, index=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    user_id = Column(GUID(), ForeignKey("users.id"), nullable=False, index=True)
     task_type = Column(String(50), nullable=False)  # LOG_BP, MORNING_WALK, WATER_INTAKE, etc.
     task_name = Column(String(100), nullable=False)
     coins_reward = Column(Integer, default=0)
