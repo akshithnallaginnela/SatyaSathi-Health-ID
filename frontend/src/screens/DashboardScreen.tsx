@@ -51,8 +51,8 @@ export default function DashboardScreen({ onLogout }: { onLogout: () => void; ke
       lastFetchRef.current = Date.now();
     } catch (e: any) {
       console.error("Dashboard fetch error", e);
-      // Auto-logout if session is invalid or user not found
-      if (e.status === 401 || e.status === 404 || e.message?.includes('401') || e.message?.includes('404')) {
+      // Only logout on explicit 401 (invalid token), not 404 or network errors
+      if (e.status === 401) {
         clearTokens();
         onLogout();
       }
