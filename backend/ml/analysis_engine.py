@@ -1006,7 +1006,10 @@ async def run_full_analysis(user_id: str, db: AsyncSession):
     tasks = generate_daily_tasks(features, user)
     diet = generate_diet_plan(features)
 
-    print(f"🔬 Analysis: health_index={health_index}, care={len(preventive)}, tasks={len(tasks)}, diet={diet.get('focus_type') if diet else 'None'}")
+    print(f"🔬 Analysis for {user_id}:")
+    print(f"   BP={features.get('bp_systolic_latest')}, Sugar={features.get('sugar_latest')}, BMI={features.get('bmi')}")
+    print(f"   Hb={features.get('hemoglobin')}, Platelets={features.get('platelet_count')}, has_report={features.get('has_report')}")
+    print(f"   health_index={health_index}, care={len(preventive)}, tasks={len(tasks)}, diet={diet.get('focus_type') if diet else 'None'}")
 
     await save_preventive_care(user_id, preventive, db)
     await replace_todays_tasks(user_id, tasks, db)
