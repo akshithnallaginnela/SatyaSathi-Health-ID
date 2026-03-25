@@ -2,7 +2,6 @@ import React, { useRef } from 'react';
 import { motion } from 'motion/react';
 import { Download, Shield } from 'lucide-react';
 import QRCode from 'qrcode';
-import html2canvas from 'html2canvas';
 
 interface HealthIDCardProps {
   profile: any;
@@ -27,23 +26,43 @@ export default function HealthIDCard({ profile, onDownload }: HealthIDCardProps)
     if (!cardRef.current) return;
     
     try {
+      // Try to load html2canvas
+      const html2canvasModule = await import('html2canvas');
+      const html2canvas = html2canvasModule.default || html2canvasModule;
+      
+      if (typeof html2canvas !== 'function') {
+        throw new Error('html2canvas not loaded properly');
+      }
+      
       const canvas = await html2canvas(cardRef.current, {
         scale: 2,
         backgroundColor: '#ffffff',
         logging: false,
         useCORS: true,
+        allowTaint: true,
       });
       
-      const link = document.createElement('a');
-      link.download = `VitalID_${profile?.health_id || 'card'}.png`;
-      link.href = canvas.toDataURL('image/png');
-      link.click();
+      // Convert to blob and download
+      canvas.toBlob((blob) => {
+        if (blob) {
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.download = `VitalID_${profile?.health_id || 'card'}.png`;
+          link.href = url;
+          link.click();
+          URL.revokeObjectURL(url);
+          
+          if (onDownload) onDownload();
+        }
+      }, 'image/png');
       
-      if (onDownload) onDownload();
     } catch (e) {
       console.error('Download failed:', e);
-      // Fallback: just show a message
-      alert('Download feature is not available. You can take a screenshot of the card instead.');
+      
+      // Alternative: Open print dialog
+      if (confirm('Download library not available. Would you like to print the card instead? (You can save as PDF)')) {
+        window.print();
+      }
     }
   };
 
