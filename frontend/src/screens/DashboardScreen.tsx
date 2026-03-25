@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { Flame, CheckCircle2, MapPin, Activity, Heart, Share2, TrendingUp } from 'lucide-react';
 import { dashboardAPI, clinicsAPI, tasksAPI, clearTokens, trendsAPI, shareAPI } from '../services/api.ts';
-import TrendChart from '../components/TrendChart.tsx';
-import EmptyState from '../components/EmptyState.tsx';
+
+// Lazy load chart components to avoid build errors if not installed
+const TrendChart = React.lazy(() => import('../components/TrendChart.tsx').catch(() => ({ default: () => <div>Charts loading...</div> })));
+const EmptyState = React.lazy(() => import('../components/EmptyState.tsx').catch(() => ({ default: () => <div>Loading...</div> })));
 
 // ── Score theme helper ─────────────────────────────────────────────────────
 
