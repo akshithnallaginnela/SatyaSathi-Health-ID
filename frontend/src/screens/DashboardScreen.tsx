@@ -532,7 +532,18 @@ export default function DashboardScreen({ onLogout }: { onLogout: () => void; ke
                 {bpTrend && bpTrend.data.length > 0 ? (
                   <div className="bg-white border border-[#E8F1F1] rounded-2xl p-5 shadow-sm">
                     <h4 className="text-dark-teal font-extrabold text-sm mb-3">Blood Pressure (Last 30 Days)</h4>
-                    <React.Suspense fallback={<div className="h-48 flex items-center justify-center text-gray-400">Loading chart...</div>}>
+                    
+                    {/* Try to show chart, fallback to simple view */}
+                    <React.Suspense fallback={
+                      <div className="space-y-2">
+                        {bpTrend.data.slice(-5).reverse().map((d: any, i: number) => (
+                          <div key={i} className="flex justify-between items-center p-2 bg-gray-50 rounded-lg">
+                            <span className="text-xs text-gray-600">{new Date(d.date).toLocaleDateString()}</span>
+                            <span className="text-sm font-bold text-dark-teal">{d.systolic}/{d.diastolic} mmHg</span>
+                          </div>
+                        ))}
+                      </div>
+                    }>
                       <TrendChart
                         data={bpTrend.data.map((d: any) => ({ date: d.date, value: d.systolic, value2: d.diastolic }))}
                         label="Systolic"
@@ -542,6 +553,7 @@ export default function DashboardScreen({ onLogout }: { onLogout: () => void; ke
                         yAxisLabel="mmHg"
                       />
                     </React.Suspense>
+                    
                     <div className="mt-3 grid grid-cols-3 gap-2 text-center">
                       <div className="bg-gray-50 rounded-lg p-2">
                         <p className="text-[9px] text-gray-500 font-bold uppercase">Average</p>
@@ -563,7 +575,18 @@ export default function DashboardScreen({ onLogout }: { onLogout: () => void; ke
                 {sugarTrend && sugarTrend.data.length > 0 ? (
                   <div className="bg-white border border-[#E8F1F1] rounded-2xl p-5 shadow-sm">
                     <h4 className="text-dark-teal font-extrabold text-sm mb-3">Blood Sugar (Last 30 Days)</h4>
-                    <React.Suspense fallback={<div className="h-48 flex items-center justify-center text-gray-400">Loading chart...</div>}>
+                    
+                    {/* Try to show chart, fallback to simple view */}
+                    <React.Suspense fallback={
+                      <div className="space-y-2">
+                        {sugarTrend.data.slice(-5).reverse().map((d: any, i: number) => (
+                          <div key={i} className="flex justify-between items-center p-2 bg-gray-50 rounded-lg">
+                            <span className="text-xs text-gray-600">{new Date(d.date).toLocaleDateString()}</span>
+                            <span className="text-sm font-bold text-dark-teal">{d.glucose} mg/dL</span>
+                          </div>
+                        ))}
+                      </div>
+                    }>
                       <TrendChart
                         data={sugarTrend.data.map((d: any) => ({ date: d.date, value: d.glucose }))}
                         label="Fasting Glucose"
@@ -571,6 +594,7 @@ export default function DashboardScreen({ onLogout }: { onLogout: () => void; ke
                         yAxisLabel="mg/dL"
                       />
                     </React.Suspense>
+                    
                     <div className="mt-3 grid grid-cols-3 gap-2 text-center">
                       <div className="bg-gray-50 rounded-lg p-2">
                         <p className="text-[9px] text-gray-500 font-bold uppercase">Average</p>
