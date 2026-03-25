@@ -96,8 +96,7 @@ export default function HealthIDCard({ profile, onDownload }: HealthIDCardProps)
           className="absolute top-0 left-0 right-0 px-4 flex items-center"
           style={{
             height: '15%',
-            backgroundColor: '#ffffff',
-            borderBottom: '2px solid #26C6BF'
+            background: 'linear-gradient(135deg, #26C6BF 0%, #1FA89E 100%)'
           }}
         >
           <div className="flex items-center gap-2">
@@ -106,16 +105,16 @@ export default function HealthIDCard({ profile, onDownload }: HealthIDCardProps)
               style={{
                 width: '32px',
                 height: '32px',
-                backgroundColor: '#26C6BF'
+                backgroundColor: '#ffffff'
               }}
             >
-              <Heart size={16} style={{ color: '#ffffff', fill: '#ffffff' }} />
+              <Heart size={16} style={{ color: '#26C6BF', fill: '#26C6BF' }} />
             </div>
             <div>
               <p
                 className="font-extrabold leading-none"
                 style={{
-                  color: '#26C6BF',
+                  color: '#ffffff',
                   fontSize: '14px'
                 }}
               >
@@ -124,7 +123,7 @@ export default function HealthIDCard({ profile, onDownload }: HealthIDCardProps)
               <p
                 className="font-semibold"
                 style={{
-                  color: '#6b7280',
+                  color: 'rgba(255, 255, 255, 0.9)',
                   fontSize: '8px',
                   marginTop: '2px'
                 }}
@@ -173,13 +172,14 @@ export default function HealthIDCard({ profile, onDownload }: HealthIDCardProps)
             </div>
           </div>
 
-          <div style={{ width: '59%' }} className="h-full flex flex-col justify-between py-2">
+          <div style={{ width: '59%' }} className="h-full flex flex-col justify-between py-3">
             <div>
               <p
                 className="font-extrabold leading-none uppercase tracking-wide"
                 style={{
                   color: '#1A3A38',
-                  fontSize: '15px'
+                  fontSize: '14px',
+                  marginBottom: '4px'
                 }}
               >
                 {profile?.full_name || 'User Name'}
@@ -201,14 +201,14 @@ export default function HealthIDCard({ profile, onDownload }: HealthIDCardProps)
                 className="font-bold"
                 style={{
                   color: '#1A3A38',
-                  fontSize: '11px'
+                  fontSize: '10px'
                 }}
               >
                 {dob}
               </p>
             </div>
 
-            <div className="flex gap-8">
+            <div className="flex gap-6">
               <div>
                 <p
                   className="font-bold uppercase tracking-wide"
@@ -224,7 +224,7 @@ export default function HealthIDCard({ profile, onDownload }: HealthIDCardProps)
                   className="font-bold capitalize"
                   style={{
                     color: '#1A3A38',
-                    fontSize: '11px'
+                    fontSize: '10px'
                   }}
                 >
                   {profile?.gender || 'Male'}
@@ -245,7 +245,7 @@ export default function HealthIDCard({ profile, onDownload }: HealthIDCardProps)
                   className="font-bold"
                   style={{
                     color: '#1A3A38',
-                    fontSize: '11px'
+                    fontSize: '10px'
                   }}
                 >
                   {profile?.blood_group || '—'}
@@ -255,12 +255,12 @@ export default function HealthIDCard({ profile, onDownload }: HealthIDCardProps)
 
             <div>
               <p
-                className="font-extrabold font-mono overflow-hidden"
+                className="font-extrabold font-mono"
                 style={{
                   color: '#26C6BF',
-                  fontSize: '15px',
-                  letterSpacing: '0.12em',
-                  whiteSpace: 'nowrap'
+                  fontSize: '13px',
+                  letterSpacing: '0.1em',
+                  lineHeight: '1.2'
                 }}
               >
                 {formatHealthId(profile?.health_id)}
@@ -302,14 +302,13 @@ export default function HealthIDCard({ profile, onDownload }: HealthIDCardProps)
           className="absolute bottom-0 left-0 right-0 px-4 flex items-center justify-center"
           style={{
             height: '12%',
-            backgroundColor: '#ffffff',
-            borderTop: '1px solid #e5e7eb'
+            background: 'linear-gradient(135deg, #1A3A38 0%, #2D5856 100%)'
           }}
         >
           <p
             className="font-semibold italic text-center"
             style={{
-              color: '#6b7280',
+              color: '#ffffff',
               fontSize: '9px'
             }}
           >
@@ -321,7 +320,7 @@ export default function HealthIDCard({ profile, onDownload }: HealthIDCardProps)
       <button
         onClick={downloadAsPDF}
         style={{
-          backgroundColor: '#26C6BF'
+          background: 'linear-gradient(135deg, #26C6BF 0%, #1FA89E 100%)'
         }}
         className="w-full text-white font-extrabold py-4 rounded-2xl shadow-lg flex items-center justify-center gap-2 hover:shadow-xl transition-all"
       >
