@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { Flame, CheckCircle2, MapPin, Activity, Heart } from 'lucide-react';
-import { dashboardAPI, clinicsAPI, tasksAPI, clearTokens } from '../services/api.ts';
+import { Flame, CheckCircle2, MapPin, Activity, Heart, Share2, TrendingUp } from 'lucide-react';
+import { dashboardAPI, clinicsAPI, tasksAPI, clearTokens, trendsAPI, shareAPI } from '../services/api.ts';
+import TrendChart from '../components/TrendChart.tsx';
+import EmptyState from '../components/EmptyState.tsx';
 
 // ── Score theme helper ─────────────────────────────────────────────────────
 
@@ -52,6 +54,10 @@ export default function DashboardScreen({ onLogout }: { onLogout: () => void; ke
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [clinics, setClinics] = useState<any[]>([]);
+  const [bpTrend, setBpTrend] = useState<any>(null);
+  const [sugarTrend, setSugarTrend] = useState<any>(null);
+  const [showTrends, setShowTrends] = useState(false);
+  const [sharing, setSharing] = useState(false);
   const lastFetchRef = React.useRef<number>(0);
 
   const fetchDashboard = async () => {
@@ -119,6 +125,40 @@ export default function DashboardScreen({ onLogout }: { onLogout: () => void; ke
       await tasksAPI.completeTask(taskId);
     } catch (e) {
       console.error(e);
+    }
+  };
+
+  const loadTrends = async () => {
+    try {
+      const [bp, sugar] = await Promise.all([
+        trendsAPI.getBP(30),
+        trendsAPI.getSugar(30)
+      ]);
+      setBpTrend(bp);
+      setSugarTrend(sugar);
+      setShowTrends(true);
+    } catch (e) {
+      console.error('Trends load error', e);
+    }
+  };
+
+  const handleShare = async () => {
+    setSharing(true);
+    try {
+      const summary = await shareAPI.getHealthSummary();
+      if (navigator.share) {
+        await navigator.share({
+          title: 'My VitalID Health Report',
+          text: summary.message,
+        });
+      } else {
+        // Fallback: Open WhatsApp
+        window.open(summary.whatsapp_url, '_blank');
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setSharing(false);
     }
   };
 
