@@ -144,6 +144,8 @@ export default function DashboardScreen({ onLogout }: { onLogout: () => void; ke
       setShowTrends(true);
     } catch (e) {
       console.error('Trends load error', e);
+      // Don't set showTrends to true if there's an error
+      alert('Could not load trends. Make sure you have logged some vitals.');
     }
   };
 
