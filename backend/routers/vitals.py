@@ -1,13 +1,13 @@
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from typing import Optional, List
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, desc
+from sqlalchemy import select, desc, func
 
 from database import get_db, async_session
 from models.domain import (
-    BPReading, SugarReading, UserDataStatus, 
-    BPCreate, SugarCreate, User
+    BPReading, SugarReading, UserDataStatus,
+    BPCreate, SugarCreate, User, CoinLedger
 )
 from security.jwt_handler import get_current_user_id
 from ml.analysis_engine import run_full_analysis
@@ -36,7 +36,24 @@ async def log_bp(
     user_id: str = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
-    """Log BP and trigger analysis."""
+    """Log BP and trigger analysis. Awards 20 coins if last BP was 7+ days ago."""
+    # Check previous BP reading date BEFORE adding the new one
+    prev_result = await db.execute(
+        select(BPReading)
+        .where(BPReading.user_id == user_id)
+        .order_by(desc(BPReading.measured_at))
+        .limit(1)
+    )
+    prev_bp = prev_result.scalar_one_or_none()
+    
+    coins_awarded = 0
+    streak_bonus = False
+    if prev_bp:
+        days_since = (datetime.utcnow() - prev_bp.measured_at).days
+        if days_since >= 7:
+            coins_awarded = 20
+            streak_bonus = True
+
     new_reading = BPReading(
         user_id=user_id,
         systolic=reading.systolic,
@@ -47,6 +64,14 @@ async def log_bp(
     )
     db.add(new_reading)
     await _update_status(user_id, "bp", db)
+
+    if coins_awarded > 0:
+        db.add(CoinLedger(
+            user_id=user_id,
+            amount=coins_awarded,
+            activity_type="BP_WEEKLY_STREAK"
+        ))
+
     await db.commit()
 
     # Trigger AI analysis in fresh session so it sees the new reading
@@ -54,11 +79,11 @@ async def log_bp(
         async with async_session() as analysis_db:
             analysis = await run_full_analysis(user_id, analysis_db)
             await analysis_db.commit()
-        print(f"✅ BP logged + analysis: health_index={analysis.get('health_index') if analysis else 'N/A'}, tasks={len(analysis.get('tasks',[])) if analysis else 0}, diet={analysis.get('diet',{}).get('focus_type') if analysis else 'None'}")
+        print(f"BP logged + analysis done, tasks={len(analysis.get('tasks',[])) if analysis else 0}")
     except Exception as e:
-        print(f"⚠️ Analysis error after BP log: {e}")
+        print(f"Analysis error after BP log: {e}")
         analysis = None
-    
+
     return {
         "message": "BP logged and analysis updated",
         "reading": {
@@ -66,6 +91,8 @@ async def log_bp(
             "diastolic": new_reading.diastolic,
             "date": str(new_reading.date)
         },
+        "coins_awarded": coins_awarded,
+        "streak_bonus": streak_bonus,
         "analysis_updated": analysis is not None
     }
 
@@ -75,7 +102,24 @@ async def log_sugar(
     user_id: str = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
-    """Log Sugar and trigger analysis."""
+    """Log Sugar and trigger analysis. Awards 20 coins if last sugar was 7+ days ago."""
+    # Check previous sugar reading date BEFORE adding the new one
+    prev_result = await db.execute(
+        select(SugarReading)
+        .where(SugarReading.user_id == user_id)
+        .order_by(desc(SugarReading.measured_at))
+        .limit(1)
+    )
+    prev_sugar = prev_result.scalar_one_or_none()
+
+    coins_awarded = 0
+    streak_bonus = False
+    if prev_sugar:
+        days_since = (datetime.utcnow() - prev_sugar.measured_at).days
+        if days_since >= 7:
+            coins_awarded = 20
+            streak_bonus = True
+
     new_reading = SugarReading(
         user_id=user_id,
         fasting_glucose=reading.fasting_glucose,
@@ -83,6 +127,14 @@ async def log_sugar(
     )
     db.add(new_reading)
     await _update_status(user_id, "sugar", db)
+
+    if coins_awarded > 0:
+        db.add(CoinLedger(
+            user_id=user_id,
+            amount=coins_awarded,
+            activity_type="SUGAR_WEEKLY_STREAK"
+        ))
+
     await db.commit()
 
     # Trigger AI analysis in fresh session so it sees the new reading
@@ -90,17 +142,19 @@ async def log_sugar(
         async with async_session() as analysis_db:
             analysis = await run_full_analysis(user_id, analysis_db)
             await analysis_db.commit()
-        print(f"✅ Sugar logged + analysis: health_index={analysis.get('health_index') if analysis else 'N/A'}, tasks={len(analysis.get('tasks',[])) if analysis else 0}, diet={analysis.get('diet',{}).get('focus_type') if analysis else 'None'}")
+        print(f"Sugar logged + analysis done, tasks={len(analysis.get('tasks',[])) if analysis else 0}")
     except Exception as e:
-        print(f"⚠️ Analysis error after Sugar log: {e}")
+        print(f"Analysis error after Sugar log: {e}")
         analysis = None
-    
+
     return {
         "message": "Sugar logged and analysis updated",
         "reading": {
             "fasting_glucose": new_reading.fasting_glucose,
             "date": str(new_reading.date)
         },
+        "coins_awarded": coins_awarded,
+        "streak_bonus": streak_bonus,
         "analysis_updated": analysis is not None
     }
 

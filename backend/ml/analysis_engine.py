@@ -120,6 +120,11 @@ def build_features(user, bp_readings, sugar_readings, report) -> dict:
             f["bp_systolic_min"] = min(sys_vals)
             f["bp_systolic_max"] = max(sys_vals)
             f["bp_readings_count"] = len(sys_vals)
+
+            # Days since last BP reading
+            from datetime import date as _date
+            latest_bp_date = bp_readings[0].measured_at.date() if hasattr(bp_readings[0].measured_at, 'date') else bp_readings[0].measured_at
+            f["days_since_last_bp"] = (_date.today() - latest_bp_date).days
             
             if len(sys_vals) >= 4:
                 mid = len(sys_vals) // 2
@@ -162,6 +167,11 @@ def build_features(user, bp_readings, sugar_readings, report) -> dict:
             f["sugar_max"] = max(sg_vals)
             f["sugar_readings_count"] = len(sg_vals)
             f["sugar_above_100_count"] = sum(1 for v in sg_vals if v > 100)
+
+            # Days since last sugar reading
+            from datetime import date as _date
+            latest_sugar_date = sugar_readings[0].measured_at.date() if hasattr(sugar_readings[0].measured_at, 'date') else sugar_readings[0].measured_at
+            f["days_since_last_sugar"] = (_date.today() - latest_sugar_date).days
             
             if len(sg_vals) >= 4:
                 mid = len(sg_vals) // 2
@@ -307,7 +317,7 @@ def generate_preventive_care(features: dict) -> list[dict]:
         return care_items
     
     # ── BP Care ──
-    bp_avg = features.get("bp_systolic_latest", features.get("bp_systolic_avg"))
+    bp_avg = features.get("bp_systolic_avg", features.get("bp_systolic_latest"))
     if bp_avg is not None:
         bp_trend = features.get("bp_trend", "steady")
         
@@ -689,8 +699,32 @@ def generate_daily_tasks(features: dict, user) -> list[dict]:
     
     # ── BP-Based Tasks (ONLY if user has logged BP) ──
     if features.get("has_bp_data"):
-        bp_avg = features.get("bp_systolic_latest", features.get("bp_systolic_avg", 120))
-        
+        bp_avg = features.get("bp_systolic_avg", features.get("bp_systolic_latest", 120))
+        days_since_bp = features.get("days_since_last_bp", 0)
+
+        # 7-day BP check streak task — coins awarded when user logs BP after 7 days
+        days_since_bp = features.get("days_since_last_bp", 0)
+        if days_since_bp >= 7:
+            bp_task_name = "Log your BP — streak bonus ready!"
+            bp_task_why = f"It's been {days_since_bp} days since your last BP reading. Log now to earn 20 coins!"
+            bp_coins = 20
+        else:
+            days_left = 7 - days_since_bp
+            bp_task_name = "Log BP again in " + str(days_left) + " day" + ("s" if days_left != 1 else "")
+            bp_task_why = f"Log your BP every 7 days to earn 20 coins. {days_left} day(s) to go!"
+            bp_coins = 0
+
+        tasks.append({
+            "task_type": "CHECK_BP_7DAYS",
+            "task_name": bp_task_name,
+            "description": "Track your blood pressure to see if lifestyle changes are working",
+            "why_this_task": bp_task_why,
+            "category": "vitals",
+            "time_of_day": "morning",
+            "duration_or_quantity": "1 BP reading",
+            "coins_reward": bp_coins
+        })
+
         if bp_avg >= 130:
             tasks.append({
                 "task_type": "MORNING_WALK",
@@ -700,7 +734,7 @@ def generate_daily_tasks(features: dict, user) -> list[dict]:
                 "category": "exercise",
                 "time_of_day": "morning",
                 "duration_or_quantity": "30 min / 10,000 steps",
-                "coins_reward": 20
+                "coins_reward": 15
             })
             tasks.append({
                 "task_type": "LOW_SALT_MEAL",
@@ -710,7 +744,7 @@ def generate_daily_tasks(features: dict, user) -> list[dict]:
                 "category": "diet",
                 "time_of_day": "all_day",
                 "duration_or_quantity": "All meals today",
-                "coins_reward": 12
+                "coins_reward": 0
             })
         elif bp_avg >= 120:
             tasks.append({
@@ -721,7 +755,7 @@ def generate_daily_tasks(features: dict, user) -> list[dict]:
                 "category": "exercise",
                 "time_of_day": "morning",
                 "duration_or_quantity": "25 min / 7,000 steps",
-                "coins_reward": 15
+                "coins_reward": 12
             })
         else:
             tasks.append({
@@ -732,13 +766,37 @@ def generate_daily_tasks(features: dict, user) -> list[dict]:
                 "category": "exercise",
                 "time_of_day": "morning",
                 "duration_or_quantity": "20 min / 5,000 steps",
-                "coins_reward": 12
+                "coins_reward": 10
             })
-    
+
     # ── Sugar-Based Tasks (ONLY if user has logged sugar) ──
     if features.get("has_sugar_data"):
-        sugar_avg = features.get("sugar_latest", features.get("sugar_avg", 100))
-        
+        sugar_avg = features.get("sugar_avg", features.get("sugar_latest", 100))
+        days_since_sugar = features.get("days_since_last_sugar", 0)
+
+        # 7-day sugar check streak task
+        days_since_sugar = features.get("days_since_last_sugar", 0)
+        if days_since_sugar >= 7:
+            sugar_task_name = "Log your sugar — streak bonus ready!"
+            sugar_task_why = f"It's been {days_since_sugar} days since your last sugar reading. Log now to earn 20 coins!"
+            sugar_coins = 20
+        else:
+            days_left_s = 7 - days_since_sugar
+            sugar_task_name = "Log sugar again in " + str(days_left_s) + " day" + ("s" if days_left_s != 1 else "")
+            sugar_task_why = f"Log your fasting sugar every 7 days to earn 20 coins. {days_left_s} day(s) to go!"
+            sugar_coins = 0
+
+        tasks.append({
+            "task_type": "CHECK_SUGAR_7DAYS",
+            "task_name": sugar_task_name,
+            "description": "Track your glucose to see if diet changes are working",
+            "why_this_task": sugar_task_why,
+            "category": "vitals",
+            "time_of_day": "morning",
+            "duration_or_quantity": "1 fasting glucose reading",
+            "coins_reward": sugar_coins
+        })
+
         if sugar_avg >= 100:
             tasks.append({
                 "task_type": "POST_MEAL_WALK",
@@ -748,7 +806,7 @@ def generate_daily_tasks(features: dict, user) -> list[dict]:
                 "category": "exercise",
                 "time_of_day": "afternoon",
                 "duration_or_quantity": "10 minutes after eating",
-                "coins_reward": 10
+                "coins_reward": 0
             })
             tasks.append({
                 "task_type": "NO_SUGAR_DAY",
@@ -758,7 +816,7 @@ def generate_daily_tasks(features: dict, user) -> list[dict]:
                 "category": "diet",
                 "time_of_day": "all_day",
                 "duration_or_quantity": "All day",
-                "coins_reward": 12
+                "coins_reward": 0
             })
         else:
             tasks.append({
@@ -769,7 +827,7 @@ def generate_daily_tasks(features: dict, user) -> list[dict]:
                 "category": "diet",
                 "time_of_day": "all_day",
                 "duration_or_quantity": "3 balanced meals",
-                "coins_reward": 8
+                "coins_reward": 0
             })
     
     # ── Report-Based Tasks (ONLY if user has uploaded a report) ──
@@ -786,7 +844,7 @@ def generate_daily_tasks(features: dict, user) -> list[dict]:
                     "category": "diet",
                     "time_of_day": "lunch",
                     "duration_or_quantity": "At least 1 iron-rich meal",
-                    "coins_reward": 10
+                    "coins_reward": 0
                 })
         
         platelets = features.get("platelet_count")
@@ -799,7 +857,7 @@ def generate_daily_tasks(features: dict, user) -> list[dict]:
                 "category": "diet",
                 "time_of_day": "afternoon",
                 "duration_or_quantity": "1 bowl fresh papaya",
-                "coins_reward": 8
+                "coins_reward": 0
             })
         
         # Report-based glucose task
@@ -813,7 +871,7 @@ def generate_daily_tasks(features: dict, user) -> list[dict]:
                 "category": "exercise",
                 "time_of_day": "afternoon",
                 "duration_or_quantity": "10 min after each meal",
-                "coins_reward": 10
+                "coins_reward": 0
             })
     
     # ── BMI-Based Tasks ──
@@ -827,7 +885,7 @@ def generate_daily_tasks(features: dict, user) -> list[dict]:
             "category": "diet",
             "time_of_day": "all_day",
             "duration_or_quantity": "All meals",
-            "coins_reward": 10
+            "coins_reward": 0
         })
     
     # ── Hydration (ONLY when tasks exist from other sources) ──
@@ -1051,7 +1109,7 @@ async def save_diet(user_id: str, diet: dict | None, db: AsyncSession):
         return
     obj = DietRecommendation(
         user_id=user_id,
-        focus_type=diet["focus_type"],
+        focus_type=diet["focus_type"][:50],
         reason=diet["reason"],
         eat_more=json.dumps(diet["eat_more"]),
         reduce=json.dumps(diet["reduce"]),
@@ -1087,7 +1145,7 @@ async def run_full_analysis(user_id: str, db: AsyncSession):
     latest_report = await get_latest_report(user_id, db)
     
     print(f"\n{'='*60}")
-    print(f"🔬 ANALYSIS PIPELINE for {user.full_name} ({user_id[:8]}...)")
+    print(f"[ANALYSIS] PIPELINE for {user.full_name} ({user_id[:8]}...)")
     print(f"   BP readings: {len(bp_readings)}")
     print(f"   Sugar readings: {len(sugar_readings)}")
     print(f"   Has report: {latest_report is not None}")
@@ -1109,10 +1167,10 @@ async def run_full_analysis(user_id: str, db: AsyncSession):
     tasks = generate_daily_tasks(features, user)
     diet = generate_diet_plan(features)
     
-    print(f"   → Health Index: {health_index}")
-    print(f"   → Preventive items: {len(preventive)} [{', '.join(c['category'] for c in preventive)}]")
-    print(f"   → Tasks generated: {len(tasks)} [{', '.join(t['task_name'][:25] for t in tasks)}]")
-    print(f"   → Diet plan: {diet.get('focus_type') if diet else 'None'}")
+    print(f"   -> Health Index: {health_index}")
+    print(f"   -> Preventive items: {len(preventive)} [{', '.join(c['category'] for c in preventive)}]")
+    print(f"   -> Tasks generated: {len(tasks)} [{', '.join(t['task_name'][:25] for t in tasks)}]")
+    print(f"   -> Diet plan: {diet.get('focus_type') if diet else 'None'}")
     print(f"{'='*60}\n")
     
     await save_preventive_care(user_id, preventive, db)

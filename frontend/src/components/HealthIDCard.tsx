@@ -1,5 +1,5 @@
 import React from 'react';
-import { Printer, Heart, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Printer, Heart } from 'lucide-react';
 import QRCode from 'qrcode';
 
 interface HealthIDCardProps {
@@ -8,17 +8,8 @@ interface HealthIDCardProps {
   onDownload?: () => void;
 }
 
-// ATM / wallet card: 85.6mm × 54mm → use 342px × 216px at 4px/mm
-const CARD_W = 342;
-const CARD_H = 216;
-
-const label: React.CSSProperties = {
-  fontSize: 7, fontWeight: 700, color: '#9ca3af',
-  textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 2,
-};
-const val: React.CSSProperties = {
-  fontSize: 11, fontWeight: 600, color: '#1A3A38',
-};
+const CARD_W = 340;
+const CARD_H = 214;
 
 export default function HealthIDCard({ profile, vitals, onDownload }: HealthIDCardProps) {
   const [qrDataUrl, setQrDataUrl] = React.useState('');
@@ -36,9 +27,9 @@ export default function HealthIDCard({ profile, vitals, onDownload }: HealthIDCa
     const params = new URLSearchParams({
       name: profile.full_name || '',
       dob: profile.date_of_birth || '',
-      blood: profile?.blood_group || vitals?.blood_group || 'N/A',
-      bp: vitals?.bp_value || 'N/A',
-      sugar: vitals?.sugar_value ? `${vitals.sugar_value} mg/dL` : 'N/A',
+      blood: profile?.blood_group || '',
+      bp: vitals?.bp_value || '',
+      sugar: vitals?.sugar_value || '',
       id: profile.health_id,
     });
     QRCode.toDataURL(`${base}/emergency/${profile.health_id}?${params.toString()}`, {
@@ -73,213 +64,263 @@ export default function HealthIDCard({ profile, vitals, onDownload }: HealthIDCa
     medications = Array.isArray(raw) ? raw : (typeof raw === 'string' ? JSON.parse(raw) : []);
   } catch { medications = []; }
 
-  // ── card shell ────────────────────────────────────────────────────────────
-  const cardShell: React.CSSProperties = {
-    width: CARD_W, height: CARD_H, flexShrink: 0,
+  const lbl: React.CSSProperties = {
+    fontSize: 7, fontWeight: 700, color: '#9ca3af',
+    textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 2,
+  };
+  const v: React.CSSProperties = { fontSize: 11, fontWeight: 600, color: '#1A3A38' };
+
+  const cardBase: React.CSSProperties = {
+    width: CARD_W, height: CARD_H,
     background: '#fff', borderRadius: 12, overflow: 'hidden',
     border: '1px solid #d1d5db', boxShadow: '0 4px 18px rgba(0,0,0,0.12)',
-    display: 'flex', flexDirection: 'column',
+    display: 'flex', flexDirection: 'column', flexShrink: 0,
   };
 
   // ── print ─────────────────────────────────────────────────────────────────
   const printCard = () => {
-    const frontEl = document.getElementById('hid-front');
-    const backEl  = document.getElementById('hid-back');
-    if (!frontEl || !backEl) return;
+    const front = document.getElementById('hid-front');
+    const back  = document.getElementById('hid-back');
+    if (!front || !back) return;
 
-    const html = `<!DOCTYPE html>
-<html><head><meta charset="utf-8"/>
-<title>SatyaSathi Health ID</title>
+    // Strip position:absolute and visibility from the cloned elements
+    const frontClone = front.cloneNode(true) as HTMLElement;
+    const backClone  = back.cloneNode(true) as HTMLElement;
+    frontClone.style.position = 'relative';
+    frontClone.style.visibility = 'visible';
+    backClone.style.position = 'relative';
+    backClone.style.visibility = 'visible';
+
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"/>
+<title>SatyaSathi Health ID — ${profile?.full_name || ''}</title>
 <style>
   *{margin:0;padding:0;box-sizing:border-box;}
-  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
-       background:#f3f4f6;display:flex;flex-direction:column;
-       align-items:center;gap:20px;padding:28px;}
-  .lbl{font-size:10px;color:#6b7280;font-weight:600;text-transform:uppercase;
-       letter-spacing:.08em;margin-bottom:3px;}
+  html,body{width:210mm;height:297mm;}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+    background:#fff;
+    display:flex;flex-direction:column;
+    align-items:center;justify-content:center;
+    gap:16mm;
+    padding:20mm;
+  }
+  .section{display:flex;flex-direction:column;align-items:center;gap:4px;}
+  .side-label{
+    font-size:9px;font-weight:700;color:#6b7280;
+    text-transform:uppercase;letter-spacing:.1em;
+  }
+  @page{size:A4 portrait;margin:0;}
   @media print{
-    body{background:#fff;padding:10mm;gap:8mm;}
-    @page{size:A4 portrait;margin:0;}
+    html,body{width:210mm;height:297mm;}
+    body{background:#fff;}
   }
 </style>
 </head><body>
-<div class="lbl">FRONT SIDE</div>
-${frontEl.outeontentWindow?.print();
-      setTimeout(() => document.body.removeChild(iframe), 1000);
+  <div class="section">
+    <span class="side-label">▲ Front Side</span>
+    ${frontClone.outerHTML}
+  </div>
+  <div class="section">
+    <span class="side-label">▼ Back Side</span>
+    ${backClone.outerHTML}
+  </div>
+  <script>window.onload=function(){window.print();}<\/script>
+</body></html>`;
+
+    const iframe = document.createElement('iframe');
+    iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;border:none;';
+    document.body.appendChild(iframe);
+    const doc = iframe.contentDocument || iframe.contentWindow?.document;
+    if (!doc) { document.body.removeChild(iframe); return; }
+    doc.open(); doc.write(html); doc.close();
+    setTimeout(() => {
+      iframe.contentWindow?.focus();
+      iframe.contentWindow?.print();
+      setTimeout(() => document.body.removeChild(iframe), 2000);
       if (onDownload) onDownload();
     }, 800);
-  };
-
-  // ── Shared card dimensions ────────────────────────────────────────────────
-  const cardStyle: React.CSSProperties = {
-    width: '100%', background: '#fff', borderRadius: 14,
-    overflow: 'hidden', border: '1px solid #e5e7eb',
-    boxShadow: '0 4px 20px rgba(0,0,0,0.10)',
   };
 
   return (
     <div className="space-y-3">
 
-      {/* Side toggle */}
-      <div className="flex items-center justify-center gap-2">
-        <button onClick={() => setSide('front')}
-          className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${side === 'front' ? 'bg-[#26C6BF] text-white' : 'bg-[#F2FDFB] text-[#26C6BF] border border-[#C8F0EC]'}`}>
+      {/* Toggle pills */}
+      <div style={{ display: 'flex', justifyContent: 'center', gap: 8 }}>
+        <button
+          onClick={() => setSide('front')}
+          style={{
+            padding: '6px 20px', borderRadius: 999, fontSize: 12, fontWeight: 700,
+            cursor: 'pointer', border: 'none', outline: 'none',
+            background: side === 'front' ? '#26C6BF' : '#F2FDFB',
+            color: side === 'front' ? '#fff' : '#26C6BF',
+            boxShadow: side === 'front' ? '0 2px 8px rgba(38,198,191,0.3)' : 'none',
+          }}>
           Front
         </button>
-        <button onClick={() => setSide('back')}
-          className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${side === 'back' ? 'bg-[#26C6BF] text-white' : 'bg-[#F2FDFB] text-[#26C6BF] border border-[#C8F0EC]'}`}>
+        <button
+          onClick={() => setSide('back')}
+          style={{
+            padding: '6px 20px', borderRadius: 999, fontSize: 12, fontWeight: 700,
+            cursor: 'pointer', border: '1.5px solid #C8F0EC', outline: 'none',
+            background: side === 'back' ? '#26C6BF' : '#F2FDFB',
+            color: side === 'back' ? '#fff' : '#26C6BF',
+            boxShadow: side === 'back' ? '0 2px 8px rgba(38,198,191,0.3)' : 'none',
+          }}>
           Back
         </button>
       </div>
 
-      {/* ── FRONT ── */}
-      <div id="hid-front" className="card" style={{ ...cardStyle, display: side === 'front' ? 'block' : 'none' }}>
-          {/* Header — SatyaSathi branding */}
-          <div style={{ background: '#fff', padding: '8px 14px 6px', borderBottom: '3px solid #26C6BF', display: 'flex', alignItems: 'center', gap: 8 }}>
-            <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#f0fdfb', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              <Heart size={14} style={{ color: '#26C6BF', fill: '#26C6BF' }} />
+      {/* Card area — fixed height so layout doesn't jump */}
+      <div style={{ display: 'flex', justifyContent: 'center', height: CARD_H }}>
+
+        {/* ── FRONT ── always in DOM, toggled by visibility */}
+        <div id="hid-front" style={{ ...cardBase, visibility: side === 'front' ? 'visible' : 'hidden', position: 'absolute' }}>
+          {/* Header */}
+          <div style={{ padding: '7px 12px 5px', borderBottom: '2.5px solid #26C6BF', display: 'flex', alignItems: 'center', gap: 7, flexShrink: 0 }}>
+            <div style={{ width: 24, height: 24, borderRadius: '50%', background: '#f0fdfb', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <Heart size={12} style={{ color: '#26C6BF', fill: '#26C6BF' }} />
             </div>
             <div>
-              <p style={{ fontSize: 14, fontWeight: 800, color: '#1A3A38', lineHeight: 1 }}>SatyaSathi</p>
-              <p style={{ fontSize: 8, color: '#9ca3af', marginTop: 2 }}>Health ID Card</p>
+              <p style={{ fontSize: 12, fontWeight: 800, color: '#1A3A38', lineHeight: 1 }}>SatyaSathi</p>
+              <p style={{ fontSize: 7, color: '#9ca3af', marginTop: 1 }}>Health ID Card</p>
             </div>
           </div>
 
-          {/* Body — photo + details + QR */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px' }}>
+          {/* Body */}
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px' }}>
             {/* Photo */}
-            <div style={{ width: 60, height: 78, borderRadius: 5, overflow: 'hidden', border: '1.5px solid #d1d5db', background: '#26C6BF', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <div style={{ width: 52, height: 68, borderRadius: 4, overflow: 'hidden', border: '1.5px solid #d1d5db', background: '#26C6BF', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
               {photoUrl
                 ? <img src={photoUrl} alt="photo" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-                : <span style={{ color: '#fff', fontSize: 20, fontWeight: 800 }}>{initials}</span>
+                : <span style={{ color: '#fff', fontSize: 18, fontWeight: 800 }}>{initials}</span>
               }
             </div>
 
             {/* Info */}
-            <div style={{ flex: 1 }}>
-              <p style={{ fontSize: 16, fontWeight: 800, color: '#1A3A38', marginBottom: 7 }}>{profile?.full_name || 'Full Name'}</p>
-              <div style={{ display: 'flex', gap: 6, alignItems: 'baseline', marginBottom: 4 }}>
-                <span style={{ fontSize: 7, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.07em', width: 26, flexShrink: 0 }}>DOB</span>
-                <span style={{ fontSize: 11, fontWeight: 600, color: '#1A3A38' }}>{dob}</span>
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 5 }}>
+              <div>
+                <p style={lbl}>Full Name</p>
+                <p style={{ ...v, fontSize: 13, fontWeight: 800 }}>{profile?.full_name || '—'}</p>
               </div>
-              <div style={{ display: 'flex', gap: 6, alignItems: 'baseline', marginBottom: 4 }}>
-                <span style={{ fontSize: 7, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.07em', width: 26, flexShrink: 0 }}>Sex</span>
-                <span style={{ fontSize: 11, fontWeight: 600, color: '#1A3A38', textTransform: 'capitalize' }}>{profile?.gender || '—'}</span>
+              <div>
+                <p style={lbl}>Date of Birth</p>
+                <p style={v}>{dob}</p>
               </div>
-              <div style={{ display: 'flex', gap: 6, alignItems: 'baseline' }}>
-                <span style={{ fontSize: 7, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.07em', width: 26, flexShrink: 0 }}>Blood</span>
-                <span style={{ fontSize: 11, fontWeight: 700, color: '#e53e3e' }}>{profile?.blood_group || '—'}</span>
+              <div style={{ display: 'flex', gap: 14 }}>
+                <div>
+                  <p style={lbl}>Gender</p>
+                  <p style={{ ...v, textTransform: 'capitalize' }}>{profile?.gender || '—'}</p>
+                </div>
+                <div>
+                  <p style={lbl}>Blood Group</p>
+                  <p style={{ ...v, color: '#e53e3e', fontWeight: 700 }}>{profile?.blood_group || '—'}</p>
+                </div>
               </div>
             </div>
 
             {/* QR */}
-            <div style={{ width: 64, height: 64, flexShrink: 0 }}>
+            <div style={{ width: 58, height: 58, flexShrink: 0 }}>
               {qrDataUrl
                 ? <img src={qrDataUrl} alt="QR" style={{ width: '100%', height: '100%', display: 'block' }} />
                 : <div style={{ width: '100%', height: '100%', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <div className="animate-spin" style={{ width: 16, height: 16, border: '2px solid #26C6BF', borderTopColor: 'transparent', borderRadius: '50%' }} />
+                    <div className="animate-spin" style={{ width: 14, height: 14, border: '2px solid #26C6BF', borderTopColor: 'transparent', borderRadius: '50%' }} />
                   </div>
               }
             </div>
           </div>
 
-          {/* Health ID number row */}
-          <div style={{ background: '#f8fffe', borderTop: '1px solid #e5e7eb', padding: '8px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <p style={{ fontSize: 17, fontWeight: 800, color: '#26C6BF', letterSpacing: '.14em', fontFamily: 'monospace' }}>
+          {/* ID number */}
+          <div style={{ background: '#f8fffe', borderTop: '1px solid #e5e7eb', padding: '5px 12px', flexShrink: 0 }}>
+            <p style={{ fontSize: 14, fontWeight: 800, color: '#26C6BF', letterSpacing: '.14em', fontFamily: 'monospace' }}>
               {formatHealthId(profile?.health_id)}
             </p>
           </div>
 
-          {/* Footer strip */}
-          <div style={{ background: '#26C6BF', padding: '5px 14px', textAlign: 'center' }}>
+          {/* Footer */}
+          <div style={{ background: '#26C6BF', padding: '4px 12px', textAlign: 'center', flexShrink: 0 }}>
             <p style={{ fontSize: 7, color: '#fff', fontStyle: 'italic', opacity: .9 }}>
               "Your Health, Your Wealth — Track, Improve, Thrive"
             </p>
           </div>
         </div>
 
-      {/* ── BACK ── */}
-      <div id="hid-back" className="card" style={{ ...cardStyle, display: side === 'back' ? 'block' : 'none' }}>
+        {/* ── BACK ── always in DOM, toggled by visibility */}
+        <div id="hid-back" style={{ ...cardBase, visibility: side === 'back' ? 'visible' : 'hidden', position: 'absolute' }}>
           {/* Teal header */}
-          <div style={{ background: '#26C6BF', padding: '10px 14px' }}>
-            <p style={{ fontSize: 9, fontWeight: 800, color: '#fff', textTransform: 'uppercase', letterSpacing: '.1em' }}>
+          <div style={{ background: '#26C6BF', padding: '7px 12px', flexShrink: 0 }}>
+            <p style={{ fontSize: 8, fontWeight: 800, color: '#fff', textTransform: 'uppercase', letterSpacing: '.1em' }}>
               Medical Information — For Healthcare Provider Use
             </p>
           </div>
 
-          {/* Dark stripe (like magnetic strip) */}
-          <div style={{ background: '#1A3A38', height: 28 }} />
+          {/* Dark stripe */}
+          <div style={{ background: '#1A3A38', height: 22, flexShrink: 0 }} />
 
-          {/* Medical details */}
-          <div style={{ display: 'flex', gap: 0, padding: '12px 14px' }}>
-            {/* Left column */}
-            <div style={{ flex: 1, borderRight: '1px solid #e5e7eb', paddingRight: 12 }}>
-              <div style={{ marginBottom: 10 }}>
-                <p style={{ fontSize: 7, fontWeight: 700, color: '#26C6BF', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 2 }}>Full Name</p>
-                <p style={{ fontSize: 13, fontWeight: 700, color: '#1A3A38' }}>{profile?.full_name || '—'}</p>
+          {/* Content */}
+          <div style={{ flex: 1, display: 'flex', padding: '10px 12px', overflow: 'hidden' }}>
+            {/* Left */}
+            <div style={{ flex: 1, borderRight: '1px solid #e5e7eb', paddingRight: 10, display: 'flex', flexDirection: 'column', gap: 7 }}>
+              <div>
+                <p style={lbl}>Full Name</p>
+                <p style={{ ...v, fontSize: 12, fontWeight: 800 }}>{profile?.full_name || '—'}</p>
               </div>
-              <div style={{ marginBottom: 10 }}>
-                <p style={{ fontSize: 7, fontWeight: 700, color: '#26C6BF', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 2 }}>Date of Birth</p>
-                <p style={{ fontSize: 12, fontWeight: 700, color: '#1A3A38' }}>{dobLong}</p>
+              <div>
+                <p style={lbl}>Date of Birth</p>
+                <p style={v}>{dobLong}</p>
               </div>
-              <div style={{ marginBottom: 10 }}>
-                <p style={{ fontSize: 7, fontWeight: 700, color: '#26C6BF', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 2 }}>Blood Group</p>
-                <p style={{ fontSize: 13, fontWeight: 800, color: '#e53e3e' }}>{profile?.blood_group || '—'}</p>
+              <div>
+                <p style={lbl}>Blood Group</p>
+                <p style={{ ...v, fontSize: 13, fontWeight: 800, color: '#e53e3e' }}>{profile?.blood_group || '—'}</p>
               </div>
               {medications.length > 0 && (
-                <div style={{ marginBottom: 10 }}>
-                  <p style={{ fontSize: 7, fontWeight: 700, color: '#26C6BF', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 2 }}>Current Medications</p>
-                  <p style={{ fontSize: 11, fontWeight: 600, color: '#1A3A38' }}>{medications.join(', ')}</p>
+                <div>
+                  <p style={lbl}>Medications</p>
+                  <p style={{ ...v, fontSize: 9 }}>{medications.slice(0, 3).join(', ')}</p>
                 </div>
               )}
             </div>
 
-            {/* Right column — vitals */}
-            <div style={{ width: 90, paddingLeft: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {vitals?.bp_value && (
-                <div>
-                  <p style={{ fontSize: 7, fontWeight: 700, color: '#26C6BF', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 2 }}>Blood Pressure</p>
-                  <p style={{ fontSize: 12, fontWeight: 700, color: '#1A3A38' }}>{vitals.bp_value} <span style={{ fontSize: 8, color: '#9ca3af' }}>mmHg</span></p>
-                </div>
-              )}
-              {vitals?.sugar_value && (
-                <div>
-                  <p style={{ fontSize: 7, fontWeight: 700, color: '#26C6BF', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 2 }}>Blood Sugar</p>
-                  <p style={{ fontSize: 12, fontWeight: 700, color: '#1A3A38' }}>{vitals.sugar_value} <span style={{ fontSize: 8, color: '#9ca3af' }}>mg/dL</span></p>
-                </div>
-              )}
+            {/* Right */}
+            <div style={{ width: 90, paddingLeft: 10, display: 'flex', flexDirection: 'column', gap: 7 }}>
               <div>
-                <p style={{ fontSize: 7, fontWeight: 700, color: '#26C6BF', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 2 }}>Emergency</p>
-                <p style={{ fontSize: 10, fontWeight: 700, color: '#1A3A38' }}>{profile?.phone_number || '—'}</p>
+                <p style={lbl}>Blood Pressure</p>
+                <p style={v}>{vitals?.bp_value || '—'} {vitals?.bp_value && <span style={{ fontSize: 8, color: '#9ca3af' }}>mmHg</span>}</p>
+              </div>
+              <div>
+                <p style={lbl}>Blood Sugar</p>
+                <p style={v}>{vitals?.sugar_value || '—'} {vitals?.sugar_value && <span style={{ fontSize: 8, color: '#9ca3af' }}>mg/dL</span>}</p>
+              </div>
+              <div>
+                <p style={lbl}>Height / Weight</p>
+                <p style={{ ...v, fontSize: 10 }}>
+                  {profile?.height_cm ? `${profile.height_cm} cm` : '—'} / {profile?.weight_kg ? `${profile.weight_kg} kg` : '—'}
+                </p>
+              </div>
+              <div>
+                <p style={lbl}>Emergency Contact</p>
+                <p style={{ ...v, fontSize: 10 }}>{profile?.phone_number || '—'}</p>
               </div>
             </div>
           </div>
 
           {/* Footer */}
-          <div style={{ borderTop: '1px solid #e5e7eb', padding: '6px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <p style={{ fontSize: 7, color: '#9ca3af' }}>Scan QR on front for full health records · satya-sathi.in</p>
-            <p style={{ fontSize: 7, color: '#26C6BF', fontWeight: 700 }}>⊞ QR Scan for full access</p>
+          <div style={{ borderTop: '1px solid #e5e7eb', padding: '4px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+            <p style={{ fontSize: 7, color: '#9ca3af' }}>Scan QR on front for full health records</p>
+            <p style={{ fontSize: 7, color: '#26C6BF', fontWeight: 700 }}>⊞ QR for full access</p>
           </div>
         </div>
 
-      {/* Flip hint */}
-      <div className="flex items-center justify-center gap-3">
-        <button onClick={() => setSide(s => s === 'front' ? 'back' : 'front')}
-          className="flex items-center gap-1 text-xs font-semibold text-[#26C6BF]">
-          <ChevronLeft size={14} />{side === 'front' ? 'See back side' : 'See front side'}<ChevronRight size={14} />
-        </button>
       </div>
 
-      {/* Print button */}
+      {/* Print */}
       <button onClick={printCard}
-        style={{ background: 'linear-gradient(135deg,#26C6BF 0%,#1FA89E 100%)' }}
-        className="w-full text-white font-extrabold py-4 rounded-2xl shadow-lg flex items-center justify-center gap-2 hover:shadow-xl transition-all">
+        style={{ background: 'linear-gradient(135deg,#26C6BF 0%,#1FA89E 100%)', width: '100%', color: '#fff', fontWeight: 800, padding: '14px', borderRadius: 16, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, fontSize: 14 }}>
         <Printer size={20} />
         Print / Save as PDF
       </button>
 
-      <p className="text-center text-xs" style={{ color: '#7ECCC7' }}>
-        Both sides print together · use "Save as PDF" in the print dialog
+      <p style={{ textAlign: 'center', fontSize: 11, color: '#7ECCC7' }}>
+        Both sides print together · choose "Save as PDF" in the print dialog
       </p>
     </div>
   );

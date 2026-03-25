@@ -4,18 +4,37 @@ import { CheckCircle2, Award, Heart, Footprints, Wind, Droplet, Pill, Utensils, 
 import { tasksAPI, coinsAPI } from '../services/api.ts';
 
 const TASK_ICONS: Record<string, React.ReactNode> = {
-  LOG_BP: <Heart size={18} />, 
+  LOG_BP: <Heart size={18} />,
+  CHECK_BP_7DAYS: <Heart size={18} />,
   MORNING_WALK: <Footprints size={18} />,
-  DEEP_BREATHING: <Wind size={18} />, 
+  POST_MEAL_WALK: <Footprints size={18} />,
+  LIGHT_EXERCISE: <Footprints size={18} />,
+  DEEP_BREATHING: <Wind size={18} />,
   WATER_INTAKE: <Droplet size={18} />,
-  DIET_MEAL: <Utensils size={18} />, 
+  HYDRATION_PLUS: <Droplet size={18} />,
+  DIET_MEAL: <Utensils size={18} />,
   MEDICATION: <Pill size={18} />,
   LOG_SUGAR: <Flame size={18} />,
+  CHECK_SUGAR_7DAYS: <Flame size={18} />,
   IRON_RICH_MEAL: <Utensils size={18} />,
   EAT_PAPAYA: <Activity size={18} />,
-  POST_MEAL_WALK: <Footprints size={18} />,
   PORTION_CONTROL: <Utensils size={18} />,
 };
+
+// Tasks that can be verified/self-confirmed by the user — get coins + checkbox
+const MONITORABLE_TASKS = new Set([
+  'LOG_BP',
+  'LOG_SUGAR',
+  'CHECK_BP_7DAYS',
+  'CHECK_SUGAR_7DAYS',
+  'WATER_INTAKE',
+  'HYDRATION_PLUS',
+  'MEDICATION',
+  'DEEP_BREATHING',
+  'MORNING_WALK',
+  'POST_MEAL_WALK',
+  'LIGHT_EXERCISE',
+]);
 
 export default function MissionsScreen() {
   const [tasks, setTasks] = useState<any[]>([]);
@@ -94,7 +113,7 @@ export default function MissionsScreen() {
         <div className="pt-2">
           <h3 className="text-[#1A3A38] font-extrabold text-[18px] mb-4">Today's Activity</h3>
           <div className="space-y-3">
-            {tasks.map((task) => (
+            {tasks.filter(t => MONITORABLE_TASKS.has(t.task_type)).map((task) => (
               <div key={task.id} className="bg-white border-[1.5px] border-[#E8F1F1] rounded-[20px] p-4 flex items-center justify-between shadow-sm">
                 <div className="flex items-center gap-4">
                   <button onClick={() => !task.completed && completeTask(task.id)}
@@ -115,11 +134,32 @@ export default function MissionsScreen() {
                 </div>
               </div>
             ))}
-            {!loading && tasks.length === 0 && (
+            {!loading && tasks.filter(t => MONITORABLE_TASKS.has(t.task_type)).length === 0 && (
               <p className="text-center text-[#7ECCC7] font-medium text-sm py-4">All caught up for today!</p>
             )}
           </div>
         </div>
+
+        {/* LIFESTYLE GUIDANCE — unmonitorable tasks shown as tips */}
+        {tasks.filter(t => !MONITORABLE_TASKS.has(t.task_type)).length > 0 && (
+          <div className="pt-2">
+            <h3 className="text-[#1A3A38] font-extrabold text-[18px] mb-1">Today's Health Tips</h3>
+            <p className="text-[#7ECCC7] text-[12px] mb-3">Personalized guidance based on your health data</p>
+            <div className="space-y-2">
+              {tasks.filter(t => !MONITORABLE_TASKS.has(t.task_type)).map((task) => (
+                <div key={task.id} className="bg-[#F2FDFB] border border-[#C8F0EC] rounded-[16px] p-4 flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center shrink-0 text-[#26C6BF] mt-0.5">
+                    {TASK_ICONS[task.task_type] || <Activity size={16} />}
+                  </div>
+                  <div>
+                    <h4 className="text-[#1A3A38] font-bold text-[14px]">{task.task_name}</h4>
+                    <p className="text-[#7ECCC7] text-[11px] mt-0.5">{task.why_this_task}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* REDEEM SESSIONS GRID */}
         <div className="pt-2">

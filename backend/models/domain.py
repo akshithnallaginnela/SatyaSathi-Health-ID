@@ -224,7 +224,7 @@ class DietRecommendation(Base):
     __tablename__ = "diet_recommendations"
     id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     user_id = Column(GUID(), ForeignKey("users.id"))
-    focus_type = Column(String(50))
+    focus_type = Column(String(200))
     eat_more = Column(Text) 
     reduce = Column(Text)
     avoid = Column(Text)

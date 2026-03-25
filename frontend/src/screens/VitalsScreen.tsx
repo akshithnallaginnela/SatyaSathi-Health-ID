@@ -51,12 +51,14 @@ export default function VitalsScreen() {
     try {
       if (activeTab === 'BP') {
         if (!bp.sys || !bp.dia) { setNotice('Enter systolic and diastolic values'); setSaving(false); return; }
-        await vitalsAPI.logBP(Number(bp.sys), Number(bp.dia), bp.pulse ? Number(bp.pulse) : undefined);
+        const res = await vitalsAPI.logBP(Number(bp.sys), Number(bp.dia), bp.pulse ? Number(bp.pulse) : undefined);
         setBp({ sys: '', dia: '', pulse: '' });
+        if (res?.streak_bonus) setNotice(`+${res.coins_awarded} coins! Weekly BP streak bonus earned!`);
       } else if (activeTab === 'SUGAR') {
         if (!glucose) { setNotice('Enter glucose value'); setSaving(false); return; }
-        await vitalsAPI.logGlucose(Number(glucose));
+        const res = await vitalsAPI.logGlucose(Number(glucose));
         setGlucose('');
+        if (res?.streak_bonus) setNotice(`+${res.coins_awarded} coins! Weekly sugar streak bonus earned!`);
       } else if (activeTab === 'BMI') {
         if (!bmiForm.weight || !bmiForm.height) { setNotice('Enter weight and height'); setSaving(false); return; }
         await vitalsAPI.logBMI(Number(bmiForm.weight), Number(bmiForm.height));

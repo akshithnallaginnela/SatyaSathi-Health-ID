@@ -206,7 +206,7 @@ export default function MyIDScreen({ user, onLogout, onReportUploaded, onOpenSet
 
       {/* Professional Health ID Card */}
       <div className="px-6 -mt-8 relative z-20">
-        <HealthIDCard key={profile?.blood_group || 'default'} profile={profile} vitals={cardData} onDownload={() => showNotice('Health ID card downloaded!', true)} />
+        <HealthIDCard profile={profile} vitals={cardData} onDownload={() => showNotice('Health ID card downloaded!', true)} />
       </div>
 
       {/* Quick Profile Info */}

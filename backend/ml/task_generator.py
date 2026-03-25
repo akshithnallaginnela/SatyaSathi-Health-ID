@@ -53,7 +53,7 @@ def generate_daily_tasks(features: dict, signals: dict, user) -> list[dict]:
                 "category": "exercise",
                 "time_of_day": "morning",
                 "duration_or_quantity": "30 min / 10,000 steps",
-                "coins_reward": 20
+                "coins_reward": 0
             })
 
             tasks.append({
@@ -81,7 +81,7 @@ def generate_daily_tasks(features: dict, signals: dict, user) -> list[dict]:
                 "category": "diet",
                 "time_of_day": "afternoon",
                 "duration_or_quantity": "All meals today",
-                "coins_reward": 10
+                "coins_reward": 0
             })
 
         else:
@@ -96,7 +96,7 @@ def generate_daily_tasks(features: dict, signals: dict, user) -> list[dict]:
                 "category": "exercise",
                 "time_of_day": "morning",
                 "duration_or_quantity": "25 min / 7,000 steps",
-                "coins_reward": 15
+                "coins_reward": 0
             })
 
     # ── SUGAR-BASED TASKS ─────────────────────────────────────
@@ -130,7 +130,7 @@ def generate_daily_tasks(features: dict, signals: dict, user) -> list[dict]:
                 "category": "exercise",
                 "time_of_day": "afternoon",
                 "duration_or_quantity": "10 minutes",
-                "coins_reward": 10
+                "coins_reward": 0
             })
 
             tasks.append({
@@ -145,7 +145,7 @@ def generate_daily_tasks(features: dict, signals: dict, user) -> list[dict]:
                 "category": "diet",
                 "time_of_day": "all_day",
                 "duration_or_quantity": "All day",
-                "coins_reward": 12
+                "coins_reward": 0
             })
 
     # ── PLATELET-BASED TASKS ──────────────────────────────────
@@ -176,7 +176,7 @@ def generate_daily_tasks(features: dict, signals: dict, user) -> list[dict]:
             "category": "diet",
             "time_of_day": "afternoon",
             "duration_or_quantity": "1 bowl fresh papaya",
-            "coins_reward": 8
+            "coins_reward": 0
         })
 
     # ── HEMOGLOBIN-BASED TASKS ────────────────────────────────
@@ -197,7 +197,7 @@ def generate_daily_tasks(features: dict, signals: dict, user) -> list[dict]:
             "category": "diet",
             "time_of_day": "lunch",
             "duration_or_quantity": "At least 1 iron-rich meal",
-            "coins_reward": 10
+            "coins_reward": 0
         })
 
         tasks.append({
@@ -211,7 +211,7 @@ def generate_daily_tasks(features: dict, signals: dict, user) -> list[dict]:
             "category": "diet",
             "time_of_day": "morning",
             "duration_or_quantity": "1 serving",
-            "coins_reward": 8
+            "coins_reward": 0
         })
 
     # ── BMI-BASED TASKS ───────────────────────────────────────
@@ -228,7 +228,7 @@ def generate_daily_tasks(features: dict, signals: dict, user) -> list[dict]:
             "category": "exercise",
             "time_of_day": "morning",
             "duration_or_quantity": "30 minutes",
-            "coins_reward": 15
+            "coins_reward": 0
         })
 
     # ── STRESS-BASED TASKS ────────────────────────────────────
@@ -246,7 +246,7 @@ def generate_daily_tasks(features: dict, signals: dict, user) -> list[dict]:
             "category": "wellness",
             "time_of_day": "evening",
             "duration_or_quantity": "7–8 hours",
-            "coins_reward": 10
+            "coins_reward": 0
         })
 
     # ── MEDICATION TASKS (from user profile) ──────────────────
