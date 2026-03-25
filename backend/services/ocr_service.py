@@ -304,7 +304,7 @@ async def extract_report_values(file_path: str) -> dict:
     try:
         import google.generativeai as genai
         genai.configure(api_key=api_key)
-        model = genai.GenerativeModel("gemini-1.5-flash-latest")
+        model = genai.GenerativeModel("gemini-1.5-flash")
 
         if media_type == "application/pdf":
             contents = [{"mime_type": media_type, "data": file_bytes}, EXTRACTION_PROMPT]
@@ -406,7 +406,7 @@ Write exactly 2 short sentences (max 25 words each) about the FUTURE health risk
     try:
         import google.generativeai as genai
         genai.configure(api_key=api_key)
-        model = genai.GenerativeModel("gemini-1.5-flash-latest")
+        model = genai.GenerativeModel("gemini-1.5-flash")
         response = model.generate_content(prompt)
         text = (response.text or "").strip()
         # Ensure it's max 2 sentences
