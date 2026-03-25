@@ -7,16 +7,17 @@ from database import engine
 
 async def add_blood_group_column():
     """Add blood_group column to users table if it doesn't exist"""
-    async with engine.begin() as conn:
-        try:
-            # Check if column exists by trying to select it
-            await conn.execute(text("SELECT blood_group FROM users LIMIT 1"))
-            print("✓ blood_group column already exists")
-        except Exception as e:
-            # Column doesn't exist, add it
-            print("Adding blood_group column...")
-            await conn.execute(text("ALTER TABLE users ADD COLUMN blood_group VARCHAR(5)"))
+    try:
+        async with engine.begin() as conn:
+            # Try to add the column directly
+            await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS blood_group VARCHAR(5)"))
             print("✓ blood_group column added successfully")
+    except Exception as e:
+        if "already exists" in str(e).lower() or "duplicate column" in str(e).lower():
+            print("✓ blood_group column already exists")
+        else:
+            print(f"Error: {e}")
+            raise
 
 if __name__ == "__main__":
     asyncio.run(add_blood_group_column())
