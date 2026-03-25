@@ -651,6 +651,18 @@ export default function DashboardScreen({ onLogout }: { onLogout: () => void; ke
         </div>
 
       </div>
+
+      {/* Notice Toast */}
+      {notice && (
+        <motion.div
+          initial={{ opacity: 0, y: 50 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 50 }}
+          className="fixed bottom-24 left-4 right-4 bg-red-500 text-white px-4 py-3 rounded-2xl shadow-lg z-50 text-sm font-semibold text-center"
+        >
+          {notice}
+        </motion.div>
+      )}
     </motion.div>
   );
 }
