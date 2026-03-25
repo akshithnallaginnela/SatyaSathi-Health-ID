@@ -12,6 +12,9 @@ build/
 dist/
 coverage/
 
+# CSV data files (datasets, exports)
+*.csv
+
 # Environment
 .env*
 !.env.example
