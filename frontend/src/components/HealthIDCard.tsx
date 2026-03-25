@@ -27,10 +27,6 @@ export default function HealthIDCard({ profile, onDownload }: HealthIDCardProps)
     if (!cardRef.current) return;
     
     try {
-      // Dynamic import with better error handling
-      const html2canvasModule = await import('html2canvas');
-      const html2canvas = html2canvasModule.default;
-      
       const canvas = await html2canvas(cardRef.current, {
         scale: 2,
         backgroundColor: '#ffffff',
@@ -47,7 +43,7 @@ export default function HealthIDCard({ profile, onDownload }: HealthIDCardProps)
     } catch (e) {
       console.error('Download failed:', e);
       // Fallback: just show a message
-      alert('Download feature requires html2canvas. The card is displayed above - you can take a screenshot instead.');
+      alert('Download feature is not available. You can take a screenshot of the card instead.');
     }
   };
 
