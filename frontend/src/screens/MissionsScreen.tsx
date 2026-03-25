@@ -30,11 +30,13 @@ export default function MissionsScreen() {
   const loadData = async () => {
     try {
       const [t, c, o] = await Promise.all([tasksAPI.getToday(), coinsAPI.getBalance(), coinsAPI.getOffers()]);
-      setTasks(t);
-      setCoins(c.total_balance);
-      setOffers(o || []);
+      setTasks(Array.isArray(t) ? t : []);
+      setCoins(c?.total_balance || 0);
+      setOffers(Array.isArray(o) ? o : []);
     } catch (e) {
       console.error(e);
+      setTasks([]);
+      setOffers([]);
     } finally {
       setLoading(false);
     }
