@@ -315,7 +315,14 @@ export default function DashboardScreen({ onLogout }: { onLogout: () => void; ke
              </div>
           ) : (
             <div className="space-y-6">
-              {(preventive.all_care_items || []).map((item: any, idx: number) => {
+              {(preventive.all_care_items || []).filter((item: any) => item.urgency !== 'great').length === 0 ? (
+                <div className="py-8 text-center bg-gradient-to-br from-green-50 to-teal-50 rounded-2xl border-2 border-green-200">
+                  <div className="text-5xl mb-3">🎉</div>
+                  <h4 className="text-green-700 font-extrabold text-base mb-2">All Vitals Looking Great!</h4>
+                  <p className="text-green-600 text-sm font-medium">Keep up your healthy habits to maintain this.</p>
+                </div>
+              ) : (
+                (preventive.all_care_items || []).filter((item: any) => item.urgency !== 'great').map((item: any, idx: number) => {
                 const categoryLabel: any = { 
                   blood_pressure: 'BP Health', 
                   blood_sugar: 'Sugar/Glucose', 
@@ -364,10 +371,11 @@ export default function DashboardScreen({ onLogout }: { onLogout: () => void; ke
                         <span className="text-[10px] font-extrabold text-primary-teal uppercase">{item.top_action}</span>
                       </div>
                     )}
-                    {idx < (preventive.all_care_items.length - 1) && <div className="h-[1px] bg-gray-100 mt-6" />}
+                    {idx < (preventive.all_care_items.filter((i: any) => i.urgency !== 'great').length - 1) && <div className="h-[1px] bg-gray-100 mt-6" />}
                   </div>
                 );
-              })}
+              })
+              )}
             </div>
           )}
         </div>
