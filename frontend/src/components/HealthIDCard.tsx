@@ -8,6 +8,18 @@ interface HealthIDCardProps {
   onDownload?: () => void;
 }
 
+// ATM / wallet card: 85.6mm × 54mm → use 342px × 216px at 4px/mm
+const CARD_W = 342;
+const CARD_H = 216;
+
+const label: React.CSSProperties = {
+  fontSize: 7, fontWeight: 700, color: '#9ca3af',
+  textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 2,
+};
+const val: React.CSSProperties = {
+  fontSize: 11, fontWeight: 600, color: '#1A3A38',
+};
+
 export default function HealthIDCard({ profile, vitals, onDownload }: HealthIDCardProps) {
   const [qrDataUrl, setQrDataUrl] = React.useState('');
   const [side, setSide] = React.useState<'front' | 'back'>('front');
@@ -30,8 +42,8 @@ export default function HealthIDCard({ profile, vitals, onDownload }: HealthIDCa
       id: profile.health_id,
     });
     QRCode.toDataURL(`${base}/emergency/${profile.health_id}?${params.toString()}`, {
-      width: 200, margin: 1, errorCorrectionLevel: 'M',
-      color: { dark: '#000000', light: '#FFFFFF' }
+      width: 160, margin: 1, errorCorrectionLevel: 'M',
+      color: { dark: '#000000', light: '#FFFFFF' },
     }).then(setQrDataUrl).catch(console.error);
   }, [profile?.health_id, profile?.full_name, profile?.blood_group, vitals]);
 
@@ -48,9 +60,9 @@ export default function HealthIDCard({ profile, vitals, onDownload }: HealthIDCa
     : 'Not Set';
 
   const formatHealthId = (id: string) => {
-    if (!id) return '0000 0000 0000';
+    if (!id) return '0000  0000  0000';
     const c = id.replace(/[\s-]/g, '');
-    const parts = [];
+    const parts: string[] = [];
     for (let i = 0; i < c.length; i += 4) parts.push(c.substr(i, 4));
     return parts.join('  ');
   };
@@ -61,50 +73,38 @@ export default function HealthIDCard({ profile, vitals, onDownload }: HealthIDCa
     medications = Array.isArray(raw) ? raw : (typeof raw === 'string' ? JSON.parse(raw) : []);
   } catch { medications = []; }
 
-  // ── Print both sides ──────────────────────────────────────────────────────
+  // ── card shell ────────────────────────────────────────────────────────────
+  const cardShell: React.CSSProperties = {
+    width: CARD_W, height: CARD_H, flexShrink: 0,
+    background: '#fff', borderRadius: 12, overflow: 'hidden',
+    border: '1px solid #d1d5db', boxShadow: '0 4px 18px rgba(0,0,0,0.12)',
+    display: 'flex', flexDirection: 'column',
+  };
+
+  // ── print ─────────────────────────────────────────────────────────────────
   const printCard = () => {
     const frontEl = document.getElementById('hid-front');
-    const backEl = document.getElementById('hid-back');
+    const backEl  = document.getElementById('hid-back');
     if (!frontEl || !backEl) return;
 
-    const printHtml = `<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8"/>
-  <title>SatyaSathi Health ID — ${profile?.full_name || ''}</title>
-  <style>
-    *{margin:0;padding:0;box-sizing:border-box;}
-    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f3f4f6;display:flex;flex-direction:column;align-items:center;gap:24px;padding:32px;}
-    .page-label{font-size:11px;color:#6b7280;font-weight:600;text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;}
-    .card{width:85.6mm;background:#fff;border-radius:10px;overflow:hidden;border:1px solid #d1d5db;box-shadow:0 2px 12px rgba(0,0,0,.10);}
-    @media print{
-      body{background:#fff;padding:16px;gap:20px;}
-      .card{box-shadow:none;}
-      @page{size:A4 portrait;margin:15mm;}
-    }
-  </style>
-</head>
-<body>
-  <div class="page-label">Front Side</div>
-  ${frontEl.outerHTML}
-  <div class="page-label" style="margin-top:8px">Back Side</div>
-  ${backEl.outerHTML}
-  <script>window.onload=function(){window.print();}<\/script>
-</body>
-</html>`;
-
-    // Use iframe injection instead of window.open to avoid popup blockers
-    const iframe = document.createElement('iframe');
-    iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:0;height:0;border:none;';
-    document.body.appendChild(iframe);
-    const doc = iframe.contentDocument || iframe.contentWindow?.document;
-    if (!doc) { document.body.removeChild(iframe); return; }
-    doc.open();
-    doc.write(printHtml);
-    doc.close();
-    setTimeout(() => {
-      iframe.contentWindow?.focus();
-      iframe.contentWindow?.print();
+    const html = `<!DOCTYPE html>
+<html><head><meta charset="utf-8"/>
+<title>SatyaSathi Health ID</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+       background:#f3f4f6;display:flex;flex-direction:column;
+       align-items:center;gap:20px;padding:28px;}
+  .lbl{font-size:10px;color:#6b7280;font-weight:600;text-transform:uppercase;
+       letter-spacing:.08em;margin-bottom:3px;}
+  @media print{
+    body{background:#fff;padding:10mm;gap:8mm;}
+    @page{size:A4 portrait;margin:0;}
+  }
+</style>
+</head><body>
+<div class="lbl">FRONT SIDE</div>
+${frontEl.outeontentWindow?.print();
       setTimeout(() => document.body.removeChild(iframe), 1000);
       if (onDownload) onDownload();
     }, 800);
