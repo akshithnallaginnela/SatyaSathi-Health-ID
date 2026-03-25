@@ -63,7 +63,13 @@ export default function DashboardScreen({ onLogout }: { onLogout: () => void; ke
   const [sugarTrend, setSugarTrend] = useState<any>(null);
   const [showTrends, setShowTrends] = useState(false);
   const [sharing, setSharing] = useState(false);
+  const [notice, setNotice] = useState('');
   const lastFetchRef = React.useRef<number>(0);
+
+  const showNotice = (msg: string) => {
+    setNotice(msg);
+    setTimeout(() => setNotice(''), 4000);
+  };
 
   const fetchDashboard = async () => {
     try {
@@ -145,7 +151,7 @@ export default function DashboardScreen({ onLogout }: { onLogout: () => void; ke
     } catch (e) {
       console.error('Trends load error', e);
       // Don't set showTrends to true if there's an error
-      alert('Could not load trends. Make sure you have logged some vitals.');
+      showNotice('Could not load trends. Make sure you have logged some vitals.');
     }
   };
 
