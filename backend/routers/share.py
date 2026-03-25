@@ -6,8 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc
 
 from database import get_db
-from models.user import User
-from models.domain import BPReading, SugarReading, PreventiveCare
+from models.domain import User, BPReading, SugarReading, PreventiveCare
 from security.jwt_handler import get_current_user_id
 
 router = APIRouter(prefix="/api/share", tags=["Share"])

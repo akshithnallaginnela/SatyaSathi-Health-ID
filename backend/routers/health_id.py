@@ -13,8 +13,7 @@ import qrcode
 from PIL import Image, ImageDraw, ImageFont
 
 from database import get_db
-from models.user import User
-from models.domain import BPReading, SugarReading, BloodReport
+from models.domain import User, BPReading, SugarReading, BloodReport
 from security.jwt_handler import get_current_user_id
 
 router = APIRouter(prefix="/api/health-id", tags=["Health ID"])
