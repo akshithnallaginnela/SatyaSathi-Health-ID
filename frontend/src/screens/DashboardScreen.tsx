@@ -262,11 +262,19 @@ export default function DashboardScreen({ onLogout }: { onLogout: () => void; ke
       <div className="px-5 relative z-20 -mt-6 space-y-5">
         
         {!hasData && (
-          <EmptyState 
-            type="vitals"
-            onAction={() => window.location.hash = '#/vitals'}
-            actionText="Log Your First Vital"
-          />
+          <div className="bg-[#F2FDFB] border-[1.5px] border-dashed border-primary-teal/40 rounded-[28px] p-8 text-center shadow-inner">
+            <div className="text-6xl mb-4 animate-bounce">🩺</div>
+            <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-4 border-2 border-white shadow-sm">
+              <Activity size={32} className="text-blue-500" />
+            </div>
+            <h3 className="text-dark-teal font-extrabold text-lg mb-2">No Vitals Logged Yet</h3>
+            <p className="text-muted-teal text-sm leading-relaxed mb-6 max-w-xs mx-auto">
+              Start tracking your BP, sugar, and BMI to get personalized health insights.
+            </p>
+            <button onClick={() => window.location.hash = '#/vitals'} className="bg-blue-500 text-white font-extrabold px-6 py-3 rounded-2xl shadow-md hover:shadow-lg transition-all">
+              Log Your First Vital
+            </button>
+          </div>
         )}
 
         {/* 2. STREAK CARD */}
@@ -343,7 +351,11 @@ export default function DashboardScreen({ onLogout }: { onLogout: () => void; ke
           <p className="text-[#A0A0A0] text-[11px] font-semibold italic mb-6">Personalized tips based on your health data.</p>
 
           {!hasData ? (
-             <EmptyState type="vitals" />
+             <div className="py-8 text-center bg-gray-50 rounded-2xl border border-dashed border-gray-200">
+               <div className="text-4xl mb-3">🩺</div>
+               <p className="text-gray-400 text-sm">No data yet.</p>
+               <p className="text-gray-300 text-xs mt-1">Log vitals to see preventive care</p>
+             </div>
           ) : (
             <div className="space-y-6">
               {(preventive.all_care_items || []).filter((item: any) => item.urgency !== 'great').length === 0 ? (
