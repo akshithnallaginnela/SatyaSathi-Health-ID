@@ -99,9 +99,9 @@ export default function HealthIDCard({ profile, onDownload }: HealthIDCardProps)
         <div className="absolute left-0 right-0" style={{ top: '15%', bottom: '12%', padding: '0 3%' }}>
           <div className="h-full flex gap-2">
             
-            {/* Photo - 20% width (smaller) */}
-            <div style={{ width: '20%' }} className="h-full">
-              <div className="w-full h-full rounded-md overflow-hidden border-2 border-gray-300 bg-gray-50">
+            {/* Photo - 18% width, proper aspect ratio */}
+            <div style={{ width: '18%' }} className="h-full flex items-center">
+              <div className="w-full rounded-md overflow-hidden border-2 border-gray-300 bg-gray-50" style={{ aspectRatio: '3/4' }}>
                 {profile?.profile_photo_url ? (
                   <img
                     src={profile.profile_photo_url.startsWith('/') ? `http://localhost:8000${profile.profile_photo_url}` : profile.profile_photo_url}
@@ -109,15 +109,15 @@ export default function HealthIDCard({ profile, onDownload }: HealthIDCardProps)
                     className="w-full h-full object-cover"
                   />
                 ) : (
-                  <div className="w-full h-full bg-gradient-to-br from-[#26C6BF] to-[#1FA89E] flex items-center justify-center text-white font-extrabold text-3xl">
+                  <div className="w-full h-full bg-gradient-to-br from-[#26C6BF] to-[#1FA89E] flex items-center justify-center text-white font-extrabold text-2xl">
                     {initials}
                   </div>
                 )}
               </div>
             </div>
 
-            {/* Details - 57% width (more space) */}
-            <div style={{ width: '57%' }} className="h-full flex flex-col justify-between py-2">
+            {/* Details - 59% width (more space) */}
+            <div style={{ width: '59%' }} className="h-full flex flex-col justify-between py-2">
               {/* Name */}
               <div>
                 <p className="text-[#1A3A38] font-extrabold leading-none uppercase tracking-wide" style={{ fontSize: '15px' }}>
