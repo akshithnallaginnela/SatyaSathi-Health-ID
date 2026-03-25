@@ -42,16 +42,19 @@ def build_pipeline() -> Pipeline:
                 "tfidf",
                 TfidfVectorizer(
                     lowercase=True,
-                    ngram_range=(1, 2),
-                    max_features=8000,
+                    ngram_range=(1, 3),
+                    max_features=12000,
                     min_df=1,
+                    sublinear_tf=True,
                 ),
             ),
             (
                 "clf",
                 LogisticRegression(
-                    max_iter=2000,
+                    max_iter=3000,
                     class_weight="balanced",
+                    C=2.0,
+                    solver="lbfgs",
                 ),
             ),
         ]
