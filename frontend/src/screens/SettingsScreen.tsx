@@ -123,6 +123,8 @@ export default function SettingsScreen({ onBack }: { onBack: () => void }) {
       await profileAPI.update({ blood_group: bloodGroup });
       showNotice('Blood group updated!', true);
       loadProfile();
+      // Notify MyID screen to refresh
+      window.dispatchEvent(new Event('profile-updated'));
     } catch (e: any) {
       showNotice(e?.message || 'Failed to update blood group');
     } finally {
