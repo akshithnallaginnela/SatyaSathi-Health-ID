@@ -142,13 +142,13 @@ export default function HealthIDCard({ profile, onDownload }: HealthIDCardProps)
             padding: '0 3%'
           }}
         >
-          <div style={{ width: '18%' }} className="h-full flex items-center">
+          <div style={{ width: '18%' }} className="h-full flex items-center py-2">
             <div
               className="w-full rounded-md overflow-hidden"
               style={{
                 aspectRatio: '3/4',
                 border: '2px solid #d1d5db',
-                backgroundColor: '#f9fafb'
+                backgroundColor: '#26C6BF'
               }}
             >
               {profile?.profile_photo_url ? (
@@ -159,11 +159,12 @@ export default function HealthIDCard({ profile, onDownload }: HealthIDCardProps)
                 />
               ) : (
                 <div
-                  className="w-full h-full flex items-center justify-center font-extrabold"
+                  className="w-full h-full flex items-center justify-center"
                   style={{
                     backgroundColor: '#26C6BF',
                     color: '#ffffff',
-                    fontSize: '24px'
+                    fontSize: '28px',
+                    fontWeight: '800'
                   }}
                 >
                   {initials}
