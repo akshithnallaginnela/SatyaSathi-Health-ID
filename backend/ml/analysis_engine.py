@@ -196,20 +196,46 @@ def build_features(user, bp_readings, sugar_readings, report) -> dict:
     f["has_report"] = False
     if report:
         f["has_report"] = True
-        f["hemoglobin"] = float(report.hemoglobin) if report.hemoglobin else None
-        f["rbc_count"] = float(report.rbc_count) if report.rbc_count else None
-        f["wbc_count"] = int(report.wbc_count) if report.wbc_count else None
-        f["platelet_count"] = int(report.platelet_count) if report.platelet_count else None
+        # CBC
+        f["hemoglobin"]           = float(report.hemoglobin) if report.hemoglobin else None
+        f["rbc_count"]            = float(report.rbc_count) if report.rbc_count else None
+        f["wbc_count"]            = int(report.wbc_count) if report.wbc_count else None
+        f["platelet_count"]       = int(report.platelet_count) if report.platelet_count else None
+        f["pcv"]                  = float(report.pcv) if report.pcv else None
+        f["mchc"]                 = float(report.mchc) if report.mchc else None
+        f["rdw"]                  = float(report.rdw) if report.rdw else None
+        f["neutrophils_pct"]      = float(report.neutrophils_pct) if report.neutrophils_pct else None
+        f["lymphocytes_pct"]      = float(report.lymphocytes_pct) if report.lymphocytes_pct else None
+        f["peripheral_smear"]     = report.peripheral_smear or None
+        # Biochemistry
         f["fasting_glucose_report"] = float(report.fasting_glucose) if report.fasting_glucose else None
-        f["creatinine"] = float(report.creatinine) if report.creatinine else None
-        f["urea"] = float(report.urea) if report.urea else None
+        f["creatinine"]           = float(report.creatinine) if report.creatinine else None
+        f["urea"]                 = float(report.urea) if report.urea else None
+        f["sgpt"]                 = float(report.sgpt) if report.sgpt else None
+        # Lipids
+        f["total_cholesterol"]    = float(report.total_cholesterol) if report.total_cholesterol else None
+        f["ldl"]                  = float(report.ldl) if report.ldl else None
+        f["triglycerides"]        = float(report.triglycerides) if report.triglycerides else None
+        f["hdl"]                  = float(report.hdl) if report.hdl else None
+        # Thyroid
+        f["tsh"]                  = float(report.tsh) if report.tsh else None
+        # Vitamins
+        f["vitamin_d"]            = float(report.vitamin_d) if report.vitamin_d else None
+        f["vitamin_b12"]          = float(report.vitamin_b12) if report.vitamin_b12 else None
     else:
         f["hemoglobin"] = None
         f["platelet_count"] = None
-    
+        f["ldl"] = None
+        f["triglycerides"] = None
+        f["tsh"] = None
+        f["creatinine"] = None
+        f["sgpt"] = None
+        f["vitamin_d"] = None
+        f["vitamin_b12"] = None
+
     # ── Has ANY vitals data ──
     f["has_vitals_data"] = f["has_bp_data"] or f["has_sugar_data"] or f["has_report"]
-    
+
     return f
 
 
@@ -666,20 +692,204 @@ def generate_preventive_care(features: dict) -> list[dict]:
     if creatinine is not None and creatinine > 1.2:
         care_items.append({
             "category": "kidney_health",
-            "urgency": "watch",
-            "current_status": f"Creatinine slightly elevated — {creatinine} mg/dL",
+            "urgency": "watch" if creatinine < 1.8 else "focus",
+            "current_status": f"Creatinine elevated — {creatinine} mg/dL",
             "future_risk_message": (
-                "Your creatinine is slightly above normal, which means your kidneys "
-                "are working a bit harder. Stay well hydrated and reduce protein-heavy "
-                "meals. A doctor can guide you on monitoring this."
+                "Your creatinine is above normal, which means your kidneys "
+                "are working harder than ideal. Stay well hydrated and reduce "
+                "protein-heavy meals. A doctor can guide monitoring."
             ),
             "prevention_steps": [
-                "Drink 10+ glasses of water daily — your kidneys will thank you",
+                "Drink 10+ glasses of water daily",
                 "Reduce red meat and heavy protein meals",
-                "A follow-up kidney function test in 3 months is wise",
+                "Follow-up kidney function test in 3 months",
                 "Control BP and sugar — they directly protect kidneys"
             ],
             "risk_horizon": "3-month follow-up retest"
+        })
+
+    # ── Lipid Panel Care ──
+    ldl = features.get("ldl")
+    triglycerides = features.get("triglycerides")
+    hdl = features.get("hdl")
+    total_chol = features.get("total_cholesterol")
+
+    if ldl is not None and ldl > 100:
+        if ldl >= 160:
+            urgency = "act_now"
+            msg = f"LDL at {ldl} mg/dL is high — significantly increases heart attack risk. A statin medication is usually recommended at this level."
+        elif ldl >= 130:
+            urgency = "focus"
+            msg = f"LDL at {ldl} mg/dL needs attention. Dietary changes and possibly medication can bring this down."
+        else:
+            urgency = "watch"
+            msg = f"LDL at {ldl} mg/dL is borderline. Dietary changes can keep it from rising further."
+        care_items.append({
+            "category": "cholesterol",
+            "urgency": urgency,
+            "current_status": f"LDL Cholesterol — {ldl} mg/dL",
+            "future_risk_message": msg,
+            "prevention_steps": [
+                "Replace fried food with baked or grilled options",
+                "Add oats, flaxseed, and nuts to your daily diet",
+                "Walk 30 min daily — raises HDL and lowers LDL",
+                "Consult doctor about statin if LDL stays above 130"
+            ],
+            "risk_horizon": "8-12 weeks of dietary changes"
+        })
+
+    if triglycerides is not None and triglycerides > 150:
+        if triglycerides >= 500:
+            urgency, msg = "act_now", f"Triglycerides at {triglycerides} mg/dL — very high, pancreatitis risk. See a doctor immediately."
+        elif triglycerides >= 200:
+            urgency, msg = "focus", f"Triglycerides at {triglycerides} mg/dL — high. Cut sugar, refined carbs, and alcohol."
+        else:
+            urgency, msg = "watch", f"Triglycerides at {triglycerides} mg/dL — borderline. Reduce sugar and refined carbs."
+        care_items.append({
+            "category": "triglycerides",
+            "urgency": urgency,
+            "current_status": f"Triglycerides — {triglycerides} mg/dL",
+            "future_risk_message": msg,
+            "prevention_steps": [
+                "Cut added sugar — it's the #1 driver of high triglycerides",
+                "Switch to brown rice, millets, or whole wheat",
+                "Avoid fruit juices — eat whole fruit instead",
+                "Fish oil (omega-3) supplements help significantly"
+            ],
+            "risk_horizon": "6-8 weeks with dietary changes"
+        })
+
+    if hdl is not None and hdl < 40:
+        care_items.append({
+            "category": "cholesterol",
+            "urgency": "watch",
+            "current_status": f"HDL (good cholesterol) low — {hdl} mg/dL",
+            "future_risk_message": f"HDL at {hdl} mg/dL is below ideal. Low HDL increases heart risk even when LDL is normal.",
+            "prevention_steps": [
+                "Exercise is the best way to raise HDL — walk daily",
+                "Eat nuts, avocado, and olive oil",
+                "Quit smoking if applicable — it lowers HDL significantly",
+                "Reduce refined carbs and sugar"
+            ],
+            "risk_horizon": "3 months of consistent exercise"
+        })
+
+    # ── Thyroid Care ──
+    tsh = features.get("tsh")
+    if tsh is not None:
+        if tsh > 4.5:
+            care_items.append({
+                "category": "thyroid",
+                "urgency": "focus" if tsh > 10 else "watch",
+                "current_status": f"TSH elevated — {tsh} mIU/L (Hypothyroidism)",
+                "future_risk_message": f"TSH at {tsh} mIU/L suggests your thyroid is underactive. This causes fatigue, weight gain, and cold sensitivity. Levothyroxine is the standard treatment.",
+                "prevention_steps": [
+                    "Consult a doctor for thyroid medication (Levothyroxine)",
+                    "Avoid raw cruciferous vegetables in large amounts",
+                    "Take thyroid medication on empty stomach in the morning",
+                    "Retest TSH in 6-8 weeks after starting medication"
+                ],
+                "risk_horizon": "Medication brings TSH to normal in 6-8 weeks"
+            })
+        elif tsh < 0.4:
+            care_items.append({
+                "category": "thyroid",
+                "urgency": "focus",
+                "current_status": f"TSH low — {tsh} mIU/L (Hyperthyroidism)",
+                "future_risk_message": f"TSH at {tsh} mIU/L suggests overactive thyroid. This causes palpitations, weight loss, and anxiety. Needs medical evaluation.",
+                "prevention_steps": [
+                    "Consult an endocrinologist for evaluation",
+                    "Avoid iodine-rich foods until evaluated",
+                    "Monitor heart rate — hyperthyroidism can cause arrhythmia",
+                    "Retest T3, T4 along with TSH"
+                ],
+                "risk_horizon": "Medical evaluation needed"
+            })
+
+    # ── Liver Care (SGPT) ──
+    sgpt = features.get("sgpt")
+    if sgpt is not None and sgpt > 40:
+        care_items.append({
+            "category": "liver_health",
+            "urgency": "focus" if sgpt > 80 else "watch",
+            "current_status": f"SGPT/ALT elevated — {sgpt} U/L",
+            "future_risk_message": f"SGPT at {sgpt} U/L indicates liver stress. Common causes: fatty liver, alcohol, or medications. Lifestyle changes can reverse this.",
+            "prevention_steps": [
+                "Avoid alcohol completely until SGPT normalizes",
+                "Reduce fried and fatty food",
+                "Lose 5% body weight if overweight — reverses fatty liver",
+                "Retest liver function in 6-8 weeks"
+            ],
+            "risk_horizon": "6-8 weeks with lifestyle changes"
+        })
+
+    # ── WBC / Infection Markers ──
+    neutrophils_pct = features.get("neutrophils_pct")
+    wbc = features.get("wbc_count")
+    if neutrophils_pct is not None and neutrophils_pct > 75:
+        care_items.append({
+            "category": "infection_markers",
+            "urgency": "watch",
+            "current_status": f"Neutrophils elevated — {neutrophils_pct}%",
+            "future_risk_message": f"Neutrophils at {neutrophils_pct}% suggest possible bacterial infection or stress response. Monitor for fever or other symptoms.",
+            "prevention_steps": [
+                "Monitor for fever, pain, or other infection symptoms",
+                "Stay hydrated and rest well",
+                "Consult a doctor if symptoms persist beyond 3-5 days",
+                "Retest CBC in 2 weeks if no symptoms"
+            ],
+            "risk_horizon": "Monitor for 1-2 weeks"
+        })
+
+    # ── RDW (Red Cell Distribution Width) ──
+    rdw = features.get("rdw")
+    if rdw is not None and rdw > 14.5:
+        care_items.append({
+            "category": "hemoglobin",
+            "urgency": "watch",
+            "current_status": f"RDW elevated — {rdw}% (mixed anemia possible)",
+            "future_risk_message": f"RDW at {rdw}% suggests your red blood cells vary in size — often a sign of iron or B12 deficiency. Easy to fix with supplements.",
+            "prevention_steps": [
+                "Get iron and B12 levels tested",
+                "Iron-rich foods: spinach, lentils, dates, jaggery",
+                "B12 sources: eggs, dairy, meat, or B12 supplements",
+                "Retest CBC in 6-8 weeks"
+            ],
+            "risk_horizon": "6-8 weeks with supplements"
+        })
+
+    # ── Vitamin D ──
+    vit_d = features.get("vitamin_d")
+    if vit_d is not None and vit_d < 20:
+        care_items.append({
+            "category": "vitamins",
+            "urgency": "watch" if vit_d >= 10 else "focus",
+            "current_status": f"Vitamin D deficient — {vit_d} ng/mL",
+            "future_risk_message": f"Vitamin D at {vit_d} ng/mL is deficient. This affects bone health, immunity, and mood. Supplementation is simple and effective.",
+            "prevention_steps": [
+                "Take Vitamin D3 supplement (1000-2000 IU daily)",
+                "Get 15-20 min of morning sunlight daily",
+                "Eat fatty fish, eggs, and fortified milk",
+                "Retest in 3 months after supplementation"
+            ],
+            "risk_horizon": "3 months of supplementation"
+        })
+
+    # ── Vitamin B12 ──
+    vit_b12 = features.get("vitamin_b12")
+    if vit_b12 is not None and vit_b12 < 200:
+        care_items.append({
+            "category": "vitamins",
+            "urgency": "watch" if vit_b12 >= 100 else "focus",
+            "current_status": f"Vitamin B12 deficient — {vit_b12} pg/mL",
+            "future_risk_message": f"B12 at {vit_b12} pg/mL is deficient. This causes fatigue, nerve tingling, and memory issues. Supplements work quickly.",
+            "prevention_steps": [
+                "Take B12 supplement (500-1000 mcg daily)",
+                "Eat eggs, dairy, meat, or fortified cereals",
+                "Vegetarians/vegans are at higher risk — supplement regularly",
+                "Retest in 3 months"
+            ],
+            "risk_horizon": "3 months of supplementation"
         })
     
     # ── Post-process: add risk_score (%) and top_action ──
@@ -863,6 +1073,26 @@ def generate_daily_tasks(features: dict, user) -> list[dict]:
             "description": "Use a slightly smaller plate",
             "why_this_task": f"BMI {bmi:.1f} — small portion reduction leads to sustainable weight loss",
             "category": "diet", "time_of_day": "all_day", "duration_or_quantity": "All meals", "coins_reward": 0
+        })
+
+    # High LDL — dietary tip
+    ldl = features.get("ldl")
+    if ldl is not None and ldl > 130:
+        tasks.append({
+            "task_type": "LOW_FAT_MEAL", "task_name": "Avoid fried food today",
+            "description": "Choose baked, grilled, or steamed options",
+            "why_this_task": f"LDL at {ldl} mg/dL — cutting saturated fat reduces it in 8 weeks",
+            "category": "diet", "time_of_day": "all_day", "duration_or_quantity": "All meals", "coins_reward": 0
+        })
+
+    # High triglycerides — sugar reduction tip
+    triglycerides = features.get("triglycerides")
+    if triglycerides is not None and triglycerides > 150:
+        tasks.append({
+            "task_type": "NO_SUGAR_DAY", "task_name": "Skip added sugar today",
+            "description": "No sugar in tea, coffee, or snacks",
+            "why_this_task": f"Triglycerides at {triglycerides} mg/dL — sugar is the #1 driver",
+            "category": "diet", "time_of_day": "all_day", "duration_or_quantity": "All day", "coins_reward": 0
         })
 
     return tasks
