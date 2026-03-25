@@ -96,11 +96,11 @@ export default function HealthIDCard({ profile, onDownload }: HealthIDCardProps)
         </div>
 
         {/* Main Content Area - Following Aadhaar Layout */}
-        <div className="absolute left-0 right-0" style={{ top: '15%', bottom: '12%', padding: '0 4%' }}>
-          <div className="h-full flex gap-3">
+        <div className="absolute left-0 right-0" style={{ top: '15%', bottom: '12%', padding: '0 3%' }}>
+          <div className="h-full flex gap-2">
             
-            {/* Photo - 25% width */}
-            <div style={{ width: '25%' }} className="h-full">
+            {/* Photo - 20% width (smaller) */}
+            <div style={{ width: '20%' }} className="h-full">
               <div className="w-full h-full rounded-md overflow-hidden border-2 border-gray-300 bg-gray-50">
                 {profile?.profile_photo_url ? (
                   <img
@@ -109,55 +109,55 @@ export default function HealthIDCard({ profile, onDownload }: HealthIDCardProps)
                     className="w-full h-full object-cover"
                   />
                 ) : (
-                  <div className="w-full h-full bg-gradient-to-br from-[#26C6BF] to-[#1FA89E] flex items-center justify-center text-white font-extrabold text-4xl">
+                  <div className="w-full h-full bg-gradient-to-br from-[#26C6BF] to-[#1FA89E] flex items-center justify-center text-white font-extrabold text-3xl">
                     {initials}
                   </div>
                 )}
               </div>
             </div>
 
-            {/* Details - 50% width */}
-            <div style={{ width: '50%' }} className="h-full flex flex-col justify-between py-2">
+            {/* Details - 57% width (more space) */}
+            <div style={{ width: '57%' }} className="h-full flex flex-col justify-between py-2">
               {/* Name */}
               <div>
-                <p className="text-[#1A3A38] font-extrabold leading-none uppercase tracking-wide" style={{ fontSize: '16px' }}>
+                <p className="text-[#1A3A38] font-extrabold leading-none uppercase tracking-wide" style={{ fontSize: '15px' }}>
                   {profile?.full_name || 'User Name'}
                 </p>
               </div>
 
               {/* DOB */}
               <div>
-                <p className="text-gray-600 font-bold uppercase tracking-wide" style={{ fontSize: '8px', marginBottom: '2px' }}>DATE OF BIRTH</p>
-                <p className="text-[#1A3A38] font-bold" style={{ fontSize: '12px' }}>{dob}</p>
+                <p className="text-gray-600 font-bold uppercase tracking-wide" style={{ fontSize: '7px', marginBottom: '2px' }}>DATE OF BIRTH</p>
+                <p className="text-[#1A3A38] font-bold" style={{ fontSize: '11px' }}>{dob}</p>
               </div>
 
               {/* Gender & Blood */}
               <div className="flex gap-8">
                 <div>
-                  <p className="text-gray-600 font-bold uppercase tracking-wide" style={{ fontSize: '8px', marginBottom: '2px' }}>GENDER</p>
-                  <p className="text-[#1A3A38] font-bold capitalize" style={{ fontSize: '12px' }}>{profile?.gender || 'Male'}</p>
+                  <p className="text-gray-600 font-bold uppercase tracking-wide" style={{ fontSize: '7px', marginBottom: '2px' }}>GENDER</p>
+                  <p className="text-[#1A3A38] font-bold capitalize" style={{ fontSize: '11px' }}>{profile?.gender || 'Male'}</p>
                 </div>
                 <div>
-                  <p className="text-gray-600 font-bold uppercase tracking-wide" style={{ fontSize: '8px', marginBottom: '2px' }}>BLOOD</p>
-                  <p className="text-[#1A3A38] font-bold" style={{ fontSize: '12px' }}>{profile?.blood_group || '—'}</p>
+                  <p className="text-gray-600 font-bold uppercase tracking-wide" style={{ fontSize: '7px', marginBottom: '2px' }}>BLOOD</p>
+                  <p className="text-[#1A3A38] font-bold" style={{ fontSize: '11px' }}>{profile?.blood_group || '—'}</p>
                 </div>
               </div>
 
-              {/* Health ID Number - BIG */}
+              {/* Health ID Number - ONE LINE ONLY */}
               <div>
-                <p className="text-[#2D5856] font-extrabold font-mono" style={{ fontSize: '18px', letterSpacing: '0.15em' }}>
+                <p className="text-[#2D5856] font-extrabold font-mono overflow-hidden" style={{ fontSize: '15px', letterSpacing: '0.12em', whiteSpace: 'nowrap' }}>
                   {formatHealthId(profile?.health_id)}
                 </p>
               </div>
             </div>
 
-            {/* QR Code - 25% width */}
-            <div style={{ width: '25%' }} className="h-full flex items-center justify-center">
+            {/* QR Code - 23% width */}
+            <div style={{ width: '23%' }} className="h-full flex items-center justify-center py-2">
               {qrDataUrl ? (
                 <img 
                   src={qrDataUrl} 
                   alt="QR Code" 
-                  className="w-full h-auto max-h-full object-contain rounded-md border border-gray-300" 
+                  className="w-full h-auto max-h-full object-contain rounded-sm border border-gray-300" 
                 />
               ) : (
                 <div className="w-full aspect-square bg-gray-100 rounded-md flex items-center justify-center border border-gray-300">
