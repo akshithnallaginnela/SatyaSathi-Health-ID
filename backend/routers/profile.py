@@ -29,6 +29,7 @@ async def get_profile(user_id: str = Depends(get_current_user_id), db: AsyncSess
         "full_name": user.full_name,
         "phone_number": user.phone_number,
         "gender": user.gender,
+        "blood_group": user.blood_group,
         "date_of_birth": str(user.date_of_birth) if user.date_of_birth else None,
         "bmi": float(user.bmi) if user.bmi else None,
         "weight_kg": float(user.weight_kg) if user.weight_kg else None,
