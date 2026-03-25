@@ -5,7 +5,7 @@ import {
   Plus, X, Trash2, Droplets, Lock, Download, ChevronRight,
   Eye, EyeOff, User as UserIcon, Edit3, Check, Settings
 } from 'lucide-react';
-import { profileAPI, coinsAPI, clearTokens, notificationsAPI, mlAPI } from '../services/api.ts';
+import { profileAPI, coinsAPI, clearTokens, notificationsAPI, mlAPI, healthIdAPI } from '../services/api.ts';
 import HealthIDCard from '../components/HealthIDCard.tsx';
 
 type ModalType = 'reminder' | 'password' | 'editProfile' | null;
@@ -14,6 +14,7 @@ export default function MyIDScreen({ user, onLogout, onReportUploaded, onOpenSet
   user: any; onLogout: () => void; onReportUploaded?: () => void; onOpenSettings?: () => void;
 }) {
   const [profile, setProfile] = useState<any>(user);
+  const [cardData, setCardData] = useState<any>(null);
   const [coins, setCoins] = useState(0);
   const [activity, setActivity] = useState<any>({ completed_tasks: [] });
   const [reminders, setReminders] = useState<any[]>([]);
@@ -47,8 +48,9 @@ export default function MyIDScreen({ user, onLogout, onReportUploaded, onOpenSet
   useEffect(() => {
     (async () => {
       try {
-        const [p, c, a] = await Promise.all([profileAPI.get(), coinsAPI.getBalance(), profileAPI.getActivity()]);
+        const [p, c, a, cd] = await Promise.all([profileAPI.get(), coinsAPI.getBalance(), profileAPI.getActivity(), healthIdAPI.getCardData()]);
         setProfile(p);
+        setCardData(cd);
         setCoins(c.total_balance);
         setActivity(a);
         setEditForm({ full_name: p.full_name || '', weight_kg: p.weight_kg || '', height_cm: p.height_cm || '' });
@@ -62,8 +64,9 @@ export default function MyIDScreen({ user, onLogout, onReportUploaded, onOpenSet
     // Listen for profile updates from Settings
     const handleProfileUpdate = async () => {
       try {
-        const p = await profileAPI.get();
+        const [p, cd] = await Promise.all([profileAPI.get(), healthIdAPI.getCardData()]);
         setProfile(p);
+        setCardData(cd);
       } catch (e) { console.error(e); }
     };
     window.addEventListener('profile-updated', handleProfileUpdate);
@@ -203,7 +206,7 @@ export default function MyIDScreen({ user, onLogout, onReportUploaded, onOpenSet
 
       {/* Professional Health ID Card */}
       <div className="px-6 -mt-8 relative z-20">
-        <HealthIDCard key={profile?.blood_group || 'default'} profile={profile} onDownload={() => showNotice('Health ID card downloaded!', true)} />
+        <HealthIDCard key={profile?.blood_group || 'default'} profile={profile} vitals={cardData} onDownload={() => showNotice('Health ID card downloaded!', true)} />
       </div>
 
       {/* Quick Profile Info */}
