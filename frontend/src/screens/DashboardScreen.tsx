@@ -264,16 +264,11 @@ export default function DashboardScreen({ onLogout }: { onLogout: () => void; ke
       <div className="px-5 relative z-20 -mt-6 space-y-5">
         
         {!hasData && (
-          <div className="bg-[#F2FDFB] border-[1.5px] border-dashed border-primary-teal/40 rounded-[28px] p-8 text-center shadow-inner">
-            <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm">
-              <Activity size={32} className="text-primary-teal" />
-            </div>
-            <h3 className="text-dark-teal font-extrabold text-[18px] mb-2">Welcome to VitalID</h3>
-            <p className="text-muted-teal text-[13px] leading-relaxed mb-6">Log vitals or upload a report to see insights.</p>
-            <button onClick={() => window.location.hash = '#/vitals'} className="bg-primary-teal text-white font-extrabold w-full py-4 rounded-2xl shadow-md">
-              Start Now
-            </button>
-          </div>
+          <EmptyState 
+            type="vitals"
+            onAction={() => window.location.hash = '#/vitals'}
+            actionText="Log Your First Vital"
+          />
         )}
 
         {/* 2. STREAK CARD */}
@@ -350,9 +345,7 @@ export default function DashboardScreen({ onLogout }: { onLogout: () => void; ke
           <p className="text-[#A0A0A0] text-[11px] font-semibold italic mb-6">Personalized tips based on your health data.</p>
 
           {!hasData ? (
-             <div className="py-6 text-center bg-gray-50 rounded-2xl border border-dashed border-gray-200">
-               <p className="text-gray-400 text-sm">No data yet.</p>
-             </div>
+             <EmptyState type="vitals" />
           ) : (
             <div className="space-y-6">
               {(preventive.all_care_items || []).filter((item: any) => item.urgency !== 'great').length === 0 ? (
@@ -467,7 +460,109 @@ export default function DashboardScreen({ onLogout }: { onLogout: () => void; ke
           </div>
         )}
 
-        {/* 6. CLINICS */}
+        {/* 5.5 SHARE BUTTON */}
+        {hasData && (
+          <div className="pt-2">
+            <button
+              onClick={handleShare}
+              disabled={sharing}
+              className="w-full bg-gradient-to-r from-primary-teal to-[#1FA89E] text-white font-extrabold py-4 rounded-2xl shadow-lg flex items-center justify-center gap-2 hover:shadow-xl transition-all disabled:opacity-50"
+            >
+              <Share2 size={20} />
+              {sharing ? 'Sharing...' : 'Share My Health Report'}
+            </button>
+          </div>
+        )}
+
+        {/* 6. HEALTH TRENDS */}
+        {hasData && (
+          <div className="pt-4">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-dark-teal font-extrabold text-[17px]">Health Trends</h3>
+              {!showTrends && (
+                <button
+                  onClick={loadTrends}
+                  className="text-primary-teal text-xs font-bold flex items-center gap-1"
+                >
+                  <TrendingUp size={14} />
+                  View Trends
+                </button>
+              )}
+            </div>
+
+            {!showTrends ? (
+              <EmptyState 
+                type="trends" 
+                onAction={loadTrends}
+                actionText="Load Trends"
+              />
+            ) : (
+              <div className="space-y-4">
+                {/* BP Trend */}
+                {bpTrend && bpTrend.data.length > 0 && (
+                  <div className="bg-white border border-[#E8F1F1] rounded-2xl p-5 shadow-sm">
+                    <h4 className="text-dark-teal font-extrabold text-sm mb-3">Blood Pressure (Last 30 Days)</h4>
+                    <TrendChart
+                      data={bpTrend.data.map((d: any) => ({ date: d.date, value: d.systolic, value2: d.diastolic }))}
+                      label="Systolic"
+                      label2="Diastolic"
+                      color="#EF4444"
+                      color2="#F59E0B"
+                      yAxisLabel="mmHg"
+                    />
+                    <div className="mt-3 grid grid-cols-3 gap-2 text-center">
+                      <div className="bg-gray-50 rounded-lg p-2">
+                        <p className="text-[9px] text-gray-500 font-bold uppercase">Average</p>
+                        <p className="text-sm font-extrabold text-dark-teal">{bpTrend.stats.avg_systolic}/{bpTrend.stats.avg_diastolic}</p>
+                      </div>
+                      <div className="bg-gray-50 rounded-lg p-2">
+                        <p className="text-[9px] text-gray-500 font-bold uppercase">Readings</p>
+                        <p className="text-sm font-extrabold text-dark-teal">{bpTrend.stats.readings_count}</p>
+                      </div>
+                      <div className="bg-gray-50 rounded-lg p-2">
+                        <p className="text-[9px] text-gray-500 font-bold uppercase">Trend</p>
+                        <p className="text-sm font-extrabold text-primary-teal capitalize">{bpTrend.stats.trend}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Sugar Trend */}
+                {sugarTrend && sugarTrend.data.length > 0 && (
+                  <div className="bg-white border border-[#E8F1F1] rounded-2xl p-5 shadow-sm">
+                    <h4 className="text-dark-teal font-extrabold text-sm mb-3">Blood Sugar (Last 30 Days)</h4>
+                    <TrendChart
+                      data={sugarTrend.data.map((d: any) => ({ date: d.date, value: d.glucose }))}
+                      label="Fasting Glucose"
+                      color="#8B5CF6"
+                      yAxisLabel="mg/dL"
+                    />
+                    <div className="mt-3 grid grid-cols-3 gap-2 text-center">
+                      <div className="bg-gray-50 rounded-lg p-2">
+                        <p className="text-[9px] text-gray-500 font-bold uppercase">Average</p>
+                        <p className="text-sm font-extrabold text-dark-teal">{sugarTrend.stats.avg_glucose}</p>
+                      </div>
+                      <div className="bg-gray-50 rounded-lg p-2">
+                        <p className="text-[9px] text-gray-500 font-bold uppercase">Readings</p>
+                        <p className="text-sm font-extrabold text-dark-teal">{sugarTrend.stats.readings_count}</p>
+                      </div>
+                      <div className="bg-gray-50 rounded-lg p-2">
+                        <p className="text-[9px] text-gray-500 font-bold uppercase">Above 100</p>
+                        <p className="text-sm font-extrabold text-orange-600">{sugarTrend.stats.above_100_count}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {(!bpTrend || bpTrend.data.length === 0) && (!sugarTrend || sugarTrend.data.length === 0) && (
+                  <EmptyState type="trends" />
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* 7. CLINICS */}
         <div className="bg-white border border-[#F0F0F0] rounded-[28px] p-5 shadow-sm">
           <h3 className="text-dark-teal font-extrabold text-[16px] flex items-center gap-2 mb-4">
             <MapPin size={18} className="text-primary-teal" /> Nearby Clinics
