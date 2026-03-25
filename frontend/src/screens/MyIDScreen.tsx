@@ -58,7 +58,20 @@ export default function MyIDScreen({ user, onLogout, onReportUploaded, onOpenSet
     if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission();
     reminderCheckRef.current = setInterval(checkDueReminders, 60000);
     checkDueReminders();
-    return () => { if (reminderCheckRef.current) clearInterval(reminderCheckRef.current); };
+    
+    // Listen for profile updates from Settings
+    const handleProfileUpdate = async () => {
+      try {
+        const p = await profileAPI.get();
+        setProfile(p);
+      } catch (e) { console.error(e); }
+    };
+    window.addEventListener('profile-updated', handleProfileUpdate);
+    
+    return () => { 
+      if (reminderCheckRef.current) clearInterval(reminderCheckRef.current);
+      window.removeEventListener('profile-updated', handleProfileUpdate);
+    };
   }, []);
 
   const loadReminders = async () => {
@@ -190,7 +203,7 @@ export default function MyIDScreen({ user, onLogout, onReportUploaded, onOpenSet
 
       {/* Professional Health ID Card */}
       <div className="px-6 -mt-8 relative z-20">
-        <HealthIDCard profile={profile} onDownload={() => showNotice('Health ID card downloaded!', true)} />
+        <HealthIDCard key={profile?.blood_group || 'default'} profile={profile} onDownload={() => showNotice('Health ID card downloaded!', true)} />
       </div>
 
       {/* Quick Profile Info */}
