@@ -12,8 +12,9 @@ import DashboardScreen from './screens/DashboardScreen.tsx';
 import MissionsScreen from './screens/MissionsScreen.tsx';
 import VitalsScreen from './screens/VitalsScreen.tsx';
 import MyIDScreen from './screens/MyIDScreen.tsx';
+import SettingsScreen from './screens/SettingsScreen.tsx';
 
-type Tab = 'dashboard' | 'missions' | 'vitals' | 'myid';
+type Tab = 'dashboard' | 'missions' | 'vitals' | 'myid' | 'settings';
 type AuthState = 'loading' | 'login' | 'register' | 'authenticated';
 
 function App() {
@@ -80,7 +81,8 @@ function App() {
             {activeTab === 'dashboard' && <DashboardScreen key="dash" onLogout={handleLogout} />}
             {activeTab === 'missions' && <MissionsScreen key="miss" />}
             {activeTab === 'vitals' && <VitalsScreen key="vit" />}
-            {activeTab === 'myid' && <MyIDScreen key="id" user={user} onLogout={handleLogout} onReportUploaded={() => setActiveTab('dashboard')} />}
+            {activeTab === 'myid' && <MyIDScreen key="id" user={user} onLogout={handleLogout} onReportUploaded={() => setActiveTab('dashboard')} onOpenSettings={() => setActiveTab('settings')} />}
+            {activeTab === 'settings' && <SettingsScreen key="settings" onBack={() => setActiveTab('myid')} />}
           </AnimatePresence>
         </div>
 

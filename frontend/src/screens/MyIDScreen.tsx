@@ -3,14 +3,15 @@ import { motion, AnimatePresence } from 'motion/react';
 import {
   Shield, CreditCard, Activity, LogOut, Bell, UploadCloud,
   Plus, X, Trash2, Droplets, Lock, Download, ChevronRight,
-  Eye, EyeOff, User as UserIcon, Edit3, Check
+  Eye, EyeOff, User as UserIcon, Edit3, Check, Settings
 } from 'lucide-react';
 import { profileAPI, coinsAPI, clearTokens, notificationsAPI, mlAPI } from '../services/api.ts';
+import HealthIDCard from '../components/HealthIDCard.tsx';
 
 type ModalType = 'reminder' | 'password' | 'editProfile' | null;
 
-export default function MyIDScreen({ user, onLogout, onReportUploaded }: {
-  user: any; onLogout: () => void; onReportUploaded?: () => void;
+export default function MyIDScreen({ user, onLogout, onReportUploaded, onOpenSettings }: {
+  user: any; onLogout: () => void; onReportUploaded?: () => void; onOpenSettings?: () => void;
 }) {
   const [profile, setProfile] = useState<any>(user);
   const [coins, setCoins] = useState(0);
@@ -171,13 +172,30 @@ export default function MyIDScreen({ user, onLogout, onReportUploaded }: {
       {/* Header */}
       <div className="bg-[#26C6BF] pt-12 pb-16 px-6 relative overflow-hidden">
         <div className="absolute top-[-50px] right-[-50px] w-48 h-48 bg-[#1EB5AE] rounded-full opacity-40 blur-2xl"/>
-        <h1 className="text-white text-2xl font-extrabold relative z-10">My Health ID</h1>
-        <p className="text-[#B2EFEB] text-sm relative z-10">Your digital identity</p>
+        <div className="flex justify-between items-start relative z-10">
+          <div>
+            <h1 className="text-white text-2xl font-extrabold">My Health ID</h1>
+            <p className="text-[#B2EFEB] text-sm">Your digital identity</p>
+          </div>
+          {onOpenSettings && (
+            <button
+              onClick={onOpenSettings}
+              className="bg-white/20 backdrop-blur-sm border border-white/30 rounded-full p-2.5 hover:bg-white/30 transition-all"
+            >
+              <Settings size={20} className="text-white" />
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* ID Card */}
+      {/* Professional Health ID Card */}
       <div className="px-6 -mt-8 relative z-20">
-        <div className="bg-white border-[1.5px] border-[#C8F0EC] rounded-[24px] p-6 shadow-lg">
+        <HealthIDCard profile={profile} onDownload={() => showNotice('Health ID card downloaded!', true)} />
+      </div>
+
+      {/* Quick Profile Info */}
+      <div className="px-6 mt-4">
+        <div className="bg-white border-[1.5px] border-[#C8F0EC] rounded-[24px] p-6 shadow-sm">
           <div className="flex items-center gap-4 mb-4">
             <label className="relative group w-16 h-16 rounded-full overflow-hidden shrink-0 shadow-md cursor-pointer">
               <div className="w-full h-full bg-[#26C6BF] flex items-center justify-center text-white font-extrabold text-xl">
@@ -204,27 +222,7 @@ export default function MyIDScreen({ user, onLogout, onReportUploaded }: {
             </button>
           </div>
 
-          <div className="bg-[#F2FDFB] rounded-2xl p-4 mb-4">
-            <div className="flex items-center gap-2 mb-1">
-              <CreditCard size={14} className="text-[#26C6BF]"/>
-              <span className="text-[10px] font-extrabold text-[#7ECCC7] uppercase tracking-wider">Health ID</span>
-            </div>
-            <p className="text-[#1A3A38] font-extrabold text-lg tracking-wider font-mono">{profile?.health_id || '—'}</p>
-          </div>
-
           <div className="grid grid-cols-2 gap-3">
-            <div className="bg-[#F2FDFB] rounded-xl p-3">
-              <span className="text-[9px] font-extrabold text-[#7ECCC7] uppercase">Gender</span>
-              <p className="text-[#1A3A38] font-bold text-sm capitalize">{profile?.gender || '—'}</p>
-            </div>
-            <div className="bg-[#F2FDFB] rounded-xl p-3">
-              <span className="text-[9px] font-extrabold text-[#7ECCC7] uppercase">Aadhaar</span>
-              <div className="flex items-center gap-1">
-                {profile?.aadhaar_verified
-                  ? <><Shield size={12} className="text-[#26C6BF]"/><span className="text-[#1A3A38] font-bold text-sm">XXXX {profile.aadhaar_last4}</span></>
-                  : <span className="text-[#7ECCC7] text-sm">Not linked</span>}
-              </div>
-            </div>
             {profile?.bmi && (
               <div className="bg-[#F2FDFB] rounded-xl p-3">
                 <span className="text-[9px] font-extrabold text-[#7ECCC7] uppercase">BMI</span>
@@ -235,6 +233,18 @@ export default function MyIDScreen({ user, onLogout, onReportUploaded }: {
               <div className="bg-[#F2FDFB] rounded-xl p-3">
                 <span className="text-[9px] font-extrabold text-[#7ECCC7] uppercase">Weight</span>
                 <p className="text-[#1A3A38] font-bold text-sm">{profile.weight_kg} kg</p>
+              </div>
+            )}
+            {profile?.height_cm && (
+              <div className="bg-[#F2FDFB] rounded-xl p-3">
+                <span className="text-[9px] font-extrabold text-[#7ECCC7] uppercase">Height</span>
+                <p className="text-[#1A3A38] font-bold text-sm">{profile.height_cm} cm</p>
+              </div>
+            )}
+            {profile?.blood_group && (
+              <div className="bg-[#F2FDFB] rounded-xl p-3">
+                <span className="text-[9px] font-extrabold text-[#7ECCC7] uppercase">Blood Group</span>
+                <p className="text-[#1A3A38] font-bold text-sm">{profile.blood_group}</p>
               </div>
             )}
           </div>

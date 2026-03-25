@@ -47,6 +47,7 @@ class User(Base):
     health_id = Column(String(20), unique=True, nullable=False)
     date_of_birth = Column(Date)
     gender = Column(String(10))
+    blood_group = Column(String(5))
     weight_kg = Column(Float)
     height_cm = Column(Float)
     bmi = Column(Float)
@@ -302,6 +303,7 @@ class UserResponse(BaseModel):
     phone_number: str
     health_id: str
     gender: Optional[str] = None
+    blood_group: Optional[str] = None
     date_of_birth: Optional[date] = None
     weight_kg: Optional[float] = None
     height_cm: Optional[float] = None
