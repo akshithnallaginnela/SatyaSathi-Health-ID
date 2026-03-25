@@ -476,6 +476,30 @@ def generate_preventive_care(features: dict) -> list[dict]:
                 "risk_horizon": ""
             })
 
+    # ── PCV / HEMATOCRIT (from blood report) ──
+    pcv = features.get("pcv")
+    gender_enc = features.get("gender_enc", 1)
+    if pcv is not None:
+        # Normal ranges: Male 40-54%, Female 36-46%
+        pcv_high = 54 if gender_enc == 1 else 46
+        pcv_low = 40 if gender_enc == 1 else 36
+        if pcv > pcv_high + 3:  # Significantly high (e.g., >57% for male)
+            care_items.append({
+                "category": "pcv_hematocrit", "urgency": "watch",
+                "current_status": f"PCV {pcv:.1f}% — Elevated",
+                "future_risk_message": f"PCV at {pcv:.1f}% is elevated, which can indicate dehydration or polycythemia. Drink 10+ glasses of water daily and retest in 2 weeks.",
+                "prevention_steps": ["Drink 10+ glasses of water daily", "Retest CBC in 2 weeks", "See doctor if PCV remains high"],
+                "risk_horizon": ""
+            })
+        elif pcv < pcv_low - 3:  # Significantly low
+            care_items.append({
+                "category": "pcv_hematocrit", "urgency": "watch",
+                "current_status": f"PCV {pcv:.1f}% — Low",
+                "future_risk_message": f"PCV at {pcv:.1f}% is low, which can indicate anemia or blood loss. Iron-rich foods and doctor consultation recommended.",
+                "prevention_steps": ["Iron-rich foods: spinach, dal, eggs", "See a doctor this week", "Retest CBC in 4 weeks"],
+                "risk_horizon": ""
+            })
+
     # ── BMI ──
     if bmi is not None:
         if features.get("bmi_class") == "overweight":
