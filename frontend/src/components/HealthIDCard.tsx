@@ -2,6 +2,7 @@ import React, { useRef } from 'react';
 import { motion } from 'motion/react';
 import { Download, Shield } from 'lucide-react';
 import QRCode from 'qrcode';
+import html2canvas from 'html2canvas';
 
 interface HealthIDCardProps {
   profile: any;
