@@ -39,3 +39,54 @@ text,label
 "recurrent vomiting high ketones dehydration and glucose 360",high
 "afib with controlled rate and periodic cardiology review",moderate
 "normal cbc normal renal profile normal liver enzymes",low
+"hemoglobin 10.6 low rbc 4.00 hematocrit 33.4 low neutrophils 80 high srn diagnostics cbc anemia",moderate
+"hemoglobin 10.6 low hematocrit 33.4 low neutrophils elevated 80 percent wbc 8630 cbc male 68 years",moderate
+"hemoglobin 12.5 low drlogy cbc pcv 57.5 high borderline platelet 150000 further confirm anemia",moderate
+"hemoglobin 12.5 low pcv high 57.5 platelet borderline 150000 anemia suspected male 21 years",moderate
+"hemoglobin 12.8 rdw 14.7 high mpv 14 high platelet 180000 redcliffe labs cbc female",low
+"hemoglobin 12.8 rdw elevated 14.7 mpv elevated 14 wbc 10000 platelet 180000 cbc",low
+"hemoglobin 13.5 normal tl 4840 mchc 29.8 low healthians cbc male 34 years",low
+"hemoglobin 13.5 mchc low 29.8 absolute neutrophil 2478 lymphocyte 1839 platelet 208000 normal",low
+"hemoglobin 16.5 normal pcv 51.5 high platelet 250000 borderline drlogy cbc male 21 years",low
+"hemoglobin 16.5 ok pcv slightly high 51.5 wbc differential normal platelet 250000",low
+"glucose random 105 urea 22.8 creatinine 0.80 apollo biochemistry normal kidney function",low
+"random glucose 105 normal urea 22.8 creatinine 0.80 normal renal function female 43 years",low
+"hemoglobin 14 female bio rad lab anisocytosis peripheral smear neutrophilic leucocytosis rdw 15 mpv 12",moderate
+"anisocytosis neutrophilic leucocytosis peripheral smear hemoglobin 14 female 52 years rdwcv 15",moderate
+"fasting glucose 118 prediabetes ldl 142 high triglycerides 210 high bp 138 88 elevated metformin atorvastatin telmisartan",high
+"fasting glucose 118 ldl cholesterol 142 high triglycerides 210 high blood pressure 138 88 stage1 hypertension medications metformin atorvastatin",high
+"ldl 142 high triglycerides 210 high fasting glucose 118 prediabetes comprehensive report city diagnostic",moderate
+"low hemoglobin anemia iron deficiency fatigue breathlessness supplement advised",moderate
+"hemoglobin below 13 male anemia further investigation required",moderate
+"platelet count borderline 150000 monitor dengue fever risk",moderate
+"neutrophils elevated 80 percent infection suspected wbc normal",moderate
+"rdw elevated 14.7 anisocytosis iron deficiency or mixed anemia",moderate
+"mchc low 29.8 hypochromic anemia iron deficiency",moderate
+"pcv high 51.5 dehydration or polycythemia suspected",moderate
+"ldl high 142 triglycerides high 210 cardiovascular risk statin recommended",moderate
+"triglycerides 210 high ldl 142 high lipid panel abnormal lifestyle changes",moderate
+"fasting glucose 118 prediabetes lifestyle intervention diet exercise",moderate
+"creatinine 0.80 urea 22.8 normal kidney function no intervention",low
+"random glucose 105 borderline normal monitor fasting glucose",low
+"hemoglobin 16.5 normal male rbc 5.2 normal platelet 250000 normal",low
+"complete blood count normal all parameters within reference range",low
+"cbc normal hemoglobin rbc wbc platelet all within limits",low
+"tsh elevated hypothyroidism fatigue weight gain levothyroxine",moderate
+"tsh low hyperthyroidism palpitations weight loss",moderate
+"vitamin d deficiency below 20 supplement recommended",moderate
+"vitamin b12 deficiency below 200 supplement recommended",moderate
+"sgpt elevated liver function abnormal fatty liver suspected",moderate
+"sgot elevated liver enzymes high alcohol or hepatitis",moderate
+"creatinine elevated 1.5 kidney function impaired monitor",moderate
+"urea elevated 45 kidney stress dehydration possible",moderate
+"cholesterol total high 240 ldl high cardiovascular risk",moderate
+"hdl low 35 cardiovascular risk increase exercise",moderate
+"hba1c 6.2 prediabetes range lifestyle changes advised",moderate
+"hba1c 7.5 diabetes poorly controlled medication review",high
+"platelet count low 80000 thrombocytopenia dengue malaria suspected",high
+"wbc high 15000 infection or leukocytosis investigation needed",moderate
+"neutrophils 80 percent high bacterial infection suspected",moderate
+"lymphocytes low 15 percent immune suppression viral infection",moderate
+"eosinophils high 8 percent allergy or parasitic infection",moderate
+"peripheral smear anisocytosis poikilocytosis mixed anemia",moderate
+"peripheral smear neutrophilic leucocytosis bacterial infection",moderate
