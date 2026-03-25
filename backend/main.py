@@ -22,6 +22,9 @@ from routers.settings import router as settings_router
 from routers.clinics import router as clinics_router
 from routers.coins import router as coins_router
 from routers.notifications import router as notifications_router
+from routers.health_id import router as health_id_router
+from routers.trends import router as trends_router
+from routers.share import router as share_router
 try:
     from routers.diet import router as diet_router
     _has_diet = True
@@ -62,6 +65,9 @@ app.include_router(settings_router)
 app.include_router(clinics_router)
 app.include_router(coins_router)
 app.include_router(notifications_router)
+app.include_router(health_id_router)
+app.include_router(trends_router)
+app.include_router(share_router)
 if _has_diet:
     app.include_router(diet_router)
 
