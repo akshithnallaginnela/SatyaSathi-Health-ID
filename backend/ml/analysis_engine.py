@@ -1126,7 +1126,7 @@ def generate_diet_plan(features: dict) -> dict | None:
         avoid.extend(["Sugary drinks", "Trans fats"])
 
     return {
-        "focus_type": " + ".join(focus_parts),
+        "focus_type": " + ".join(focus_parts[:3]),  # Limit to 3 parts to stay under 50 chars
         "reason": ". ".join(reason_parts),
         "eat_more": list(dict.fromkeys(eat_more)),
         "reduce": list(dict.fromkeys(reduce)),
