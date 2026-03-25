@@ -3,10 +3,6 @@ import { motion } from 'motion/react';
 import { Flame, CheckCircle2, MapPin, Activity, Heart, Share2, TrendingUp } from 'lucide-react';
 import { dashboardAPI, clinicsAPI, tasksAPI, clearTokens, trendsAPI, shareAPI } from '../services/api.ts';
 
-// Lazy load chart components to avoid build errors if not installed
-const TrendChart = React.lazy(() => import('../components/TrendChart.tsx').catch(() => ({ default: () => <div>Charts loading...</div> })));
-const EmptyState = React.lazy(() => import('../components/EmptyState.tsx').catch(() => ({ default: () => <div>Loading...</div> })));
-
 // ── Score theme helper ─────────────────────────────────────────────────────
 
 function getScoreTheme(score: number) {
