@@ -4,7 +4,7 @@
       "command": "figma-mcp",
       "args": [],
       "env": {
-        "FIGMA_API_TOKEN": "YOUR_FIGMA_API_TOKEN_HERE"
+        "FIGMA_API_TOKEN": "REDACTED"
       }
     }
   },
