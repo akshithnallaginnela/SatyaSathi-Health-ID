@@ -3,6 +3,13 @@ import { motion } from 'motion/react';
 import { Flame, CheckCircle2, MapPin, Activity, Heart, Share2, TrendingUp } from 'lucide-react';
 import { dashboardAPI, clinicsAPI, tasksAPI, clearTokens, trendsAPI, shareAPI } from '../services/api.ts';
 
+// Lazy load TrendChart to handle if chart.js not installed
+const TrendChart = React.lazy(() => 
+  import('../components/TrendChart.tsx').catch(() => ({
+    default: () => <div className="text-center py-8 text-gray-400">Install chart.js to see charts</div>
+  }))
+);
+
 // ── Score theme helper ─────────────────────────────────────────────────────
 
 function getScoreTheme(score: number) {
