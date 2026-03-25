@@ -1,0 +1,17 @@
+{
+  "modelContextProtocol": {
+    "figma": {
+      "command": "figma-mcp",
+      "args": [],
+      "env": {
+        "FIGMA_API_TOKEN": "${env:FIGMA_API_TOKEN}"
+      }
+    }
+  },
+  "[typescript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[json]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  }
+}
