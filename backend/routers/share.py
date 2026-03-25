@@ -102,8 +102,10 @@ async def get_shareable_summary(
     
     message = "\n".join(lines)
     
-    # Generate WhatsApp URL
-    whatsapp_url = f"https://wa.me/?text={message.replace(' ', '%20').replace('\n', '%0A')}"
+    # Generate WhatsApp URL (escape special characters)
+    import urllib.parse
+    encoded_message = urllib.parse.quote(message)
+    whatsapp_url = f"https://wa.me/?text={encoded_message}"
     
     return {
         "message": message,
