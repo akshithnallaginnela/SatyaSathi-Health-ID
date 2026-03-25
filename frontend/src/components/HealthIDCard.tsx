@@ -2,8 +2,6 @@ import React, { useRef } from 'react';
 import { motion } from 'motion/react';
 import { Download, Heart } from 'lucide-react';
 import QRCode from 'qrcode';
-import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
 
 interface HealthIDCardProps {
   profile: any;
@@ -17,8 +15,8 @@ export default function HealthIDCard({ profile, onDownload }: HealthIDCardProps)
   React.useEffect(() => {
     if (profile?.health_id) {
       QRCode.toDataURL(`SATYASATHI:${profile.health_id}`, {
-        width: 150,
-        margin: 1,
+        width: 200,
+        margin: 0,
         color: { dark: '#1A3A38', light: '#FFFFFF' }
       }).then(setQrDataUrl).catch(console.error);
     }
@@ -28,7 +26,11 @@ export default function HealthIDCard({ profile, onDownload }: HealthIDCardProps)
     if (!cardRef.current) return;
     
     try {
-      // Capture the card as image
+      // Dynamic import
+      const html2canvas = (await import('html2canvas')).default;
+      const jsPDF = (await import('jspdf')).default;
+      
+      // Capture card
       const canvas = await html2canvas(cardRef.current, {
         scale: 3,
         backgroundColor: '#ffffff',
@@ -52,7 +54,8 @@ export default function HealthIDCard({ profile, onDownload }: HealthIDCardProps)
       if (onDownload) onDownload();
     } catch (e) {
       console.error('PDF generation failed:', e);
-      alert('Could not generate PDF. Please try again or take a screenshot.');
+      // Fallback: try to print
+      window.print();
     }
   };
 
@@ -61,35 +64,35 @@ export default function HealthIDCard({ profile, onDownload }: HealthIDCardProps)
 
   return (
     <div className="space-y-4">
-      {/* Card Preview - Aadhaar Style */}
-      <div id="health-id-card-print" ref={cardRef} className="relative w-full aspect-[1.586/1] bg-white rounded-xl overflow-hidden shadow-2xl border border-gray-200">
+      {/* Card Preview - Aadhaar Style with Perfect Fit */}
+      <div id="health-id-card-print" ref={cardRef} className="relative w-full bg-white rounded-xl overflow-hidden shadow-2xl border border-gray-200" style={{ aspectRatio: '1.586' }}>
         
         {/* Top Header with Logo and Branding */}
-        <div className="absolute top-0 left-0 right-0 h-16 bg-gradient-to-r from-[#26C6BF] via-[#1FA89E] to-[#26C6BF] flex items-center justify-between px-4">
+        <div className="absolute top-0 left-0 right-0 bg-gradient-to-r from-[#26C6BF] via-[#1FA89E] to-[#26C6BF] flex items-center justify-between px-4 py-2">
           {/* Logo */}
           <div className="flex items-center gap-2">
-            <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-md">
-              <Heart size={24} className="text-[#26C6BF] fill-[#26C6BF]" />
+            <div className="w-9 h-9 bg-white rounded-full flex items-center justify-center shadow-md">
+              <Heart size={20} className="text-[#26C6BF] fill-[#26C6BF]" />
             </div>
             <div>
               <p className="text-white text-sm font-extrabold leading-tight">SatyaSathi</p>
-              <p className="text-white/90 text-[9px] font-semibold">Health ID Card</p>
+              <p className="text-white/90 text-[8px] font-semibold">Health ID Card</p>
             </div>
           </div>
           
           {/* App Name */}
           <div className="text-right">
             <p className="text-white text-xs font-bold">VitalID</p>
-            <p className="text-white/80 text-[8px]">Digital Health</p>
+            <p className="text-white/80 text-[7px]">Digital Health</p>
           </div>
         </div>
 
-        {/* Main Content Area */}
-        <div className="absolute top-16 left-0 right-0 bottom-12 p-4 flex gap-3">
+        {/* Main Content Area - Perfectly Fitted */}
+        <div className="absolute left-0 right-0 px-4 py-3 flex gap-3" style={{ top: '3.5rem', bottom: '2.5rem' }}>
           
           {/* Left side - Photo */}
-          <div className="w-28 flex-shrink-0">
-            <div className="w-full h-32 rounded-lg overflow-hidden border-2 border-gray-200 shadow-sm bg-gradient-to-br from-gray-50 to-gray-100">
+          <div className="w-24 flex-shrink-0">
+            <div className="w-full h-full rounded-lg overflow-hidden border-2 border-gray-200 shadow-sm bg-gradient-to-br from-gray-50 to-gray-100">
               {profile?.profile_photo_url ? (
                 <img
                   src={profile.profile_photo_url.startsWith('/') ? `http://localhost:8000${profile.profile_photo_url}` : profile.profile_photo_url}
@@ -97,7 +100,7 @@ export default function HealthIDCard({ profile, onDownload }: HealthIDCardProps)
                   className="w-full h-full object-cover"
                 />
               ) : (
-                <div className="w-full h-full bg-gradient-to-br from-[#26C6BF] to-[#1FA89E] flex items-center justify-center text-white font-extrabold text-4xl">
+                <div className="w-full h-full bg-gradient-to-br from-[#26C6BF] to-[#1FA89E] flex items-center justify-center text-white font-extrabold text-3xl">
                   {initials}
                 </div>
               )}
@@ -105,64 +108,64 @@ export default function HealthIDCard({ profile, onDownload }: HealthIDCardProps)
           </div>
 
           {/* Middle - Details */}
-          <div className="flex-1 flex flex-col justify-between py-1">
+          <div className="flex-1 flex flex-col justify-between">
             {/* Name */}
-            <div className="mb-2">
-              <p className="text-[#1A3A38] text-base font-extrabold leading-tight uppercase tracking-wide">
+            <div>
+              <p className="text-[#1A3A38] text-sm font-extrabold leading-tight uppercase tracking-wide">
                 {profile?.full_name || 'User Name'}
               </p>
             </div>
 
             {/* DOB */}
-            <div className="mb-2">
-              <p className="text-gray-500 text-[9px] font-bold uppercase tracking-wider">Date of Birth</p>
-              <p className="text-[#1A3A38] text-xs font-bold">{dob}</p>
+            <div>
+              <p className="text-gray-500 text-[8px] font-bold uppercase tracking-wider">Date of Birth</p>
+              <p className="text-[#1A3A38] text-[11px] font-bold">{dob}</p>
             </div>
 
             {/* Gender & Blood Group */}
-            <div className="grid grid-cols-2 gap-2 mb-2">
+            <div className="grid grid-cols-2 gap-2">
               <div>
-                <p className="text-gray-500 text-[9px] font-bold uppercase tracking-wider">Gender</p>
-                <p className="text-[#1A3A38] text-xs font-bold capitalize">{profile?.gender || '—'}</p>
+                <p className="text-gray-500 text-[8px] font-bold uppercase tracking-wider">Gender</p>
+                <p className="text-[#1A3A38] text-[11px] font-bold capitalize">{profile?.gender || '—'}</p>
               </div>
               <div>
-                <p className="text-gray-500 text-[9px] font-bold uppercase tracking-wider">Blood Group</p>
-                <p className="text-[#1A3A38] text-xs font-bold">{profile?.blood_group || '—'}</p>
+                <p className="text-gray-500 text-[8px] font-bold uppercase tracking-wider">Blood</p>
+                <p className="text-[#1A3A38] text-[11px] font-bold">{profile?.blood_group || '—'}</p>
               </div>
             </div>
 
             {/* Health ID Number - Large like Aadhaar */}
-            <div className="mt-auto">
-              <p className="text-[#1A3A38] text-xl font-extrabold tracking-[0.15em] font-mono">
+            <div>
+              <p className="text-[#1A3A38] text-base font-extrabold tracking-[0.15em] font-mono">
                 {profile?.health_id || '0000 0000 0000'}
               </p>
             </div>
           </div>
 
           {/* Right side - QR Code */}
-          <div className="w-28 flex-shrink-0 flex flex-col items-center justify-center">
+          <div className="w-24 flex-shrink-0 flex items-center justify-center">
             {qrDataUrl ? (
-              <div className="bg-white p-1.5 rounded-lg shadow-md border border-gray-200">
-                <img src={qrDataUrl} alt="QR Code" className="w-24 h-24" />
+              <div className="bg-white p-1 rounded-lg shadow-md border border-gray-200">
+                <img src={qrDataUrl} alt="QR Code" className="w-20 h-20" />
               </div>
             ) : (
-              <div className="w-24 h-24 bg-gray-100 rounded-lg flex items-center justify-center border border-gray-200">
-                <div className="w-5 h-5 border-2 border-[#26C6BF] border-t-transparent rounded-full animate-spin" />
+              <div className="w-20 h-20 bg-gray-100 rounded-lg flex items-center justify-center border border-gray-200">
+                <div className="w-4 h-4 border-2 border-[#26C6BF] border-t-transparent rounded-full animate-spin" />
               </div>
             )}
           </div>
         </div>
 
         {/* Bottom Footer with Quote */}
-        <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-r from-[#1A3A38] to-[#2D5856] flex items-center justify-center px-4">
-          <p className="text-white text-[10px] font-semibold italic text-center leading-tight">
+        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-r from-[#1A3A38] to-[#2D5856] flex items-center justify-center px-4 py-2">
+          <p className="text-white text-[9px] font-semibold italic text-center leading-tight">
             "Your Health, Your Wealth - Track, Improve, Thrive"
           </p>
         </div>
 
         {/* Watermark */}
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.03]">
-          <Heart size={180} className="text-[#26C6BF]" />
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.02]">
+          <Heart size={150} className="text-[#26C6BF]" />
         </div>
       </div>
 
