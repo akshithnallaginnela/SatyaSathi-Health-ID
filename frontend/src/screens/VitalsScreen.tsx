@@ -6,16 +6,21 @@ import { vitalsAPI, dashboardAPI } from '../services/api.ts';
 type LogTab = 'BP' | 'SUGAR' | 'BMI';
 
 function getBPStatus(sys: number, dia: number) {
-  if (sys <= 120 && dia <= 80) return { label: 'Normal ✅', color: '#22C55E', bg: '#DCFCE7' };
-  if (sys < 130 && dia < 80) return { label: 'Elevated', color: '#F59E0B', bg: '#FEF3C7' };
-  if (sys < 140 || dia < 90) return { label: 'High Stage 1', color: '#EF4444', bg: '#FEE2E2' };
-  return { label: 'High Stage 2', color: '#DC2626', bg: '#FEE2E2' };
+  if (sys < 90 || dia < 60) return { label: 'Low (Hypotension)', color: '#3B82F6', bg: '#DBEAFE' };
+  if (sys <= 120 && dia <= 80) return { label: 'Normal', color: '#22C55E', bg: '#DCFCE7' };
+  if (sys <= 129 && dia < 80) return { label: 'Elevated', color: '#F59E0B', bg: '#FEF3C7' };
+  if (sys <= 139 || (dia >= 80 && dia <= 89)) return { label: 'Stage 1 Hypertension', color: '#EF4444', bg: '#FEE2E2' };
+  if (sys < 180 && dia < 120) return { label: 'Stage 2 Hypertension', color: '#DC2626', bg: '#FEE2E2' };
+  return { label: 'Hypertensive Crisis', color: '#7F1D1D', bg: '#FEE2E2' };
 }
 
 function getSugarStatus(val: number) {
+  if (val < 54)  return { label: 'Severe Hypoglycemia', color: '#7F1D1D', bg: '#FEE2E2' };
+  if (val < 70)  return { label: 'Low (Hypoglycemia)', color: '#3B82F6', bg: '#DBEAFE' };
   if (val < 100) return { label: 'Normal', color: '#22C55E', bg: '#DCFCE7' };
-  if (val < 126) return { label: 'Pre-diabetic', color: '#F59E0B', bg: '#FEF3C7' };
-  return { label: 'Diabetic range', color: '#EF4444', bg: '#FEE2E2' };
+  if (val < 126) return { label: 'Prediabetes', color: '#F59E0B', bg: '#FEF3C7' };
+  if (val <= 400) return { label: 'Diabetes Range', color: '#EF4444', bg: '#FEE2E2' };
+  return { label: 'Hyperglycemic Crisis', color: '#7F1D1D', bg: '#FEE2E2' };
 }
 
 export default function VitalsScreen() {

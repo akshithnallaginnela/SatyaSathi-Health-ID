@@ -208,18 +208,34 @@ async def get_dashboard_summary(
         week_completion = []
         for i in range(7):
             day = monday + timedelta(days=i)
+
+            # Check if user logged any vitals this day
+            bp_logged = await db.execute(
+                select(BPReading).where(
+                    BPReading.user_id == user_id,
+                    BPReading.date == day
+                ).limit(1)
+            )
+            sugar_logged = await db.execute(
+                select(SugarReading).where(
+                    SugarReading.user_id == user_id,
+                    SugarReading.date == day
+                ).limit(1)
+            )
+            logged_vitals = bp_logged.scalar_one_or_none() or sugar_logged.scalar_one_or_none()
+
+            # OR completed at least one monitorable task
             day_tasks_res = await db.execute(
                 select(DailyTask).where(
                     DailyTask.user_id == user_id,
-                    DailyTask.task_date == day
-                )
+                    DailyTask.task_date == day,
+                    DailyTask.coins_reward > 0,
+                    DailyTask.completed == True
+                ).limit(1)
             )
-            day_tasks = day_tasks_res.scalars().all()
-            if day_tasks:
-                all_done = all(t.completed for t in day_tasks)
-                week_completion.append(all_done)
-            else:
-                week_completion.append(False)
+            completed_task = day_tasks_res.scalar_one_or_none()
+
+            week_completion.append(bool(logged_vitals or completed_task))
 
         streak = 0
         for i in range(6, -1, -1):
@@ -227,10 +243,10 @@ async def get_dashboard_summary(
                 streak += 1
             else:
                 break
-        
+
         result["week_completion"] = week_completion
-        result["streak_days"] = max(streak, 1 if tasksDone > 0 else 0)
+        result["streak_days"] = streak
     except Exception:
         pass
-    
+
     return result
