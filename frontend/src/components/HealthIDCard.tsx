@@ -26,12 +26,15 @@ export default function HealthIDCard({ profile, onDownload }: HealthIDCardProps)
     if (!cardRef.current) return;
     
     try {
-      // Use html2canvas to convert the card to image
-      const html2canvas = (await import('html2canvas')).default;
+      // Dynamic import with better error handling
+      const html2canvasModule = await import('html2canvas');
+      const html2canvas = html2canvasModule.default;
+      
       const canvas = await html2canvas(cardRef.current, {
         scale: 2,
         backgroundColor: '#ffffff',
         logging: false,
+        useCORS: true,
       });
       
       const link = document.createElement('a');
@@ -42,7 +45,8 @@ export default function HealthIDCard({ profile, onDownload }: HealthIDCardProps)
       if (onDownload) onDownload();
     } catch (e) {
       console.error('Download failed:', e);
-      alert('Could not download card. Install html2canvas: npm install html2canvas');
+      // Fallback: just show a message
+      alert('Download feature requires html2canvas. The card is displayed above - you can take a screenshot instead.');
     }
   };
 
