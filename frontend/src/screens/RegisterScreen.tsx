@@ -13,7 +13,7 @@ export default function RegisterScreen({ onRegister, onSwitchToLogin }: {
   onSwitchToLogin: () => void;
 }) {
   const [step, setStep] = useState<Step>('form');
-  const [form, setForm] = useState({ full_name: '', phone_number: '', password: '', date_of_birth: '', gender: 'male', weight: '', height: '' });
+  const [form, setForm] = useState({ full_name: '', last_name: '', phone_number: '', password: '', date_of_birth: '', gender: 'male', weight: '', height: '' });
   const [otp, setOtp] = useState('');
   const [aadhaar, setAadhaar] = useState('');
   const [tempToken, setTempToken] = useState('');
@@ -29,14 +29,15 @@ export default function RegisterScreen({ onRegister, onSwitchToLogin }: {
 
   const handleRegister = async () => {
     setError('');
-    if (!form.full_name.trim()) { setError('Enter your full name'); return; }
+    if (!form.full_name.trim()) { setError('Enter your first name'); return; }
     if (!/^[6-9]\d{9}$/.test(form.phone_number)) { setError('Enter valid 10-digit phone'); return; }
     if (form.password.length < 8) { setError('Password needs 8+ characters'); return; }
     if (!form.weight || !form.height) { setError('Enter weight and height'); return; }
     setLoading(true);
     try {
+      const fullName = form.last_name.trim() ? `${form.full_name.trim()} ${form.last_name.trim()}` : form.full_name.trim();
       const payload: any = {
-        full_name: form.full_name,
+        full_name: fullName,
         phone_number: form.phone_number,
         password: form.password,
         gender: form.gender || undefined,
@@ -156,8 +157,16 @@ export default function RegisterScreen({ onRegister, onSwitchToLogin }: {
         <div className="px-8 py-6">
           {step === 'form' && (
             <div className="space-y-3">
-              <div><label className={labelClass}>Full Name</label>
-                <input placeholder="Arjun Kumar" value={form.full_name} onChange={e => setForm({...form, full_name: e.target.value})} className={inputClass}/></div>
+              <div className="flex gap-2">
+                <div className="flex-1">
+                  <label className={labelClass}>First Name</label>
+                  <input placeholder="Arjun" value={form.full_name} onChange={e => setForm({...form, full_name: e.target.value})} className={inputClass}/>
+                </div>
+                <div className="flex-1">
+                  <label className={labelClass}>Last Name</label>
+                  <input placeholder="Kumar" value={form.last_name} onChange={e => setForm({...form, last_name: e.target.value})} className={inputClass}/>
+                </div>
+              </div>
               <div><label className={labelClass}>Phone Number</label>
                 <input type="tel" placeholder="9876543210" maxLength={10} value={form.phone_number} onChange={e => setForm({...form, phone_number: e.target.value.replace(/\D/g,'')})} className={inputClass}/></div>
               <div><label className={labelClass}>Password</label>

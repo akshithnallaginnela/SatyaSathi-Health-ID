@@ -18,6 +18,15 @@
     background-color: #E8F9F7;
     color: var(--color-dark-teal);
   }
+
+  /* Hide scrollbar everywhere - like Instagram/Facebook */
+  * {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  *::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 /* Custom scrollbar for horizontal sections */
