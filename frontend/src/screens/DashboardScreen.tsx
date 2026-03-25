@@ -476,7 +476,9 @@ export default function DashboardScreen({ onLogout }: { onLogout: () => void; ke
           </div>
         )}
 
-        {/* 6. HEALTH TRENDS */}
+        {/* 6. HEALTH TRENDS - Temporarily disabled until chart.js is installed */}
+        {/* Uncomment after running: npm install chart.js react-chartjs-2 */}
+        {/*
         {hasData && (
           <div className="pt-4">
             <div className="flex justify-between items-center mb-4">
@@ -493,76 +495,24 @@ export default function DashboardScreen({ onLogout }: { onLogout: () => void; ke
             </div>
 
             {!showTrends ? (
-              <EmptyState 
-                type="trends" 
-                onAction={loadTrends}
-                actionText="Load Trends"
-              />
+              <React.Suspense fallback={<div>Loading...</div>}>
+                <EmptyState 
+                  type="trends" 
+                  onAction={loadTrends}
+                  actionText="Load Trends"
+                />
+              </React.Suspense>
             ) : (
               <div className="space-y-4">
-                {/* BP Trend */}
-                {bpTrend && bpTrend.data.length > 0 && (
-                  <div className="bg-white border border-[#E8F1F1] rounded-2xl p-5 shadow-sm">
-                    <h4 className="text-dark-teal font-extrabold text-sm mb-3">Blood Pressure (Last 30 Days)</h4>
-                    <TrendChart
-                      data={bpTrend.data.map((d: any) => ({ date: d.date, value: d.systolic, value2: d.diastolic }))}
-                      label="Systolic"
-                      label2="Diastolic"
-                      color="#EF4444"
-                      color2="#F59E0B"
-                      yAxisLabel="mmHg"
-                    />
-                    <div className="mt-3 grid grid-cols-3 gap-2 text-center">
-                      <div className="bg-gray-50 rounded-lg p-2">
-                        <p className="text-[9px] text-gray-500 font-bold uppercase">Average</p>
-                        <p className="text-sm font-extrabold text-dark-teal">{bpTrend.stats.avg_systolic}/{bpTrend.stats.avg_diastolic}</p>
-                      </div>
-                      <div className="bg-gray-50 rounded-lg p-2">
-                        <p className="text-[9px] text-gray-500 font-bold uppercase">Readings</p>
-                        <p className="text-sm font-extrabold text-dark-teal">{bpTrend.stats.readings_count}</p>
-                      </div>
-                      <div className="bg-gray-50 rounded-lg p-2">
-                        <p className="text-[9px] text-gray-500 font-bold uppercase">Trend</p>
-                        <p className="text-sm font-extrabold text-primary-teal capitalize">{bpTrend.stats.trend}</p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Sugar Trend */}
-                {sugarTrend && sugarTrend.data.length > 0 && (
-                  <div className="bg-white border border-[#E8F1F1] rounded-2xl p-5 shadow-sm">
-                    <h4 className="text-dark-teal font-extrabold text-sm mb-3">Blood Sugar (Last 30 Days)</h4>
-                    <TrendChart
-                      data={sugarTrend.data.map((d: any) => ({ date: d.date, value: d.glucose }))}
-                      label="Fasting Glucose"
-                      color="#8B5CF6"
-                      yAxisLabel="mg/dL"
-                    />
-                    <div className="mt-3 grid grid-cols-3 gap-2 text-center">
-                      <div className="bg-gray-50 rounded-lg p-2">
-                        <p className="text-[9px] text-gray-500 font-bold uppercase">Average</p>
-                        <p className="text-sm font-extrabold text-dark-teal">{sugarTrend.stats.avg_glucose}</p>
-                      </div>
-                      <div className="bg-gray-50 rounded-lg p-2">
-                        <p className="text-[9px] text-gray-500 font-bold uppercase">Readings</p>
-                        <p className="text-sm font-extrabold text-dark-teal">{sugarTrend.stats.readings_count}</p>
-                      </div>
-                      <div className="bg-gray-50 rounded-lg p-2">
-                        <p className="text-[9px] text-gray-500 font-bold uppercase">Above 100</p>
-                        <p className="text-sm font-extrabold text-orange-600">{sugarTrend.stats.above_100_count}</p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {(!bpTrend || bpTrend.data.length === 0) && (!sugarTrend || sugarTrend.data.length === 0) && (
-                  <EmptyState type="trends" />
-                )}
+                <div className="bg-white border border-[#E8F1F1] rounded-2xl p-5 shadow-sm text-center py-8">
+                  <p className="text-muted-teal text-sm">📊 Install chart.js to see trends</p>
+                  <p className="text-gray-400 text-xs mt-2">Run: npm install chart.js react-chartjs-2</p>
+                </div>
               </div>
             )}
           </div>
         )}
+        */}
 
         {/* 7. CLINICS */}
         <div className="bg-white border border-[#F0F0F0] rounded-[28px] p-5 shadow-sm">
