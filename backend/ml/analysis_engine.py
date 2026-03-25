@@ -330,614 +330,277 @@ def calculate_health_index(features: dict) -> int:
 # ════════════════════════════════════════════════════════════════
 
 def generate_preventive_care(features: dict) -> list[dict]:
-    """
-    POSITIVE FARMING approach:
-    - Lead with what's going well
-    - Frame risks as opportunities
-    - Every message ends with empowerment
-    """
+    """Simple 2-line preventive care messages based on actual readings."""
     care_items = []
-    
-    # Only generate if we have actual vitals data
+
     if not features.get("has_vitals_data"):
         return care_items
-    
-    # ── BP Care ──
-    # Use latest reading for current status — avg is skewed by old readings
-    bp_val = features.get("bp_systolic_latest", features.get("bp_systolic_avg"))
-    if bp_val is not None:
-        bp_trend = features.get("bp_trend", "steady")
 
-        if bp_val < 90:  # Hypotension
-            care_items.append({
-                "category": "blood_pressure",
-                "urgency": "watch",
-                "current_status": f"BP low — {bp_val:.0f} mmHg",
-                "future_risk_message": (
-                    "Your BP is on the lower side. This can cause dizziness and fatigue. "
-                    "Stay well hydrated, avoid standing up too quickly, and eat regular meals."
-                ),
-                "prevention_steps": [
-                    "Drink at least 8-10 glasses of water daily",
-                    "Eat small frequent meals — avoid skipping",
-                    "Add a little more salt to your diet if not contraindicated",
-                    "Rise slowly from sitting or lying positions"
-                ],
-                "risk_horizon": "Monitor and consult a doctor if symptoms persist"
-            })
-        elif bp_val <= 120:  # Normal (≤120 systolic AND ≤80 diastolic)
-            care_items.append({
-                "category": "blood_pressure",
-                "urgency": "great",
-                "current_status": f"Healthy BP — {bp_val:.0f} mmHg",
-                "future_risk_message": (
-                    "Your blood pressure is in an excellent range! "
-                    "You're doing something right — keep up the active lifestyle. "
-                    "People who maintain BP below 120 have 40% lower heart risk over 10 years."
-                ),
-                "prevention_steps": [
-                    "Keep enjoying your daily walks",
-                    "Your sodium habits are working well",
-                    "Stay hydrated — you're on the right track"
-                ],
-                "risk_horizon": "You're in the safe zone"
-            })
-        elif bp_val < 130:  # Elevated (120-129)
-            care_items.append({
-                "category": "blood_pressure",
-                "urgency": "watch",
-                "current_status": f"BP elevated — {bp_val:.0f} mmHg",
-                "future_risk_message": (
-                    f"Your BP is in the elevated range (trend: {bp_trend}). "
-                    "Great news — this is the easiest stage to bring it back to normal! "
-                    "Simple changes like a 30-minute walk and cutting extra salt "
-                    "can drop it 5-8 mmHg in just 2 weeks."
-                ),
-                "prevention_steps": [
-                    "A 30-min morning walk can bring this down naturally",
-                    "Try lemon instead of extra salt — tastes great too!",
-                    "Deep breathing for 5 min helps more than you think",
-                    "You're catching this early — that's the smart move"
-                ],
-                "risk_horizon": "2-3 weeks of simple changes can fix this"
-            })
-        elif bp_val < 140:  # Stage 1 Hypertension (130-139)
-            care_items.append({
-                "category": "blood_pressure",
-                "urgency": "focus",
-                "current_status": f"Stage 1 Hypertension — {bp_val:.0f} mmHg",
-                "future_risk_message": (
-                    "Your BP is in Stage 1 Hypertension range. Lifestyle changes alone "
-                    "can bring it back to normal at this stage. Walking, eating right, "
-                    "and sleeping well are powerful medicine."
-                ),
-                "prevention_steps": [
-                    "Start with a daily 30-min walk — it works like medication",
-                    "Cut packaged foods this week — they're loaded with hidden salt",
-                    "Sleep by 10:30 PM — your body repairs BP during sleep",
-                    "Consider consulting a doctor for a personalized plan"
-                ],
-                "risk_horizon": "4-6 weeks of consistent effort"
-            })
-        elif bp_val < 180:  # Stage 2 Hypertension (140+)
-            care_items.append({
-                "category": "blood_pressure",
-                "urgency": "act_now",
-                "current_status": f"Stage 2 Hypertension — {bp_val:.0f} mmHg",
-                "future_risk_message": (
-                    "Your BP is in Stage 2 Hypertension range. Medication is almost always "
-                    "required at this level alongside lifestyle changes. Please consult a doctor."
-                ),
-                "prevention_steps": [
-                    "See a doctor this week — medication may be needed",
-                    "Walking daily is the single most effective natural treatment",
-                    "Strictly reduce salt — no pickles, papad, or packaged food",
-                    "You're monitoring — that puts you ahead of 90% of people"
-                ],
-                "risk_horizon": "Doctor consultation required"
-            })
-        else:  # Hypertensive Crisis (180+)
-            care_items.append({
-                "category": "blood_pressure",
-                "urgency": "act_now",
-                "current_status": f"Hypertensive Crisis — {bp_val:.0f} mmHg",
-                "future_risk_message": (
-                    "Your BP reading is in the hypertensive crisis range. "
-                    "Please seek emergency medical care immediately."
-                ),
-                "prevention_steps": [
-                    "Seek emergency care immediately",
-                    "Do not exercise or exert yourself",
-                    "Call emergency services or go to the nearest hospital"
-                ],
-                "risk_horizon": "Seek emergency care NOW"
-            })
+    def item(category, urgency, status, message, steps, horizon):
+        return {
+            "category": category, "urgency": urgency,
+            "current_status": status, "future_risk_message": message,
+            "prevention_steps": steps, "risk_horizon": horizon
+        }
 
-    # ── Sugar Care ──
-    sugar_val = features.get("sugar_latest", features.get("sugar_avg"))
-    if sugar_val is not None:
-        sugar_trend = features.get("sugar_trend", "steady")
-
-        if sugar_val < 54:  # Severe hypoglycemia
-            care_items.append({
-                "category": "blood_sugar", "urgency": "act_now",
-                "current_status": f"Severe Hypoglycemia — {sugar_val:.0f} mg/dL",
-                "future_risk_message": "Your blood sugar is dangerously low. Consume fast-acting sugar immediately and seek medical help.",
-                "prevention_steps": ["Eat glucose tablets or sugar immediately", "Seek emergency care", "Do not drive or operate machinery"],
-                "risk_horizon": "Immediate action required"
-            })
-        elif sugar_val < 70:  # Hypoglycemia
-            care_items.append({
-                "category": "blood_sugar", "urgency": "focus",
-                "current_status": f"Low Blood Sugar — {sugar_val:.0f} mg/dL",
-                "future_risk_message": "Your fasting sugar is below normal. Eat regular meals and avoid skipping breakfast.",
-                "prevention_steps": ["Eat small frequent meals", "Never skip breakfast", "Carry a snack if you feel dizzy", "Consult a doctor if this is recurring"],
-                "risk_horizon": "Monitor closely"
-            })
-        elif sugar_val < 100:  # Normal
-            care_items.append({
-                "category": "blood_sugar", "urgency": "great",
-                "current_status": f"Healthy sugar — {sugar_val:.0f} mg/dL",
-                "future_risk_message": (
-                    "Your fasting sugar is in the healthy zone! "
-                    "This means your body is managing glucose efficiently. "
-                    "Keep up your current eating and exercise habits — they're working."
-                ),
-                "prevention_steps": [
-                    "Your diet choices are keeping sugar in check",
-                    "Post-meal walks are a great habit to continue",
-                    "Regular monitoring keeps you in control"
-                ],
-                "risk_horizon": "You're in the safe zone"
-            })
-        elif sugar_val < 126:  # Prediabetes (100-125)
-            care_items.append({
-                "category": "blood_sugar", "urgency": "watch",
-                "current_status": f"Prediabetes — {sugar_val:.0f} mg/dL",
-                "future_risk_message": (
-                    f"Your sugar is in the prediabetes range (trend: {sugar_trend}). "
-                    "Research shows that at this stage, lifestyle changes can fully reverse "
-                    "the trend in 8-12 weeks. You have complete control here."
-                ),
-                "prevention_steps": [
-                    "Switch to brown rice or millets — they taste great and help a lot",
-                    "Walk 10 minutes after every meal — reduces spikes by 22%",
-                    "Cut added sugar from tea and coffee this week",
-                    "You're catching this early — reversal is very achievable"
-                ],
-                "risk_horizon": "8-12 weeks of lifestyle changes can reverse this"
-            })
-        elif sugar_val <= 400:  # Diabetes range (126+)
-            care_items.append({
-                "category": "blood_sugar", "urgency": "focus",
-                "current_status": f"Diabetes Range — {sugar_val:.0f} mg/dL",
-                "future_risk_message": (
-                    "Your sugar is in the diabetes range. Please consult a doctor for "
-                    "proper diagnosis and a personalized management plan."
-                ),
-                "prevention_steps": [
-                    "Consult a doctor for HbA1c test and diagnosis",
-                    "Walking 30 min daily is as powerful as some medications",
-                    "Strictly avoid sugar, white rice, and maida products",
-                    "Eat dinner before 7:30 PM — helps overnight glucose control"
-                ],
-                "risk_horizon": "Doctor consultation required"
-            })
-        else:  # Hyperglycemic crisis (400+)
-            care_items.append({
-                "category": "blood_sugar", "urgency": "act_now",
-                "current_status": f"Hyperglycemic Crisis — {sugar_val:.0f} mg/dL",
-                "future_risk_message": "Your blood sugar is critically high. Seek emergency medical care immediately.",
-                "prevention_steps": ["Seek emergency care immediately", "Do not eat or drink anything sugary", "Call emergency services"],
-                "risk_horizon": "Seek emergency care NOW"
-            })
-
-    # ── BMI Care ──
-    bmi = features.get("bmi")
-    if bmi is not None:
-        weight = features.get("weight_kg", 0)
-        
-        if features.get("bmi_class") == "overweight":
-            care_items.append({
-                "category": "weight_bmi",
-                "urgency": "watch",
-                "current_status": f"BMI {bmi} — room for improvement",
-                "future_risk_message": (
-                    f"Your BMI is {bmi}, which is slightly above ideal. "
-                    "Here's the encouraging part: losing just 3-5 kg can "
-                    "reduce your BP by 5 mmHg AND improve your sugar levels. "
-                    "Small, sustainable changes work better than crash diets."
-                ),
-                "prevention_steps": [
-                    "Reduce portion sizes by just 20% — you won't even notice",
-                    "Add a salad before lunch — it fills you up naturally",
-                    "Replace sugary drinks with water or buttermilk",
-                    "Walking 10,000 steps is the easiest weight loss tool"
-                ],
-                "risk_horizon": "3-5 kg loss in 2-3 months makes a big difference"
-            })
-        elif features.get("bmi_class") == "obese":
-            care_items.append({
-                "category": "weight_bmi",
-                "urgency": "focus",
-                "current_status": f"BMI {bmi} — needs your attention",
-                "future_risk_message": (
-                    "Your weight needs some focus, and the best approach is "
-                    "gradual, sustainable changes. A doctor can help create "
-                    "a plan that works for YOUR body and lifestyle."
-                ),
-                "prevention_steps": [
-                    "Start with a 20-min walk daily — build up gradually",
-                    "A doctor can help with a personalized weight plan",
-                    "Focus on protein-rich breakfast — reduces cravings all day",
-                    "Good sleep (7-8 hrs) prevents stress-related weight gain"
-                ],
-                "risk_horizon": "Start small — every kg lost helps"
-            })
-    
-    # ── Hemoglobin Care (from Report) ──
-    hb = features.get("hemoglobin")
-    if hb is not None:
-        gender_enc = features.get("gender_enc", 1)
-        hb_low = 13.5 if gender_enc == 1 else 12.0
-        
-        if hb >= hb_low:
-            care_items.append({
-                "category": "hemoglobin",
-                "urgency": "great",
-                "current_status": f"Healthy hemoglobin — {hb} g/dL 💚",
-                "future_risk_message": (
-                    "Your hemoglobin is in a healthy range! This means good oxygen "
-                    "delivery to all your organs. Your diet is working well."
-                ),
-                "prevention_steps": [
-                    "Your iron intake is on point — keep it up",
-                    "Continue eating green leafy vegetables",
-                    "Vitamin C with meals helps maintain iron levels"
-                ],
-                "risk_horizon": "You're in the safe zone 🎯"
-            })
-        elif hb >= hb_low - 1.5:
-            care_items.append({
-                "category": "hemoglobin",
-                "urgency": "watch",
-                "current_status": f"Hemoglobin slightly low — {hb} g/dL",
-                "future_risk_message": (
-                    f"Your hemoglobin ({hb} g/dL) is slightly below ideal. "
-                    "This is very common and easily fixable with food! "
-                    "Iron-rich foods can bring it back to normal in 6-8 weeks."
-                ),
-                "prevention_steps": [
-                    "Add spinach, dal, or eggs to daily meals",
-                    "Jaggery and dates make great iron-rich snacks",
-                    "Eat citrus fruit with iron foods — boosts absorption 3x",
-                    "Avoid tea right after meals — it blocks iron"
-                ],
-                "risk_horizon": "6-8 weeks with dietary changes"
-            })
+    # ── Blood Pressure ──
+    bp = features.get("bp_systolic_latest", features.get("bp_systolic_avg"))
+    if bp is not None:
+        if bp < 90:
+            care_items.append(item("blood_pressure", "watch",
+                f"BP low — {bp:.0f} mmHg",
+                "Your BP is below normal. Drink more water and eat regular meals.",
+                ["Drink 8-10 glasses of water daily", "Eat small frequent meals", "Rise slowly from sitting"],
+                "Monitor daily"))
+        elif bp <= 120:
+            care_items.append(item("blood_pressure", "great",
+                f"BP normal — {bp:.0f} mmHg",
+                "Your blood pressure is healthy. Keep up your current habits.",
+                ["Continue daily walks", "Maintain low-salt diet", "Stay hydrated"],
+                "Keep it up"))
+        elif bp < 130:
+            care_items.append(item("blood_pressure", "watch",
+                f"BP elevated — {bp:.0f} mmHg",
+                "Slightly above normal. A 30-min daily walk can bring it down in 2 weeks.",
+                ["Walk 30 min daily", "Reduce salt in meals", "Avoid packaged food"],
+                "2-3 weeks"))
+        elif bp < 140:
+            care_items.append(item("blood_pressure", "focus",
+                f"Stage 1 Hypertension — {bp:.0f} mmHg",
+                "Needs attention. Lifestyle changes alone can fix this at this stage.",
+                ["Walk 30 min daily", "Cut salt and packaged food", "Sleep by 10:30 PM", "Consult a doctor"],
+                "4-6 weeks"))
+        elif bp < 180:
+            care_items.append(item("blood_pressure", "act_now",
+                f"Stage 2 Hypertension — {bp:.0f} mmHg",
+                "High BP needs medical attention. See a doctor this week.",
+                ["See a doctor this week", "Walk daily", "Strictly reduce salt"],
+                "Doctor visit needed"))
         else:
-            care_items.append({
-                "category": "hemoglobin",
-                "urgency": "focus",
-                "current_status": f"Hemoglobin needs attention — {hb} g/dL",
-                "future_risk_message": (
-                    f"Your hemoglobin is at {hb} g/dL, which is below normal. "
-                    "This could be causing fatigue. The good news — iron supplements "
-                    "and dietary changes can fix this effectively. A doctor can confirm "
-                    "the best approach for you."
-                ),
-                "prevention_steps": [
-                    "A simple blood test can pinpoint the cause",
-                    "Iron-rich foods: spinach, lentils, jaggery, dates, pomegranate",
-                    "An iron supplement (if doctor advises) works in 6 weeks",
-                    "Vitamin C foods help your body absorb iron better"
-                ],
-                "risk_horizon": "6 weeks with proper iron intake"
-            })
-    
-    # ── Platelet Care (from Report) ──
+            care_items.append(item("blood_pressure", "act_now",
+                f"Hypertensive Crisis — {bp:.0f} mmHg",
+                "Critically high. Seek emergency care immediately.",
+                ["Seek emergency care NOW"],
+                "Emergency"))
+
+    # ── Blood Sugar ──
+    sugar = features.get("sugar_latest", features.get("sugar_avg"))
+    if sugar is not None:
+        if sugar < 54:
+            care_items.append(item("blood_sugar", "act_now",
+                f"Severe Low Sugar — {sugar:.0f} mg/dL",
+                "Dangerously low. Eat sugar immediately and seek medical help.",
+                ["Eat glucose or sugar immediately", "Seek emergency care"],
+                "Immediate"))
+        elif sugar < 70:
+            care_items.append(item("blood_sugar", "focus",
+                f"Low Blood Sugar — {sugar:.0f} mg/dL",
+                "Below normal. Eat regular meals and never skip breakfast.",
+                ["Never skip meals", "Carry a snack", "Consult a doctor if recurring"],
+                "Monitor closely"))
+        elif sugar < 100:
+            care_items.append(item("blood_sugar", "great",
+                f"Sugar normal — {sugar:.0f} mg/dL",
+                "Your blood sugar is healthy. Keep your current diet and exercise.",
+                ["Continue balanced diet", "Walk after meals", "Monitor monthly"],
+                "Keep it up"))
+        elif sugar < 126:
+            care_items.append(item("blood_sugar", "watch",
+                f"Prediabetes — {sugar:.0f} mg/dL",
+                "Slightly high. Walk 10 min after meals and cut added sugar.",
+                ["Walk 10 min after every meal", "Cut sugar in tea/coffee", "Switch to brown rice"],
+                "8-12 weeks"))
+        elif sugar <= 400:
+            care_items.append(item("blood_sugar", "focus",
+                f"Diabetes Range — {sugar:.0f} mg/dL",
+                "Above normal. Consult a doctor and start lifestyle changes now.",
+                ["Consult a doctor for HbA1c test", "Walk 30 min daily", "Avoid sugar and maida"],
+                "Doctor visit needed"))
+        else:
+            care_items.append(item("blood_sugar", "act_now",
+                f"Hyperglycemic Crisis — {sugar:.0f} mg/dL",
+                "Critically high. Seek emergency care immediately.",
+                ["Seek emergency care NOW"],
+                "Emergency"))
+
+    # ── Hemoglobin ──
+    hb = features.get("hemoglobin")
+    gender_enc = features.get("gender_enc", 1)
+    hb_low = 13.5 if gender_enc == 1 else 12.0
+    if hb is not None:
+        if hb >= hb_low:
+            care_items.append(item("hemoglobin", "great",
+                f"Hemoglobin normal — {hb} g/dL",
+                "Your hemoglobin is healthy. Good oxygen supply to all organs.",
+                ["Continue iron-rich diet", "Stay active"],
+                "Keep it up"))
+        elif hb >= hb_low - 1.5:
+            care_items.append(item("hemoglobin", "watch",
+                f"Hemoglobin slightly low — {hb} g/dL",
+                "Mildly low. Add iron-rich foods like spinach, dal, and dates daily.",
+                ["Eat spinach, dal, eggs daily", "Eat citrus with iron foods", "Avoid tea after meals"],
+                "6-8 weeks"))
+        else:
+            care_items.append(item("hemoglobin", "focus",
+                f"Hemoglobin low — {hb} g/dL",
+                "Below normal. Iron-rich diet and possible supplements needed.",
+                ["Eat iron-rich food daily", "Consult doctor for iron supplements", "Vitamin C boosts absorption"],
+                "6 weeks"))
+
+    # ── Platelets ──
     platelets = features.get("platelet_count")
     if platelets is not None and platelets > 0:
         if platelets >= 150000:
-            care_items.append({
-                "category": "platelets",
-                "urgency": "great",
-                "current_status": f"Healthy platelets — {platelets:,}/cumm 💚",
-                "future_risk_message": "Your platelet count is in the healthy range!",
-                "prevention_steps": [
-                    "Your body is producing platelets well",
-                    "Stay hydrated and eat balanced meals"
-                ],
-                "risk_horizon": "You're in the safe zone 🎯"
-            })
+            care_items.append(item("platelets", "great",
+                f"Platelets normal — {platelets:,}/cumm",
+                "Your platelet count is healthy.",
+                ["Stay hydrated", "Eat balanced meals"],
+                "Keep it up"))
         elif platelets >= 100000:
-            care_items.append({
-                "category": "platelets",
-                "urgency": "watch",
-                "current_status": f"Platelets slightly low — {platelets:,}/cumm",
-                "future_risk_message": (
-                    "Your platelets are slightly below the ideal range. "
-                    "This is often temporary. A retest in 2-3 weeks can confirm. "
-                    "Papaya and pomegranate are traditionally known to help."
-                ),
-                "prevention_steps": [
-                    "Retest CBC in 2-3 weeks to confirm",
-                    "Eat papaya and pomegranate — they support platelet production",
-                    "Stay well hydrated — 10+ glasses daily",
-                    "Avoid alcohol until retest"
-                ],
-                "risk_horizon": "2-3 weeks for retest"
-            })
+            care_items.append(item("platelets", "watch",
+                f"Platelets borderline — {platelets:,}/cumm",
+                "Slightly low. Retest in 2-3 weeks and eat papaya.",
+                ["Retest CBC in 2-3 weeks", "Eat papaya daily", "Stay hydrated", "Avoid alcohol"],
+                "2-3 weeks"))
         else:
-            care_items.append({
-                "category": "platelets",
-                "urgency": "act_now",
-                "current_status": f"Platelets need medical attention — {platelets:,}/cumm",
-                "future_risk_message": (
-                    "Your platelet count needs a doctor's attention. This could be "
-                    "temporary and often resolves with treatment. A doctor visit "
-                    "will help you understand the cause and get the right care."
-                ),
-                "prevention_steps": [
-                    "See your doctor in the next few days for guidance",
-                    "Eat papaya leaf extract — it's a natural helper",
-                    "Stay hydrated and avoid aspirin/ibuprofen",
-                    "Avoid activities with high injury risk until platelets improve"
-                ],
-                "risk_horizon": "Doctor visit recommended soon"
-            })
-    
-    # ── Creatinine/Kidney Care (from Report) ──
-    creatinine = features.get("creatinine")
-    if creatinine is not None and creatinine > 1.2:
-        care_items.append({
-            "category": "kidney_health",
-            "urgency": "watch" if creatinine < 1.8 else "focus",
-            "current_status": f"Creatinine elevated — {creatinine} mg/dL",
-            "future_risk_message": (
-                "Your creatinine is above normal, which means your kidneys "
-                "are working harder than ideal. Stay well hydrated and reduce "
-                "protein-heavy meals. A doctor can guide monitoring."
-            ),
-            "prevention_steps": [
-                "Drink 10+ glasses of water daily",
-                "Reduce red meat and heavy protein meals",
-                "Follow-up kidney function test in 3 months",
-                "Control BP and sugar — they directly protect kidneys"
-            ],
-            "risk_horizon": "3-month follow-up retest"
-        })
+            care_items.append(item("platelets", "act_now",
+                f"Platelets low — {platelets:,}/cumm",
+                "Needs medical attention. See a doctor soon.",
+                ["See a doctor soon", "Eat papaya leaf extract", "Avoid aspirin/ibuprofen"],
+                "Doctor visit needed"))
 
-    # ── Lipid Panel Care ──
+    # ── Cholesterol / LDL ──
     ldl = features.get("ldl")
-    triglycerides = features.get("triglycerides")
-    hdl = features.get("hdl")
-    total_chol = features.get("total_cholesterol")
-
     if ldl is not None and ldl > 100:
         if ldl >= 160:
-            urgency = "act_now"
-            msg = f"LDL at {ldl} mg/dL is high — significantly increases heart attack risk. A statin medication is usually recommended at this level."
+            urgency, msg = "act_now", f"LDL {ldl} mg/dL is high. See a doctor — statin medication likely needed."
         elif ldl >= 130:
-            urgency = "focus"
-            msg = f"LDL at {ldl} mg/dL needs attention. Dietary changes and possibly medication can bring this down."
+            urgency, msg = "focus", f"LDL {ldl} mg/dL needs attention. Cut fried food and add oats to your diet."
         else:
-            urgency = "watch"
-            msg = f"LDL at {ldl} mg/dL is borderline. Dietary changes can keep it from rising further."
-        care_items.append({
-            "category": "cholesterol",
-            "urgency": urgency,
-            "current_status": f"LDL Cholesterol — {ldl} mg/dL",
-            "future_risk_message": msg,
-            "prevention_steps": [
-                "Replace fried food with baked or grilled options",
-                "Add oats, flaxseed, and nuts to your daily diet",
-                "Walk 30 min daily — raises HDL and lowers LDL",
-                "Consult doctor about statin if LDL stays above 130"
-            ],
-            "risk_horizon": "8-12 weeks of dietary changes"
-        })
+            urgency, msg = "watch", f"LDL {ldl} mg/dL is borderline. Reduce fried food and walk daily."
+        care_items.append(item("cholesterol", urgency,
+            f"LDL Cholesterol — {ldl} mg/dL", msg,
+            ["Avoid fried food", "Eat oats and nuts daily", "Walk 30 min daily", "Consult doctor if above 130"],
+            "8-12 weeks"))
 
-    if triglycerides is not None and triglycerides > 150:
-        if triglycerides >= 500:
-            urgency, msg = "act_now", f"Triglycerides at {triglycerides} mg/dL — very high, pancreatitis risk. See a doctor immediately."
-        elif triglycerides >= 200:
-            urgency, msg = "focus", f"Triglycerides at {triglycerides} mg/dL — high. Cut sugar, refined carbs, and alcohol."
+    # ── Triglycerides ──
+    trig = features.get("triglycerides")
+    if trig is not None and trig > 150:
+        if trig >= 500:
+            urgency, msg = "act_now", f"Triglycerides {trig} mg/dL — very high, pancreatitis risk. See a doctor."
+        elif trig >= 200:
+            urgency, msg = "focus", f"Triglycerides {trig} mg/dL — high. Cut sugar and refined carbs now."
         else:
-            urgency, msg = "watch", f"Triglycerides at {triglycerides} mg/dL — borderline. Reduce sugar and refined carbs."
-        care_items.append({
-            "category": "triglycerides",
-            "urgency": urgency,
-            "current_status": f"Triglycerides — {triglycerides} mg/dL",
-            "future_risk_message": msg,
-            "prevention_steps": [
-                "Cut added sugar — it's the #1 driver of high triglycerides",
-                "Switch to brown rice, millets, or whole wheat",
-                "Avoid fruit juices — eat whole fruit instead",
-                "Fish oil (omega-3) supplements help significantly"
-            ],
-            "risk_horizon": "6-8 weeks with dietary changes"
-        })
+            urgency, msg = "watch", f"Triglycerides {trig} mg/dL — borderline. Reduce sugar and white rice."
+        care_items.append(item("triglycerides", urgency,
+            f"Triglycerides — {trig} mg/dL", msg,
+            ["Cut added sugar completely", "Switch to brown rice or millets", "Avoid fruit juices", "Walk daily"],
+            "6-8 weeks"))
 
+    # ── HDL ──
+    hdl = features.get("hdl")
     if hdl is not None and hdl < 40:
-        care_items.append({
-            "category": "cholesterol",
-            "urgency": "watch",
-            "current_status": f"HDL (good cholesterol) low — {hdl} mg/dL",
-            "future_risk_message": f"HDL at {hdl} mg/dL is below ideal. Low HDL increases heart risk even when LDL is normal.",
-            "prevention_steps": [
-                "Exercise is the best way to raise HDL — walk daily",
-                "Eat nuts, avocado, and olive oil",
-                "Quit smoking if applicable — it lowers HDL significantly",
-                "Reduce refined carbs and sugar"
-            ],
-            "risk_horizon": "3 months of consistent exercise"
-        })
+        care_items.append(item("cholesterol", "watch",
+            f"HDL (good cholesterol) low — {hdl} mg/dL",
+            "Low HDL increases heart risk. Exercise is the best way to raise it.",
+            ["Walk or exercise daily", "Eat nuts and olive oil", "Reduce refined carbs"],
+            "3 months"))
 
-    # ── Thyroid Care ──
+    # ── Thyroid ──
     tsh = features.get("tsh")
     if tsh is not None:
         if tsh > 4.5:
-            care_items.append({
-                "category": "thyroid",
-                "urgency": "focus" if tsh > 10 else "watch",
-                "current_status": f"TSH elevated — {tsh} mIU/L (Hypothyroidism)",
-                "future_risk_message": f"TSH at {tsh} mIU/L suggests your thyroid is underactive. This causes fatigue, weight gain, and cold sensitivity. Levothyroxine is the standard treatment.",
-                "prevention_steps": [
-                    "Consult a doctor for thyroid medication (Levothyroxine)",
-                    "Avoid raw cruciferous vegetables in large amounts",
-                    "Take thyroid medication on empty stomach in the morning",
-                    "Retest TSH in 6-8 weeks after starting medication"
-                ],
-                "risk_horizon": "Medication brings TSH to normal in 6-8 weeks"
-            })
+            care_items.append(item("thyroid", "focus" if tsh > 10 else "watch",
+                f"TSH high — {tsh} mIU/L (Hypothyroidism)",
+                "Thyroid is underactive. Causes fatigue and weight gain. Medication fixes this.",
+                ["Consult doctor for Levothyroxine", "Retest TSH in 6-8 weeks", "Take medication on empty stomach"],
+                "6-8 weeks"))
         elif tsh < 0.4:
-            care_items.append({
-                "category": "thyroid",
-                "urgency": "focus",
-                "current_status": f"TSH low — {tsh} mIU/L (Hyperthyroidism)",
-                "future_risk_message": f"TSH at {tsh} mIU/L suggests overactive thyroid. This causes palpitations, weight loss, and anxiety. Needs medical evaluation.",
-                "prevention_steps": [
-                    "Consult an endocrinologist for evaluation",
-                    "Avoid iodine-rich foods until evaluated",
-                    "Monitor heart rate — hyperthyroidism can cause arrhythmia",
-                    "Retest T3, T4 along with TSH"
-                ],
-                "risk_horizon": "Medical evaluation needed"
-            })
+            care_items.append(item("thyroid", "focus",
+                f"TSH low — {tsh} mIU/L (Hyperthyroidism)",
+                "Thyroid is overactive. Causes palpitations and weight loss. Needs evaluation.",
+                ["Consult an endocrinologist", "Monitor heart rate", "Retest T3, T4"],
+                "Medical evaluation"))
 
-    # ── Liver Care (SGPT) ──
+    # ── Liver (SGPT) ──
     sgpt = features.get("sgpt")
     if sgpt is not None and sgpt > 40:
-        care_items.append({
-            "category": "liver_health",
-            "urgency": "focus" if sgpt > 80 else "watch",
-            "current_status": f"SGPT/ALT elevated — {sgpt} U/L",
-            "future_risk_message": f"SGPT at {sgpt} U/L indicates liver stress. Common causes: fatty liver, alcohol, or medications. Lifestyle changes can reverse this.",
-            "prevention_steps": [
-                "Avoid alcohol completely until SGPT normalizes",
-                "Reduce fried and fatty food",
-                "Lose 5% body weight if overweight — reverses fatty liver",
-                "Retest liver function in 6-8 weeks"
-            ],
-            "risk_horizon": "6-8 weeks with lifestyle changes"
-        })
+        care_items.append(item("liver_health", "focus" if sgpt > 80 else "watch",
+            f"SGPT/ALT elevated — {sgpt} U/L",
+            "Liver is stressed. Avoid alcohol and fried food. Retest in 6-8 weeks.",
+            ["Avoid alcohol completely", "Reduce fried and fatty food", "Retest in 6-8 weeks"],
+            "6-8 weeks"))
 
-    # ── WBC / Infection Markers ──
-    neutrophils_pct = features.get("neutrophils_pct")
-    wbc = features.get("wbc_count")
-    if neutrophils_pct is not None and neutrophils_pct > 75:
-        care_items.append({
-            "category": "infection_markers",
-            "urgency": "watch",
-            "current_status": f"Neutrophils elevated — {neutrophils_pct}%",
-            "future_risk_message": f"Neutrophils at {neutrophils_pct}% suggest possible bacterial infection or stress response. Monitor for fever or other symptoms.",
-            "prevention_steps": [
-                "Monitor for fever, pain, or other infection symptoms",
-                "Stay hydrated and rest well",
-                "Consult a doctor if symptoms persist beyond 3-5 days",
-                "Retest CBC in 2 weeks if no symptoms"
-            ],
-            "risk_horizon": "Monitor for 1-2 weeks"
-        })
+    # ── Kidney (Creatinine) ──
+    creatinine = features.get("creatinine")
+    if creatinine is not None and creatinine > 1.2:
+        care_items.append(item("kidney_health", "focus" if creatinine > 1.8 else "watch",
+            f"Creatinine elevated — {creatinine} mg/dL",
+            "Kidneys are under stress. Drink more water and reduce protein intake.",
+            ["Drink 10+ glasses of water daily", "Reduce red meat", "Follow-up test in 3 months"],
+            "3 months"))
 
-    # ── RDW (Red Cell Distribution Width) ──
+    # ── RDW ──
     rdw = features.get("rdw")
     if rdw is not None and rdw > 14.5:
-        care_items.append({
-            "category": "hemoglobin",
-            "urgency": "watch",
-            "current_status": f"RDW elevated — {rdw}% (mixed anemia possible)",
-            "future_risk_message": f"RDW at {rdw}% suggests your red blood cells vary in size — often a sign of iron or B12 deficiency. Easy to fix with supplements.",
-            "prevention_steps": [
-                "Get iron and B12 levels tested",
-                "Iron-rich foods: spinach, lentils, dates, jaggery",
-                "B12 sources: eggs, dairy, meat, or B12 supplements",
-                "Retest CBC in 6-8 weeks"
-            ],
-            "risk_horizon": "6-8 weeks with supplements"
-        })
+        care_items.append(item("hemoglobin", "watch",
+            f"RDW elevated — {rdw}% (uneven red cells)",
+            "Red cells vary in size — often iron or B12 deficiency. Easy to fix.",
+            ["Get iron and B12 levels tested", "Eat iron-rich food daily", "Consider B12 supplement"],
+            "6-8 weeks"))
+
+    # ── Neutrophils ──
+    neutrophils_pct = features.get("neutrophils_pct")
+    if neutrophils_pct is not None and neutrophils_pct > 75:
+        care_items.append(item("infection_markers", "watch",
+            f"Neutrophils high — {neutrophils_pct}%",
+            "Possible infection or stress response. Monitor for fever or pain.",
+            ["Monitor for fever or pain", "Rest and stay hydrated", "Retest CBC in 2 weeks if no symptoms"],
+            "1-2 weeks"))
 
     # ── Vitamin D ──
     vit_d = features.get("vitamin_d")
     if vit_d is not None and vit_d < 20:
-        care_items.append({
-            "category": "vitamins",
-            "urgency": "watch" if vit_d >= 10 else "focus",
-            "current_status": f"Vitamin D deficient — {vit_d} ng/mL",
-            "future_risk_message": f"Vitamin D at {vit_d} ng/mL is deficient. This affects bone health, immunity, and mood. Supplementation is simple and effective.",
-            "prevention_steps": [
-                "Take Vitamin D3 supplement (1000-2000 IU daily)",
-                "Get 15-20 min of morning sunlight daily",
-                "Eat fatty fish, eggs, and fortified milk",
-                "Retest in 3 months after supplementation"
-            ],
-            "risk_horizon": "3 months of supplementation"
-        })
+        care_items.append(item("vitamins", "focus" if vit_d < 10 else "watch",
+            f"Vitamin D deficient — {vit_d} ng/mL",
+            "Low Vitamin D affects bones and immunity. Supplement and get morning sunlight.",
+            ["Take Vitamin D3 supplement daily", "Get 15-20 min morning sunlight", "Retest in 3 months"],
+            "3 months"))
 
     # ── Vitamin B12 ──
     vit_b12 = features.get("vitamin_b12")
     if vit_b12 is not None and vit_b12 < 200:
-        care_items.append({
-            "category": "vitamins",
-            "urgency": "watch" if vit_b12 >= 100 else "focus",
-            "current_status": f"Vitamin B12 deficient — {vit_b12} pg/mL",
-            "future_risk_message": f"B12 at {vit_b12} pg/mL is deficient. This causes fatigue, nerve tingling, and memory issues. Supplements work quickly.",
-            "prevention_steps": [
-                "Take B12 supplement (500-1000 mcg daily)",
-                "Eat eggs, dairy, meat, or fortified cereals",
-                "Vegetarians/vegans are at higher risk — supplement regularly",
-                "Retest in 3 months"
-            ],
-            "risk_horizon": "3 months of supplementation"
-        })
-    
-    # ── Post-process: add risk_score (%) and top_action ──
-    urgency_to_score = {
-        "great": lambda: 15,   # Low risk
-        "watch": lambda: 42,   # Moderate
-        "focus": lambda: 65,   # Needs focus
-        "act_now": lambda: 85  # High
-    }
-    
-    for item in care_items:
-        base = urgency_to_score.get(item["urgency"], lambda: 30)()
-        
-        # Fine-tune based on actual data
-        cat = item["category"]
-        if cat == "blood_pressure":
-            bp_avg = features.get("bp_systolic_latest", features.get("bp_systolic_avg", 120))
-            if bp_avg and bp_avg > 0:
-                item["risk_score"] = min(95, max(10, int((bp_avg - 90) / 0.8)))
-            else:
-                item["risk_score"] = base
-        elif cat == "blood_sugar":
-            sugar_avg = features.get("sugar_latest", features.get("sugar_avg", 90))
-            if sugar_avg and sugar_avg > 0:
-                item["risk_score"] = min(95, max(10, int((sugar_avg - 60) / 1.5)))
-            else:
-                item["risk_score"] = base
-        elif cat == "hemoglobin":
-            hb = features.get("hemoglobin")
-            if hb:
-                hb_low = 13.5 if features.get("gender_enc") == 1 else 12.0
-                item["risk_score"] = min(90, max(10, int(100 - (hb / hb_low) * 80)))
-            else:
-                item["risk_score"] = base
-        elif cat == "weight_bmi":
-            bmi = features.get("bmi", 25)
-            if bmi:
-                item["risk_score"] = min(85, max(10, int((bmi - 18) * 5)))
-            else:
-                item["risk_score"] = base
-        else:
-            item["risk_score"] = base
-        
-        # Top action from first prevention step
-        steps = item.get("prevention_steps", [])
-        item["top_action"] = steps[0] if steps else "Monitor regularly"
-    
+        care_items.append(item("vitamins", "focus" if vit_b12 < 100 else "watch",
+            f"Vitamin B12 deficient — {vit_b12} pg/mL",
+            "Low B12 causes fatigue and nerve issues. Supplement works quickly.",
+            ["Take B12 supplement daily", "Eat eggs, dairy, or meat", "Retest in 3 months"],
+            "3 months"))
+
+    # ── BMI ──
+    bmi = features.get("bmi")
+    if bmi is not None:
+        if features.get("bmi_class") == "overweight":
+            care_items.append(item("weight_bmi", "watch",
+                f"BMI {bmi} — slightly overweight",
+                "Losing 3-5 kg improves BP, sugar, and energy. Small steps work.",
+                ["Reduce portions by 20%", "Walk 30 min daily", "Replace sugary drinks with water"],
+                "2-3 months"))
+        elif features.get("bmi_class") == "obese":
+            care_items.append(item("weight_bmi", "focus",
+                f"BMI {bmi} — obese",
+                "Weight needs attention. Consistent diet and exercise changes make a big difference.",
+                ["Consult a doctor or dietitian", "Walk 30 min daily", "Cut fried food and sugar"],
+                "3-6 months"))
+
+    # ── Add risk_score and top_action ──
+    urgency_score = {"great": 15, "watch": 42, "focus": 65, "act_now": 85}
+    for c in care_items:
+        c["risk_score"] = urgency_score.get(c["urgency"], 30)
+        steps = c.get("prevention_steps", [])
+        c["top_action"] = steps[0].upper() if steps else "MONITOR REGULARLY"
+
     return care_items
+
 
 
 # ════════════════════════════════════════════════════════════════
