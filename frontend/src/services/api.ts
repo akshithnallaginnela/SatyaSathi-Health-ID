@@ -172,3 +172,24 @@ export const notificationsAPI = {
 export const clinicsAPI = {
   nearest: (lat: number, lng: number) => apiFetch(`/clinics/nearest?lat=${lat}&lng=${lng}`),
 };
+
+// ─── Health ID ───
+export const healthIdAPI = {
+  getCardData: () => apiFetch('/health-id/card-data'),
+  getQRCode: () => `${API_BASE}/health-id/qr-code?token=${getAccessToken()}`,
+  downloadCard: () => `${API_BASE}/health-id/download-card?token=${getAccessToken()}`,
+};
+
+// ─── Trends ───
+export const trendsAPI = {
+  getBP: (days: number = 30) => apiFetch(`/trends/bp?days=${days}`),
+  getSugar: (days: number = 30) => apiFetch(`/trends/sugar?days=${days}`),
+  getWeight: (days: number = 90) => apiFetch(`/trends/weight?days=${days}`),
+  getSummary: () => apiFetch('/trends/summary'),
+};
+
+// ─── Share ───
+export const shareAPI = {
+  getHealthSummary: () => apiFetch('/share/health-summary'),
+  getWhatsAppLink: () => apiFetch('/share/whatsapp-link'),
+};
