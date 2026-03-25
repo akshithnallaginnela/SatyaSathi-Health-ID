@@ -71,7 +71,7 @@ export default function HealthIDCard({ profile, onDownload }: HealthIDCardProps)
   return (
     <div className="space-y-4">
       {/* Card Preview */}
-      <div ref={cardRef} className="relative w-full aspect-[1.586/1] bg-gradient-to-br from-[#E8F4F3] to-[#F0F9F8] rounded-2xl overflow-hidden shadow-2xl border-2 border-[#26C6BF]/20">
+      <div id="health-id-card-print" ref={cardRef} className="relative w-full aspect-[1.586/1] bg-gradient-to-br from-[#E8F4F3] to-[#F0F9F8] rounded-2xl overflow-hidden shadow-2xl border-2 border-[#26C6BF]/20">
         
         {/* Government-style header */}
         <div className="absolute top-0 left-0 right-0 bg-gradient-to-r from-[#26C6BF] to-[#1FA89E] h-12 flex items-center justify-between px-4">

@@ -36,3 +36,27 @@
 .animate-progress {
   animation: progress-grow 1.2s ease-out forwards;
 }
+
+/* Print styles for Health ID card */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  
+  #health-id-card-print,
+  #health-id-card-print * {
+    visibility: visible;
+  }
+  
+  #health-id-card-print {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+  }
+  
+  @page {
+    size: A4 landscape;
+    margin: 1cm;
+  }
+}
