@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { LayoutDashboard, Target, Activity, User, Stethoscope } from 'lucide-react';
+import { LayoutDashboard, Target, Activity, User, Plus, X } from 'lucide-react';
 
 // API
-import { authAPI, isLoggedIn } from './services/api.ts';
+import { authAPI, isLoggedIn, reportsAPI } from './services/api.ts';
 
 // Screens
 import LoginScreen from './screens/LoginScreen.tsx';
@@ -21,6 +21,10 @@ function App() {
   const [authState, setAuthState] = useState<AuthState>('loading');
   const [activeTab, setActiveTab] = useState<Tab>('dashboard');
   const [user, setUser] = useState<any>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadDone, setUploadDone] = useState(false);
+  const [uploadError, setUploadError] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     checkAuth();
@@ -50,6 +54,27 @@ function App() {
   const handleLogout = () => {
     setUser(null);
     setAuthState('login');
+  };
+
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    setUploadDone(false);
+    setUploadError('');
+    try {
+      await reportsAPI.analyze(file);
+      setUploadDone(true);
+      setTimeout(() => setUploadDone(false), 3000);
+      setActiveTab('dashboard');
+      window.dispatchEvent(new Event('report-uploaded'));
+    } catch (err: any) {
+      setUploadError(err.message || 'Upload failed');
+      setTimeout(() => setUploadError(''), 4000);
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
   };
 
   if (authState === 'loading') {
@@ -87,12 +112,46 @@ function App() {
         </div>
 
         {/* Bottom Navigation */}
-        <div className="bg-white border-t border-gray-100 pb-8 pt-3 px-6 flex justify-between items-center z-40 shrink-0">
+        <div className="bg-white border-t border-gray-100 pb-8 pt-3 px-4 flex justify-between items-center z-40 shrink-0">
           <NavItem id="dashboard" icon={<LayoutDashboard />} label="Home" active={activeTab} onClick={setActiveTab} />
           <NavItem id="missions" icon={<Target />} label="Missions" active={activeTab} onClick={setActiveTab} />
+
+          {/* Centre + Upload Button */}
+          <div className="flex flex-col items-center -mt-6">
+            <input ref={fileInputRef} type="file" accept="image/*,.pdf" className="hidden" onChange={handleUpload} />
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
+              className="w-14 h-14 rounded-full bg-[#26C6BF] shadow-lg flex items-center justify-center border-4 border-white disabled:opacity-70 active:scale-95 transition-transform"
+            >
+              {uploading
+                ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                : <Plus size={26} className="text-white" strokeWidth={2.5} />
+              }
+            </button>
+            <span className="text-[9px] font-bold text-[#26C6BF] mt-1">Upload</span>
+          </div>
+
           <NavItem id="vitals" icon={<Activity />} label="Vitals" active={activeTab} onClick={setActiveTab} />
           <NavItem id="myid" icon={<User />} label="My ID" active={activeTab} onClick={setActiveTab} />
         </div>
+
+        {/* Upload feedback toast */}
+        <AnimatePresence>
+          {(uploadDone || uploadError) && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }}
+              className={`absolute bottom-28 left-4 right-4 z-50 rounded-2xl px-4 py-3 flex items-center justify-between shadow-lg ${uploadDone ? 'bg-[#26C6BF]' : 'bg-red-500'}`}
+            >
+              <span className="text-white text-xs font-bold">
+                {uploadDone ? '✅ Report uploaded & analysed!' : `❌ ${uploadError}`}
+              </span>
+              <button onClick={() => { setUploadDone(false); setUploadError(''); }}>
+                <X size={14} className="text-white" />
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );

@@ -1,15 +1,15 @@
 import os
 import shutil
 import uuid
-import datetime
 import json
+from datetime import date, datetime
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc
 
 from database import get_db, async_session
 from models.domain import (
-    BloodReport, UserDataStatus, User
+    BloodReport, UserDataStatus, User, CoinLedger
 )
 from security.jwt_handler import get_current_user_id
 from services.ocr_service import extract_report_values
@@ -81,7 +81,7 @@ async def analyze_report(
         user_id=user_id,
         file_path=file_path,
         lab_name=extracted.get("lab_name"),
-        report_date=datetime.date.today(),
+        report_date=date.today(),
         hemoglobin=extracted.get("hemoglobin"),
         rbc_count=extracted.get("rbc_count"),
         pcv=extracted.get("pcv"),
@@ -163,6 +163,39 @@ async def analyze_report(
 
     # 6. Commit FIRST so the report is visible to the analysis query
     await db.commit()
+
+    # Award 50 coins only if 30+ days since previous report (monthly check-up reward)
+    try:
+        prev_reports = await db.execute(
+            select(BloodReport)
+            .where(BloodReport.user_id == user_id)
+            .order_by(desc(BloodReport.uploaded_at))
+            .limit(2)
+        )
+        all_reports = prev_reports.scalars().all()
+        # all_reports[0] is the one just saved, [1] is the previous one
+        if len(all_reports) >= 2:
+            days_gap = (all_reports[0].uploaded_at - all_reports[1].uploaded_at).days
+            if days_gap >= 30:
+                # Check not already awarded this month
+                month_start = datetime.utcnow().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+                existing = await db.execute(
+                    select(CoinLedger).where(
+                        CoinLedger.user_id == user_id,
+                        CoinLedger.activity_type == "MONTHLY_REPORT_UPLOAD",
+                        CoinLedger.created_at >= month_start,
+                    )
+                )
+                if not existing.scalar_one_or_none():
+                    db.add(CoinLedger(
+                        user_id=user_id,
+                        amount=50,
+                        activity_type="MONTHLY_REPORT_UPLOAD"
+                    ))
+                    await db.commit()
+                    print(f"✅ 50 coins awarded for monthly report upload (gap: {days_gap} days)")
+    except Exception as e:
+        print(f"Monthly coins error: {e}")
 
     # Anchor report on blockchain
     try:

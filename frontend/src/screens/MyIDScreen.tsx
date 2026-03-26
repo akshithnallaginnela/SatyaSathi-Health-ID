@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
-  Shield, CreditCard, Activity, LogOut, Bell, UploadCloud,
+  Shield, CreditCard, Activity, LogOut, Bell,
   Plus, X, Trash2, Droplets, Lock, Download, ChevronRight,
   Eye, EyeOff, User as UserIcon, Edit3, Check, Settings, Link
 } from 'lucide-react';
-import { profileAPI, coinsAPI, clearTokens, notificationsAPI, mlAPI, healthIdAPI, blockchainAPI } from '../services/api.ts';
+import { profileAPI, coinsAPI, clearTokens, notificationsAPI, healthIdAPI, blockchainAPI } from '../services/api.ts';
 import HealthIDCard from '../components/HealthIDCard.tsx';
 
 type ModalType = 'reminder' | 'password' | 'editProfile' | null;
@@ -21,11 +21,6 @@ export default function MyIDScreen({ user, onLogout, onReportUploaded, onOpenSet
   const [modal, setModal] = useState<ModalType>(null);
   const [notice, setNotice] = useState('');
   const [noticeOk, setNoticeOk] = useState(false);
-
-  // Report upload
-  const [reportFile, setReportFile] = useState<File | null>(null);
-  const [uploading, setUploading] = useState(false);
-  const [uploadResult, setUploadResult] = useState<any>(null);
 
   // Reminder form
   const [newReminder, setNewReminder] = useState({ title: '', message: '', reminder_time: '08:00', is_recurring: true });
@@ -282,39 +277,6 @@ export default function MyIDScreen({ user, onLogout, onReportUploaded, onOpenSet
             </div>
           </div>
           <span className="text-[10px] font-extrabold text-[#26C6BF] bg-[#F2FDFB] px-3 py-1.5 rounded-full border border-[#C8F0EC]">Active</span>
-        </div>
-      </div>
-
-      {/* Upload Report */}
-      <div className="px-6 mt-4">
-        <h3 className="text-[#26C6BF] text-[10px] font-extrabold uppercase tracking-widest mb-3">Upload Blood Report</h3>
-        <div className="bg-white border border-[#C8F0EC] rounded-2xl p-4 space-y-3">
-          <label className="border-2 border-dashed border-[#C8F0EC] rounded-xl p-4 flex flex-col items-center justify-center cursor-pointer bg-[#F2FDFB] hover:border-[#26C6BF] transition-colors">
-            <UploadCloud size={24} className="text-[#26C6BF] mb-2"/>
-            <span className="text-xs font-semibold text-[#1A3A38] text-center px-2">
-              {reportFile ? reportFile.name : 'Choose report image (JPG/PNG/PDF)'}
-            </span>
-            <input type="file" accept="image/jpeg,image/png,image/webp,application/pdf" className="hidden"
-              onChange={e => { setReportFile(e.target.files?.[0] || null); setUploadResult(null); }}/>
-          </label>
-
-          <button onClick={uploadReport} disabled={uploading || !reportFile}
-            className="w-full bg-[#26C6BF] text-white rounded-xl py-3 font-bold text-sm disabled:opacity-50 flex items-center justify-center gap-2">
-            {uploading ? (
-              <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"/> Analyzing report...</>
-            ) : 'Upload & Analyze'}
-          </button>
-
-          {uploadResult?.ml_analysis && (
-            <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-              className="bg-[#F2FDFB] border border-[#C8F0EC] rounded-xl p-3">
-              <p className="text-xs font-extrabold text-[#26C6BF] uppercase mb-1">Analysis Complete</p>
-              <p className="text-sm font-semibold text-[#1A3A38]">{uploadResult.ml_analysis.summary}</p>
-              {(uploadResult.positive_precautions || []).slice(0, 3).map((tip: string, i: number) => (
-                <p key={i} className="text-xs text-[#1A3A38] mt-1">• {tip}</p>
-              ))}
-            </motion.div>
-          )}
         </div>
       </div>
 

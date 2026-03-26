@@ -13,11 +13,10 @@ export default function RegisterScreen({ onRegister, onSwitchToLogin }: {
   onSwitchToLogin: () => void;
 }) {
   const [step, setStep] = useState<Step>('form');
-  const [form, setForm] = useState({ full_name: '', last_name: '', phone_number: '', password: '', date_of_birth: '', gender: 'male', weight: '', height: '' });
+  const [form, setForm] = useState({ full_name: '', last_name: '', phone_number: '', password: '', date_of_birth: '', gender: 'male', blood_group: '', weight: '', height: '' });
   const [otp, setOtp] = useState('');
   const [aadhaar, setAadhaar] = useState('');
   const [tempToken, setTempToken] = useState('');
-  const [devOtp, setDevOtp] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -41,6 +40,7 @@ export default function RegisterScreen({ onRegister, onSwitchToLogin }: {
         phone_number: form.phone_number,
         password: form.password,
         gender: form.gender || undefined,
+        blood_group: form.blood_group || undefined,
         weight_kg: form.weight ? parseFloat(form.weight) : undefined,
         height_cm: form.height ? parseFloat(form.height) : undefined,
       };
@@ -49,7 +49,6 @@ export default function RegisterScreen({ onRegister, onSwitchToLogin }: {
         payload.date_of_birth = form.date_of_birth;
       }
       const res = await authAPI.register(payload);
-      setDevOtp(res.dev_otp || '');
       setStep('otp');
     } catch (e: any) { setError(e.message); }
     finally { setLoading(false); }
@@ -187,13 +186,24 @@ export default function RegisterScreen({ onRegister, onSwitchToLogin }: {
                 <select value={form.gender} onChange={e => setForm({...form, gender: e.target.value})} className={inputClass}>
                   <option value="male">Male</option><option value="female">Female</option><option value="other">Other</option>
                 </select></div>
+              <div><label className={labelClass}>Blood Group</label>
+                <select value={form.blood_group} onChange={e => setForm({...form, blood_group: e.target.value})} className={inputClass}>
+                  <option value="">Select blood group</option>
+                  <option value="A+">A+</option>
+                  <option value="A-">A-</option>
+                  <option value="B+">B+</option>
+                  <option value="B-">B-</option>
+                  <option value="AB+">AB+</option>
+                  <option value="AB-">AB-</option>
+                  <option value="O+">O+</option>
+                  <option value="O-">O-</option>
+                </select></div>
             </div>
           )}
 
           {step === 'otp' && (
             <div className="space-y-4">
               <p className="text-muted-teal text-sm">Enter the 6-digit OTP sent to your phone.</p>
-              {devOtp && <div className="bg-soft-teal-badge p-3 rounded-xl"><p className="text-primary-teal text-xs font-bold">DEV Mode OTP: {devOtp}</p></div>}
               <input placeholder="Enter 6-digit OTP" value={otp} maxLength={6}
                 onChange={e => setOtp(e.target.value.replace(/\D/g,''))} className={inputClass + " text-center text-lg tracking-[0.5em]"} />
             </div>

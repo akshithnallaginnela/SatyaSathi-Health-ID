@@ -16,6 +16,7 @@ from security.jwt_handler import (
     create_access_token, create_refresh_token, create_temp_token, 
     verify_token, get_current_user_id
 )
+from services.sms_service import send_otp_sms
 
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 
@@ -47,6 +48,7 @@ async def register(data: UserCreate, db: AsyncSession = Depends(get_db)):
         health_id=_generate_health_id(),
         date_of_birth=data.date_of_birth,
         gender=data.gender,
+        blood_group=data.blood_group,
         weight_kg=data.weight_kg,
         height_cm=data.height_cm,
         bmi=bmi,
@@ -68,14 +70,21 @@ async def register(data: UserCreate, db: AsyncSession = Depends(get_db)):
     
     await db.commit()
 
-    # 5. Save and send OTP (Mock)
-    otp = "123456" # Fixed mock OTP
+    # 5. Generate real OTP and send via Twilio
+    otp = str(random.randint(100000, 999999))
     _otp_store[data.phone_number] = otp
+
+    # Send via Twilio (falls back to console log if keys not set)
+    twilio_sent = send_otp_sms(data.phone_number, otp)
+
+    # Only expose OTP in response if Twilio is not configured (dev mode)
+    import os
+    is_dev = not os.getenv("TWILIO_ACCOUNT_SID") or not os.getenv("TWILIO_AUTH_TOKEN")
 
     return {
         "message": "User registered. OTP sent.",
         "phone": mask_phone(data.phone_number),
-        "dev_otp": otp # For prototype testing
+        **({"dev_otp": otp} if is_dev else {})
     }
 
 @router.post("/verify-otp")

@@ -1,11 +1,11 @@
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc, func
 
 from database import get_db
-from models.domain import DailyTask, CoinLedger, User
+from models.domain import DailyTask, CoinLedger, User, BloodReport
 from security.jwt_handler import get_current_user_id
 
 router = APIRouter(prefix="/api/tasks", tags=["Tasks"])
@@ -113,3 +113,81 @@ async def get_coin_balance(
     )
     balance = result.scalar() or 0
     return {"balance": balance}
+
+@router.get("/monthly-status")
+async def get_monthly_task_status(
+    user_id: str = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Returns the monthly report upload task status.
+    - eligible: True if 30+ days since last report (can earn 50 coins)
+    - days_since_last: how many days since last report
+    - coins_awarded_this_month: whether coins already given this month
+    """
+    # Get last two reports ordered by date
+    result = await db.execute(
+        select(BloodReport)
+        .where(BloodReport.user_id == user_id)
+        .order_by(desc(BloodReport.uploaded_at))
+        .limit(2)
+    )
+    reports = result.scalars().all()
+
+    if not reports:
+        return {
+            "eligible": False,
+            "days_since_last": None,
+            "message": "Upload your first blood report to start tracking.",
+            "coins_reward": 50,
+        }
+
+    last_report = reports[0]
+    days_since = (datetime.utcnow() - last_report.uploaded_at).days
+
+    # Check if monthly coins already awarded this calendar month
+    month_start = datetime.utcnow().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    coins_result = await db.execute(
+        select(CoinLedger).where(
+            CoinLedger.user_id == user_id,
+            CoinLedger.activity_type == "MONTHLY_REPORT_UPLOAD",
+            CoinLedger.created_at >= month_start,
+        )
+    )
+    already_awarded = coins_result.scalar_one_or_none() is not None
+
+    eligible = days_since >= 30 and not already_awarded
+
+    return {
+        "eligible": eligible,
+        "days_since_last": days_since,
+        "already_awarded_this_month": already_awarded,
+        "last_report_date": str(last_report.uploaded_at.date()),
+        "next_eligible_date": str((last_report.uploaded_at + timedelta(days=30)).date()),
+        "message": (
+            "Upload a new report to earn 50 coins!" if eligible
+            else f"Next report due in {max(0, 30 - days_since)} days"
+            if not already_awarded else "Monthly report coins already earned this month."
+        ),
+        "coins_reward": 50,
+    }
+
+
+@router.post("/step-goal")
+async def update_step_goal(
+    data: dict,
+    user_id: str = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """Update user's daily step goal (6000–60000)."""
+    goal = int(data.get("step_goal", 6000))
+    goal = max(6000, min(60000, goal))
+
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    user.step_goal = goal
+    await db.commit()
+    return {"step_goal": goal, "message": f"Step goal updated to {goal:,}"}

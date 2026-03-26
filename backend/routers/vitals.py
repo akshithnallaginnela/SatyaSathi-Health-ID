@@ -52,7 +52,7 @@ async def log_bp(
     if prev_bp:
         days_since = (datetime.utcnow() - prev_bp.measured_at).days
         if days_since >= 7:
-            coins_awarded = 20
+            coins_awarded = 10
             streak_bonus = True
 
     new_reading = BPReading(
@@ -131,7 +131,7 @@ async def log_sugar(
     if prev_sugar:
         days_since = (datetime.utcnow() - prev_sugar.measured_at).days
         if days_since >= 7:
-            coins_awarded = 20
+            coins_awarded = 10
             streak_bonus = True
 
     new_reading = SugarReading(

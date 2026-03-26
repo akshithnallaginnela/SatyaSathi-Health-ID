@@ -62,6 +62,7 @@ class User(Base):
     aadhaar_last4 = Column(String(4))
     aadhaar_verified = Column(Boolean, default=False)
     profile_photo_url = Column(String(255))
+    step_goal = Column(Integer, default=6000)
     created_at = Column(DateTime, default=datetime.utcnow)
 
 class UserDataStatus(Base):
@@ -271,6 +272,7 @@ class UserCreate(BaseModel):
     password: str = Field(..., min_length=8)
     date_of_birth: Optional[date] = None
     gender: Optional[str] = None
+    blood_group: Optional[str] = None
     weight_kg: Optional[float] = None
     height_cm: Optional[float] = None
     waist_cm: Optional[float] = None

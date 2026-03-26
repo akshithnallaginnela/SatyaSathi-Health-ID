@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { CheckCircle2, Award, Activity, FileText } from 'lucide-react';
+import { CheckCircle2, Award, Activity, FileText, Footprints, Settings2 } from 'lucide-react';
 import { tasksAPI, coinsAPI, reportsAPI } from '../services/api.ts';
 
 // Tappable tasks — user self-confirms, earns coins
@@ -21,14 +21,6 @@ const MONITORABLE_TASK_TYPES = new Set([
 const isMonitorable = (task: any) =>
   MONITORABLE_TASK_TYPES.has(task.task_type) && (task.coins_reward ?? 0) > 0;
 
-const MONTHLY_TASKS = [
-  {
-    id: 'monthly_blood_report',
-    task_name: 'Upload New Blood Report',
-    description: 'Upload your latest report after a diagnosis visit',
-    coins_reward: 100,
-  },
-];
 
 export default function MissionsScreen() {
   const [tasks, setTasks] = useState<any[]>([]);
@@ -40,12 +32,21 @@ export default function MissionsScreen() {
   const [monthlyDone, setMonthlyDone] = useState<Set<string>>(new Set());
   const [uploadingReport, setUploadingReport] = useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const [monthlyStatus, setMonthlyStatus] = useState<any>(null);
+  const [stepGoal, setStepGoal] = useState(6000);
+  const [savingStepGoal, setSavingStepGoal] = useState(false);
+  const [showStepEditor, setShowStepEditor] = useState(false);
 
   useEffect(() => {
     loadData();
     const key = `monthly_tasks_${new Date().getFullYear()}_${new Date().getMonth()}`;
     const saved = localStorage.getItem(key);
     if (saved) setMonthlyDone(new Set(JSON.parse(saved)));
+    // Load step goal from localStorage
+    const savedGoal = localStorage.getItem('step_goal');
+    if (savedGoal) setStepGoal(parseInt(savedGoal));
+    // Load monthly status
+    tasksAPI.getMonthlyStatus().then(s => setMonthlyStatus(s)).catch(() => {});
   }, []);
 
   const loadData = async () => {
@@ -105,6 +106,17 @@ export default function MissionsScreen() {
     }
   };
 
+  const saveStepGoal = async () => {
+    setSavingStepGoal(true);
+    try {
+      await tasksAPI.updateStepGoal(stepGoal);
+      localStorage.setItem('step_goal', String(stepGoal));
+      setShowStepEditor(false);
+      loadData(); // refresh tasks with new step goal
+    } catch (e) { console.error(e); }
+    finally { setSavingStepGoal(false); }
+  };
+
   const monitorable = tasks.filter(t => isMonitorable(t));
   const unmonitorable = tasks.filter(t => !isMonitorable(t));
   const doneDailyCount = monitorable.filter(t => t.completed).length;
@@ -140,8 +152,38 @@ export default function MissionsScreen() {
         <div className="bg-white border-[1.5px] border-[#E8F1F1] rounded-[24px] p-5 shadow-sm">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-[#1A3A38] font-extrabold text-[18px]">Daily Tasks</h3>
-            <span className="text-[#26C6BF] font-extrabold text-[13px]">{doneDailyCount}/{monitorable.length} DONE</span>
+            <div className="flex items-center gap-2">
+              <span className="text-[#26C6BF] font-extrabold text-[13px]">{doneDailyCount}/{monitorable.length} DONE</span>
+              <button onClick={() => setShowStepEditor(s => !s)} className="w-7 h-7 rounded-full bg-[#F2FDFB] border border-[#C8F0EC] flex items-center justify-center">
+                <Settings2 size={13} className="text-[#26C6BF]" />
+              </button>
+            </div>
           </div>
+
+          {/* Step goal editor */}
+          {showStepEditor && (
+            <div className="mb-4 bg-[#F2FDFB] border border-[#C8F0EC] rounded-[16px] p-4">
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-[#1A3A38] font-extrabold text-[13px]">Daily Step Goal</span>
+                <span className="text-[#26C6BF] font-extrabold text-[13px]">{stepGoal.toLocaleString()} steps</span>
+              </div>
+              <input
+                type="range" min={6000} max={60000} step={1000}
+                value={stepGoal}
+                onChange={e => setStepGoal(parseInt(e.target.value))}
+                className="w-full accent-[#26C6BF]"
+              />
+              <div className="flex justify-between text-[10px] text-[#7ECCC7] font-bold mt-1">
+                <span>6,000</span>
+                <span className="text-[#D4AF37]">+{Math.round(25 + (stepGoal - 6000) / (60000 - 6000) * 75)} coins</span>
+                <span>60,000</span>
+              </div>
+              <button onClick={saveStepGoal} disabled={savingStepGoal}
+                className="mt-3 w-full bg-[#26C6BF] text-white text-[12px] font-extrabold py-2 rounded-full disabled:opacity-50">
+                {savingStepGoal ? 'Saving...' : 'Save Goal'}
+              </button>
+            </div>
+          )}
 
           <div className="space-y-3">
             {/* Monitorable — tappable, earn coins */}
@@ -198,47 +240,54 @@ export default function MissionsScreen() {
         <div className="bg-white border-[1.5px] border-[#E8F1F1] rounded-[24px] p-5 shadow-sm">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-[#1A3A38] font-extrabold text-[18px]">Monthly Tasks</h3>
-            <span className="text-[#26C6BF] font-extrabold text-[13px]">{monthlyDone.size}/{MONTHLY_TASKS.length} DONE</span>
+            <span className="text-[#26C6BF] font-extrabold text-[13px]">
+              {monthlyStatus?.already_awarded_this_month ? '1/1 DONE' : '0/1 DONE'}
+            </span>
           </div>
 
           <div className="space-y-3">
-            {MONTHLY_TASKS.map((task) => {
-              const done = monthlyDone.has(task.id);
-              return (
-                <div key={task.id} className={`flex items-center justify-between px-4 py-3.5 rounded-[16px] border ${
-                  done ? 'bg-[#F2FDFB] border-[#C8F0EC]' : 'bg-white border-[#E8F1F1]'
+            {/* Monthly blood report task — not tappable, only awarded on upload after 30 days */}
+            <div className={`flex items-center justify-between px-4 py-3.5 rounded-[16px] border ${
+              monthlyStatus?.already_awarded_this_month ? 'bg-[#F2FDFB] border-[#C8F0EC]' : 'bg-white border-[#E8F1F1]'
+            }`}>
+              <div className="flex items-center gap-3 flex-1 min-w-0">
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
+                  monthlyStatus?.already_awarded_this_month ? 'bg-[#26C6BF] text-white' : 'border-2 border-[#D0E8E6] text-[#7ECCC7]'
                 }`}>
-                  <div className="flex items-center gap-3 flex-1 min-w-0">
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
-                      done ? 'bg-[#26C6BF] text-white' : 'border-2 border-[#D0E8E6] text-[#7ECCC7]'
-                    }`}>
-                      {done ? <CheckCircle2 size={18} /> : <FileText size={14} />}
-                    </div>
-                    <div className="min-w-0">
-                      <span className={`font-semibold text-[15px] block ${done ? 'line-through text-[#7ECCC7]' : 'text-[#1A3A38]'}`}>
-                        {task.task_name}
-                      </span>
-                      <span className="text-[#7ECCC7] text-[11px]">{task.description}</span>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2 ml-3 shrink-0">
-                    <div className="flex items-center gap-1.5 bg-[#FFF8E1] border border-[#FFE082] rounded-full px-2.5 py-1">
-                      <div className="w-2 h-2 bg-[#FFD700] rounded-full" />
-                      <span className="text-[#D4AF37] font-extrabold text-[12px]">+{task.coins_reward}</span>
-                    </div>
-                    {!done && (
-                      <button
-                        onClick={() => fileInputRef.current?.click()}
-                        disabled={uploadingReport}
-                        className="bg-[#26C6BF] text-white text-[11px] font-extrabold px-3 py-1.5 rounded-full disabled:opacity-50"
-                      >
-                        {uploadingReport ? '...' : 'Upload'}
-                      </button>
-                    )}
-                  </div>
+                  {monthlyStatus?.already_awarded_this_month ? <CheckCircle2 size={18} /> : <FileText size={14} />}
                 </div>
-              );
-            })}
+                <div className="min-w-0">
+                  <span className={`font-semibold text-[15px] block ${
+                    monthlyStatus?.already_awarded_this_month ? 'line-through text-[#7ECCC7]' : 'text-[#1A3A38]'
+                  }`}>
+                    Monthly Blood Report
+                  </span>
+                  <span className="text-[#7ECCC7] text-[11px]">
+                    {monthlyStatus?.message || 'Upload a report after 30 days to earn coins'}
+                  </span>
+                </div>
+              </div>
+              <div className="flex items-center gap-1.5 bg-[#FFF8E1] border border-[#FFE082] rounded-full px-2.5 py-1 shrink-0 ml-3">
+                <div className="w-2 h-2 bg-[#FFD700] rounded-full" />
+                <span className="text-[#D4AF37] font-extrabold text-[12px]">+50</span>
+              </div>
+            </div>
+
+            {/* Preventive care monthly checkup — generated from risks */}
+            <div className="flex items-center justify-between px-4 py-3.5 rounded-[16px] border border-[#F0EBE0] bg-[#FFFDF8]">
+              <div className="flex items-center gap-3 flex-1 min-w-0">
+                <div className="w-8 h-8 rounded-full border-2 border-[#E8D8B8] flex items-center justify-center shrink-0">
+                  <Activity size={14} className="text-[#C8A060]" />
+                </div>
+                <div className="min-w-0">
+                  <span className="font-semibold text-[15px] text-[#8B7355] block">Preventive Health Checkup</span>
+                  <span className="text-[#C8A060] text-[11px]">Visit a clinic based on your risk profile</span>
+                </div>
+              </div>
+              <div className="bg-[#FFF8EE] border border-[#F4E3A0] rounded-full px-2.5 py-1 shrink-0 ml-3">
+                <span className="text-[#C8A060] font-extrabold text-[11px]">💡 Tip</span>
+              </div>
+            </div>
           </div>
         </div>
 

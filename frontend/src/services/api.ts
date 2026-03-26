@@ -97,6 +97,9 @@ export const tasksAPI = {
   completeTask: (taskId: string) =>
     apiFetch(`/tasks/${taskId}/complete`, { method: 'POST', body: JSON.stringify({}) }),
   getHistory: () => apiFetch('/tasks/history'),
+  getMonthlyStatus: () => apiFetch('/tasks/monthly-status'),
+  updateStepGoal: (step_goal: number) =>
+    apiFetch('/tasks/step-goal', { method: 'POST', body: JSON.stringify({ step_goal }) }),
 };
 
 // ─── Reports ───

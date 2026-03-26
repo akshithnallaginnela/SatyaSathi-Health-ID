@@ -40,20 +40,26 @@ def generate_daily_tasks(features: dict, signals: dict, user) -> list[dict]:
     sys_avg   = features.get("systolic_avg_7d", 0)
     sys_trend = features.get("systolic_trend", 0)
 
+    # Step goal from user profile (default 6000, max 60000)
+    step_goal = getattr(user, 'step_goal', 6000) or 6000
+    step_goal = max(6000, min(60000, int(step_goal)))
+    # Coins scale: 25 at 6000 steps, up to 100 at 60000 steps
+    walk_coins = round(25 + (step_goal - 6000) / (60000 - 6000) * 75)
+
     if sys_avg > 0:
         if sys_avg >= 120 or sys_trend > 0.3:
             tasks.append({
                 "task_type": "MORNING_WALK",
-                "task_name": "Walk 10,000 steps today",
-                "description": "Brisk walking for at least 30 minutes",
+                "task_name": f"Walk {step_goal:,} steps today",
+                "description": "Brisk walking to manage blood pressure",
                 "why_this_task": (
                     "Walking reduces systolic BP by 5–8 mmHg "
                     "within 2 weeks of regular practice"
                 ),
                 "category": "exercise",
                 "time_of_day": "morning",
-                "duration_or_quantity": "30 min / 10,000 steps",
-                "coins_reward": 0
+                "duration_or_quantity": f"{step_goal:,} steps",
+                "coins_reward": walk_coins
             })
 
             tasks.append({
@@ -87,7 +93,7 @@ def generate_daily_tasks(features: dict, signals: dict, user) -> list[dict]:
         else:
             tasks.append({
                 "task_type": "MORNING_WALK",
-                "task_name": "Walk 7,000 steps today",
+                "task_name": f"Walk {step_goal:,} steps today",
                 "description": "Moderate daily walking",
                 "why_this_task": (
                     "Maintaining an active lifestyle keeps "
@@ -95,8 +101,8 @@ def generate_daily_tasks(features: dict, signals: dict, user) -> list[dict]:
                 ),
                 "category": "exercise",
                 "time_of_day": "morning",
-                "duration_or_quantity": "25 min / 7,000 steps",
-                "coins_reward": 0
+                "duration_or_quantity": f"{step_goal:,} steps",
+                "coins_reward": walk_coins
             })
 
     # ── SUGAR-BASED TASKS ─────────────────────────────────────
