@@ -69,7 +69,7 @@ async def get_health_id_data(
         "report_date": latest_report.uploaded_at.strftime("%Y-%m-%d") if latest_report else None,
         "hemoglobin": latest_report.hemoglobin if latest_report else None,
         "last_clinic_visit": None,  # TODO: Add clinic visit tracking
-        "emergency_contact": user.phone_number,
+        "emergency_contact": getattr(user, 'emergency_contact', None) or user.phone_number,
         "qr_url": f"https://vitalid.health/emergency/{user.health_id}"
     }
     
@@ -88,33 +88,55 @@ async def generate_qr_code(
     user_id: str = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db)
 ):
-    """Generate QR code for health ID"""
-    # Get emergency data
+    """Generate QR code embedding real health data as JSON — no URL, works offline."""
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    
-    # Create QR data (compact JSON)
+
+    # Get latest vitals
+    bp_res = await db.execute(select(BPReading).where(BPReading.user_id == user_id).order_by(desc(BPReading.measured_at)).limit(1))
+    latest_bp = bp_res.scalar_one_or_none()
+    sugar_res = await db.execute(select(SugarReading).where(SugarReading.user_id == user_id).order_by(desc(SugarReading.measured_at)).limit(1))
+    latest_sugar = sugar_res.scalar_one_or_none()
+    report_res = await db.execute(select(BloodReport).where(BloodReport.user_id == user_id).order_by(desc(BloodReport.uploaded_at)).limit(1))
+    latest_report = report_res.scalar_one_or_none()
+
+    # Build risk flags from vitals
+    risks = []
+    if latest_bp and latest_bp.systolic >= 140:
+        risks.append("Hypertension")
+    elif latest_bp and latest_bp.systolic >= 130:
+        risks.append("Pre-hypertension")
+    if latest_sugar and latest_sugar.fasting_glucose >= 126:
+        risks.append("Diabetes")
+    elif latest_sugar and latest_sugar.fasting_glucose >= 100:
+        risks.append("Pre-diabetes")
+    if latest_report and latest_report.hemoglobin:
+        hb_low = 13.5 if (user.gender or '').lower() == 'male' else 12.0
+        if float(latest_report.hemoglobin) < hb_low:
+            risks.append("Anemia")
+
+    # Compact JSON — no URL, pure data
     qr_data = {
-        "id": user.health_id,
+        "id":   user.health_id,
         "name": user.full_name,
-        "phone": user.phone_number,
-        "url": f"https://vitalid.health/emergency/{user.health_id}"
+        "bg":   getattr(user, 'blood_group', None) or "Unknown",
+        "bp":   f"{latest_bp.systolic}/{latest_bp.diastolic}" if latest_bp else None,
+        "glu":  str(latest_sugar.fasting_glucose) if latest_sugar else None,
+        "hb":   str(latest_report.hemoglobin) if latest_report and latest_report.hemoglobin else None,
+        "risk": risks,
+        "ec":   getattr(user, 'emergency_contact', None) or user.phone_number,
     }
-    
-    # Generate QR code
-    qr = qrcode.QRCode(version=1, box_size=10, border=2)
-    qr.add_data(json.dumps(qr_data))
+
+    qr = qrcode.QRCode(version=2, error_correction=qrcode.constants.ERROR_CORRECT_M, box_size=10, border=2)
+    qr.add_data(json.dumps(qr_data, separators=(',', ':')))
     qr.make(fit=True)
-    
-    img = qr.make_image(fill_color="#26C6BF", back_color="white")
-    
-    # Convert to bytes
+    img = qr.make_image(fill_color="#1A3A38", back_color="white")
+
     buf = io.BytesIO()
     img.save(buf, format='PNG')
     buf.seek(0)
-    
     return StreamingResponse(buf, media_type="image/png")
 
 

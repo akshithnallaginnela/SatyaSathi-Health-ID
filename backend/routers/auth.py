@@ -49,6 +49,7 @@ async def register(data: UserCreate, db: AsyncSession = Depends(get_db)):
         date_of_birth=data.date_of_birth,
         gender=data.gender,
         blood_group=data.blood_group,
+        emergency_contact=data.emergency_contact,
         weight_kg=data.weight_kg,
         height_cm=data.height_cm,
         bmi=bmi,

@@ -63,6 +63,7 @@ class User(Base):
     aadhaar_verified = Column(Boolean, default=False)
     profile_photo_url = Column(String(255))
     step_goal = Column(Integer, default=6000)
+    emergency_contact = Column(String(15))
     created_at = Column(DateTime, default=datetime.utcnow)
 
 class UserDataStatus(Base):
@@ -273,6 +274,7 @@ class UserCreate(BaseModel):
     date_of_birth: Optional[date] = None
     gender: Optional[str] = None
     blood_group: Optional[str] = None
+    emergency_contact: Optional[str] = None
     weight_kg: Optional[float] = None
     height_cm: Optional[float] = None
     waist_cm: Optional[float] = None
@@ -317,6 +319,7 @@ class UserResponse(BaseModel):
     health_id: str
     gender: Optional[str] = None
     blood_group: Optional[str] = None
+    emergency_contact: Optional[str] = None
     date_of_birth: Optional[date] = None
     weight_kg: Optional[float] = None
     height_cm: Optional[float] = None
