@@ -92,10 +92,12 @@ _uploads_dir = "/app/data/uploads" if os.path.exists("/app/data") else os.path.j
 os.makedirs(_uploads_dir, exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=_uploads_dir), name="uploads")
 
+@app.get("/health")
 @app.get("/api/health")
 async def health_check():
     return {"status": "healthy", "service": "VitalID-Engine-V2"}
 
 @app.get("/")
+@app.head("/")
 async def root():
     return {"message": "VitalID Preventive Health Engine V2"}
