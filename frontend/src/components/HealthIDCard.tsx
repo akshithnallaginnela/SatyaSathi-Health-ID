@@ -13,7 +13,6 @@ const CARD_H = 214;
 
 export default function HealthIDCard({ profile, vitals, onDownload }: HealthIDCardProps) {
   const [qrDataUrl, setQrDataUrl] = React.useState('');
-  const [side, setSide] = React.useState<'front' | 'back'>('front');
 
   const photoUrl = profile?.profile_photo_url
     ? (profile.profile_photo_url.startsWith('/')
@@ -23,20 +22,19 @@ export default function HealthIDCard({ profile, vitals, onDownload }: HealthIDCa
 
   React.useEffect(() => {
     if (!profile?.health_id) return;
-    const base = window.location.origin;
-    const params = new URLSearchParams({
+    const qrPayload = JSON.stringify({
+      id:   profile.health_id,
       name: profile.full_name || '',
-      dob: profile.date_of_birth || '',
-      blood: profile?.blood_group || '',
-      bp: vitals?.bp_value || '',
-      sugar: vitals?.sugar_value || '',
-      id: profile.health_id,
+      bg:   profile.blood_group || 'Unknown',
+      bp:   vitals?.bp_value || null,
+      glu:  vitals?.sugar_value || null,
+      ec:   profile.emergency_contact || profile.phone_number || '',
     });
-    QRCode.toDataURL(`${base}/emergency/${profile.health_id}?${params.toString()}`, {
+    QRCode.toDataURL(qrPayload, {
       width: 160, margin: 1, errorCorrectionLevel: 'M',
-      color: { dark: '#000000', light: '#FFFFFF' },
+      color: { dark: '#1A3A38', light: '#FFFFFF' },
     }).then(setQrDataUrl).catch(console.error);
-  }, [profile?.health_id, profile?.full_name, profile?.blood_group, vitals]);
+  }, [profile?.health_id, profile?.blood_group, profile?.emergency_contact, vitals]);
 
   const initials = profile?.full_name
     ? profile.full_name.split(' ').map((w: string) => w[0]).join('').toUpperCase().slice(0, 2)
@@ -46,10 +44,6 @@ export default function HealthIDCard({ profile, vitals, onDownload }: HealthIDCa
     ? new Date(profile.date_of_birth).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' })
     : 'Not Set';
 
-  const dobLong = profile?.date_of_birth
-    ? new Date(profile.date_of_birth).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })
-    : 'Not Set';
-
   const formatHealthId = (id: string) => {
     if (!id) return '0000  0000  0000';
     const c = id.replace(/[\s-]/g, '');
@@ -57,12 +51,6 @@ export default function HealthIDCard({ profile, vitals, onDownload }: HealthIDCa
     for (let i = 0; i < c.length; i += 4) parts.push(c.substr(i, 4));
     return parts.join('  ');
   };
-
-  let medications: string[] = [];
-  try {
-    const raw = profile?.medications;
-    medications = Array.isArray(raw) ? raw : (typeof raw === 'string' ? JSON.parse(raw) : []);
-  } catch { medications = []; }
 
   const lbl: React.CSSProperties = {
     fontSize: 7, fontWeight: 700, color: '#9ca3af',
@@ -77,56 +65,16 @@ export default function HealthIDCard({ profile, vitals, onDownload }: HealthIDCa
     display: 'flex', flexDirection: 'column', flexShrink: 0,
   };
 
-  // ── print ─────────────────────────────────────────────────────────────────
   const printCard = () => {
     const front = document.getElementById('hid-front');
-    const back  = document.getElementById('hid-back');
-    if (!front || !back) return;
-
-    // Strip position:absolute and visibility from the cloned elements
-    const frontClone = front.cloneNode(true) as HTMLElement;
-    const backClone  = back.cloneNode(true) as HTMLElement;
-    frontClone.style.position = 'relative';
-    frontClone.style.visibility = 'visible';
-    backClone.style.position = 'relative';
-    backClone.style.visibility = 'visible';
-
+    if (!front) return;
+    const clone = front.cloneNode(true) as HTMLElement;
+    clone.style.position = 'relative';
+    clone.style.visibility = 'visible';
     const html = `<!DOCTYPE html><html><head><meta charset="utf-8"/>
-<title>SatyaSathi Health ID — ${profile?.full_name || ''}</title>
-<style>
-  *{margin:0;padding:0;box-sizing:border-box;}
-  html,body{width:210mm;height:297mm;}
-  body{
-    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
-    background:#fff;
-    display:flex;flex-direction:column;
-    align-items:center;justify-content:center;
-    gap:16mm;
-    padding:20mm;
-  }
-  .section{display:flex;flex-direction:column;align-items:center;gap:4px;}
-  .side-label{
-    font-size:9px;font-weight:700;color:#6b7280;
-    text-transform:uppercase;letter-spacing:.1em;
-  }
-  @page{size:A4 portrait;margin:0;}
-  @media print{
-    html,body{width:210mm;height:297mm;}
-    body{background:#fff;}
-  }
-</style>
-</head><body>
-  <div class="section">
-    <span class="side-label">▲ Front Side</span>
-    ${frontClone.outerHTML}
-  </div>
-  <div class="section">
-    <span class="side-label">▼ Back Side</span>
-    ${backClone.outerHTML}
-  </div>
-  <script>window.onload=function(){window.print();}<\/script>
-</body></html>`;
-
+<title>SatyaSathi Health ID</title>
+<style>*{margin:0;padding:0;box-sizing:border-box;}body{font-family:-apple-system,sans-serif;background:#fff;display:flex;align-items:center;justify-content:center;padding:20mm;}@page{size:A4;margin:0;}</style>
+</head><body>${clone.outerHTML}<script>window.onload=function(){window.print();}<\/script></body></html>`;
     const iframe = document.createElement('iframe');
     iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;border:none;';
     document.body.appendChild(iframe);
@@ -143,38 +91,9 @@ export default function HealthIDCard({ profile, vitals, onDownload }: HealthIDCa
 
   return (
     <div className="space-y-3">
+      <div style={{ display: 'flex', justifyContent: 'center' }}>
+        <div id="hid-front" style={cardBase}>
 
-      {/* Toggle pills */}
-      <div style={{ display: 'flex', justifyContent: 'center', gap: 8 }}>
-        <button
-          onClick={() => setSide('front')}
-          style={{
-            padding: '6px 20px', borderRadius: 999, fontSize: 12, fontWeight: 700,
-            cursor: 'pointer', border: 'none', outline: 'none',
-            background: side === 'front' ? '#26C6BF' : '#F2FDFB',
-            color: side === 'front' ? '#fff' : '#26C6BF',
-            boxShadow: side === 'front' ? '0 2px 8px rgba(38,198,191,0.3)' : 'none',
-          }}>
-          Front
-        </button>
-        <button
-          onClick={() => setSide('back')}
-          style={{
-            padding: '6px 20px', borderRadius: 999, fontSize: 12, fontWeight: 700,
-            cursor: 'pointer', border: '1.5px solid #C8F0EC', outline: 'none',
-            background: side === 'back' ? '#26C6BF' : '#F2FDFB',
-            color: side === 'back' ? '#fff' : '#26C6BF',
-            boxShadow: side === 'back' ? '0 2px 8px rgba(38,198,191,0.3)' : 'none',
-          }}>
-          Back
-        </button>
-      </div>
-
-      {/* Card area — fixed height so layout doesn't jump */}
-      <div style={{ display: 'flex', justifyContent: 'center', height: CARD_H }}>
-
-        {/* ── FRONT ── always in DOM, toggled by visibility */}
-        <div id="hid-front" style={{ ...cardBase, visibility: side === 'front' ? 'visible' : 'hidden', position: 'absolute' }}>
           {/* Header */}
           <div style={{ padding: '7px 12px 5px', borderBottom: '2.5px solid #26C6BF', display: 'flex', alignItems: 'center', gap: 7, flexShrink: 0 }}>
             <div style={{ width: 24, height: 24, borderRadius: '50%', background: '#f0fdfb', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -216,6 +135,12 @@ export default function HealthIDCard({ profile, vitals, onDownload }: HealthIDCa
                   <p style={{ ...v, color: '#e53e3e', fontWeight: 700 }}>{profile?.blood_group || '—'}</p>
                 </div>
               </div>
+              <div>
+                <p style={lbl}>Emergency Contact</p>
+                <p style={{ ...v, fontSize: 11, color: '#26C6BF', fontWeight: 700 }}>
+                  {profile?.emergency_contact || profile?.phone_number || '—'}
+                </p>
+              </div>
             </div>
 
             {/* QR */}
@@ -242,77 +167,10 @@ export default function HealthIDCard({ profile, vitals, onDownload }: HealthIDCa
               "Your Health, Your Wealth — Track, Improve, Thrive"
             </p>
           </div>
+
         </div>
-
-        {/* ── BACK ── always in DOM, toggled by visibility */}
-        <div id="hid-back" style={{ ...cardBase, visibility: side === 'back' ? 'visible' : 'hidden', position: 'absolute' }}>
-          {/* Teal header */}
-          <div style={{ background: '#26C6BF', padding: '7px 12px', flexShrink: 0 }}>
-            <p style={{ fontSize: 8, fontWeight: 800, color: '#fff', textTransform: 'uppercase', letterSpacing: '.1em' }}>
-              Medical Information — For Healthcare Provider Use
-            </p>
-          </div>
-
-          {/* Dark stripe */}
-          <div style={{ background: '#1A3A38', height: 22, flexShrink: 0 }} />
-
-          {/* Content */}
-          <div style={{ flex: 1, display: 'flex', padding: '10px 12px', overflow: 'hidden' }}>
-            {/* Left */}
-            <div style={{ flex: 1, borderRight: '1px solid #e5e7eb', paddingRight: 10, display: 'flex', flexDirection: 'column', gap: 7 }}>
-              <div>
-                <p style={lbl}>Full Name</p>
-                <p style={{ ...v, fontSize: 12, fontWeight: 800 }}>{profile?.full_name || '—'}</p>
-              </div>
-              <div>
-                <p style={lbl}>Date of Birth</p>
-                <p style={v}>{dobLong}</p>
-              </div>
-              <div>
-                <p style={lbl}>Blood Group</p>
-                <p style={{ ...v, fontSize: 13, fontWeight: 800, color: '#e53e3e' }}>{profile?.blood_group || '—'}</p>
-              </div>
-              {medications.length > 0 && (
-                <div>
-                  <p style={lbl}>Medications</p>
-                  <p style={{ ...v, fontSize: 9 }}>{medications.slice(0, 3).join(', ')}</p>
-                </div>
-              )}
-            </div>
-
-            {/* Right */}
-            <div style={{ width: 90, paddingLeft: 10, display: 'flex', flexDirection: 'column', gap: 7 }}>
-              <div>
-                <p style={lbl}>Blood Pressure</p>
-                <p style={v}>{vitals?.bp_value || '—'} {vitals?.bp_value && <span style={{ fontSize: 8, color: '#9ca3af' }}>mmHg</span>}</p>
-              </div>
-              <div>
-                <p style={lbl}>Blood Sugar</p>
-                <p style={v}>{vitals?.sugar_value || '—'} {vitals?.sugar_value && <span style={{ fontSize: 8, color: '#9ca3af' }}>mg/dL</span>}</p>
-              </div>
-              <div>
-                <p style={lbl}>Height / Weight</p>
-                <p style={{ ...v, fontSize: 10 }}>
-                  {profile?.height_cm ? `${profile.height_cm} cm` : '—'} / {profile?.weight_kg ? `${profile.weight_kg} kg` : '—'}
-                </p>
-              </div>
-              <div>
-                <p style={lbl}>Emergency Contact</p>
-                <p style={{ ...v, fontSize: 10 }}>{profile?.phone_number || '—'}</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Footer */}
-          <div style={{ borderTop: '1px solid #e5e7eb', padding: '4px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
-            <p style={{ fontSize: 7, color: '#9ca3af' }}>Scan QR on front for full health records</p>
-            <p style={{ fontSize: 7, color: '#26C6BF', fontWeight: 700 }}>⊞ QR for full access</p>
-          </div>
-        </div>
-
       </div>
 
-      {/* Print */}
       <button onClick={printCard}
         style={{ background: 'linear-gradient(135deg,#26C6BF 0%,#1FA89E 100%)', width: '100%', color: '#fff', fontWeight: 800, padding: '14px', borderRadius: 16, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, fontSize: 14 }}>
         <Printer size={20} />
@@ -320,7 +178,7 @@ export default function HealthIDCard({ profile, vitals, onDownload }: HealthIDCa
       </button>
 
       <p style={{ textAlign: 'center', fontSize: 11, color: '#7ECCC7' }}>
-        Both sides print together · choose "Save as PDF" in the print dialog
+        Choose "Save as PDF" in the print dialog
       </p>
     </div>
   );
