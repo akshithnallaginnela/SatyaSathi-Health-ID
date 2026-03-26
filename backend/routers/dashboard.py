@@ -237,14 +237,17 @@ async def get_dashboard_summary(
 
             week_completion.append(bool(logged_vitals or completed_task))
 
+        result["week_completion"] = week_completion
+
+        # Count streak backwards from today's index (not from end of week)
+        today_index = today.weekday()  # 0=Mon, 6=Sun
         streak = 0
-        for i in range(6, -1, -1):
+        for i in range(today_index, -1, -1):
             if week_completion[i]:
                 streak += 1
             else:
                 break
 
-        result["week_completion"] = week_completion
         result["streak_days"] = streak
     except Exception:
         pass
