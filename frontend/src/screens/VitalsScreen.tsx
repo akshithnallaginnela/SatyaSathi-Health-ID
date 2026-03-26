@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Plus, X, Heart, Droplet, Activity, Scale, FileText, ChevronDown, ChevronUp } from 'lucide-react';
-import { vitalsAPI, dashboardAPI, trendsAPI } from '../services/api.ts';
+import { vitalsAPI, trendsAPI } from '../services/api.ts';
 
 type LogTab = 'BP' | 'SUGAR' | 'BMI';
 
@@ -87,32 +87,6 @@ export default function VitalsScreen() {
   const latestSugar = sugarHistory[0];
   const bpStatus = latestBP ? getBPStatus(latestBP.systolic, latestBP.diastolic) : null;
   const sugarStatus = latestSugar ? getSugarStatus(Number(latestSugar.fasting_glucose)) : null;
-
-  // 7-day graph data
-  const today = new Date();
-  const days = Array.from({ length: 7 }).map((_, i) => {
-    const d = new Date(today);
-    d.setDate(d.getDate() - (6 - i));
-    return { label: d.toLocaleDateString('en-US', { weekday: 'short' }), dateStr: d.toISOString().split('T')[0] };
-  });
-
-  const bpPoints = days.map((day, i) => {
-    const x = 35 + i * 42;
-    // match by date field (YYYY-MM-DD)
-    const entry = bpHistory.find(h => h.date === day.dateStr || (h.measured_at && h.measured_at.startsWith(day.dateStr)));
-    return { x, sys: entry?.systolic || 0, dia: entry?.diastolic || 0 };
-  });
-
-  const sugarPoints = days.map((day, i) => {
-    const x = 35 + i * 42;
-    const entry = sugarHistory.find(h => h.date === day.dateStr || (h.measured_at && h.measured_at.startsWith(day.dateStr)));
-    return { x, val: entry ? Number(entry.fasting_glucose) : 0 };
-  });
-
-  const mapY = (val: number, max: number) => val === 0 ? 85 : Math.max(15, 85 - (val / max) * 70);
-  const sysLine = bpPoints.map(p => `${p.x},${mapY(p.sys, 200)}`).join(' ');
-  const diaLine = bpPoints.map(p => `${p.x},${mapY(p.dia, 200)}`).join(' ');
-  const sugarLine = sugarPoints.map(p => `${p.x},${mapY(p.val, 200)}`).join(' ');
 
   const inputClass = "w-full mt-1 px-4 py-3 bg-[#F2FDFB] border border-[#C8F0EC] rounded-2xl font-bold text-sm text-[#1A3A38] outline-none focus:border-[#26C6BF]";
   const labelClass = "text-[#7ECCC7] text-[10px] font-extrabold uppercase tracking-wider";
@@ -204,59 +178,50 @@ export default function VitalsScreen() {
             </div>
           ) : (
             <>
-              {/* BP Chart */}
+              {/* BP recent readings */}
               {bpHistory.length > 0 && (
                 <div className="bg-white border-[1.5px] border-[#E8F1F1] rounded-[28px] p-5 shadow-sm">
-                  <h3 className="text-[#1A3A38] font-extrabold text-[16px] mb-4">Blood Pressure</h3>
-                  <svg viewBox="0 0 320 100" className="w-full h-[120px] overflow-visible">
-                    <line x1="30" y1="15" x2="300" y2="15" stroke="#E8F1F1" strokeWidth="1" strokeDasharray="3"/>
-                    <line x1="30" y1="50" x2="300" y2="50" stroke="#E8F1F1" strokeWidth="1" strokeDasharray="3"/>
-                    <line x1="30" y1="85" x2="300" y2="85" stroke="#E8F1F1" strokeWidth="1"/>
-                    <text x="0" y="18" fill="#A0A0A0" fontSize="8" fontWeight="bold">200</text>
-                    <text x="0" y="53" fill="#A0A0A0" fontSize="8" fontWeight="bold">100</text>
-                    <text x="0" y="88" fill="#A0A0A0" fontSize="8" fontWeight="bold">0</text>
-                    <polyline points={sysLine} fill="none" stroke="#FF6B6B" strokeWidth="2.5" strokeLinejoin="round"/>
-                    <polyline points={diaLine} fill="none" stroke="#26C6BF" strokeWidth="2.5" strokeLinejoin="round"/>
-                    {bpPoints.map((pt, i) => (
-                      <g key={i}>
-                        <circle cx={pt.x} cy={mapY(pt.sys, 200)} r="3.5" fill="#FFF" stroke="#FF6B6B" strokeWidth="2"/>
-                        {pt.sys > 0 && <text x={pt.x} y={mapY(pt.sys, 200) - 7} fill="#FF6B6B" fontSize="7" fontWeight="bold" textAnchor="middle">{pt.sys}</text>}
-                        <circle cx={pt.x} cy={mapY(pt.dia, 200)} r="3.5" fill="#FFF" stroke="#26C6BF" strokeWidth="2"/>
-                        {pt.dia > 0 && <text x={pt.x} y={mapY(pt.dia, 200) + 12} fill="#26C6BF" fontSize="7" fontWeight="bold" textAnchor="middle">{pt.dia}</text>}
-                        <text x={pt.x} y="100" fill="#A0A0A0" fontSize="8" fontWeight="bold" textAnchor="middle">{days[i].label}</text>
-                      </g>
-                    ))}
-                  </svg>
-                  <div className="flex gap-4 mt-2 px-1">
-                    <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-[#FF6B6B]"/><span className="text-[#7ECCC7] text-[11px] font-bold">Systolic</span></div>
-                    <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-[#26C6BF]"/><span className="text-[#7ECCC7] text-[11px] font-bold">Diastolic</span></div>
+                  <h3 className="text-[#1A3A38] font-extrabold text-[16px] mb-3">Blood Pressure</h3>
+                  <div className="space-y-2">
+                    {bpHistory.slice(0, 5).map((r: any, i: number) => {
+                      const s = getBPStatus(r.systolic, r.diastolic);
+                      return (
+                        <div key={i} className="flex items-center justify-between py-2 border-b border-[#F0F0F0] last:border-0">
+                          <div>
+                            <span className="text-[#1A3A38] font-extrabold text-[15px]">{r.systolic}/{r.diastolic}</span>
+                            <span className="text-[#7ECCC7] text-[11px] ml-1">mmHg{r.pulse ? ` · ${r.pulse} bpm` : ''}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-[#A0A0A0] text-[10px]">{r.date}</span>
+                            <span className="text-[9px] font-extrabold px-2 py-0.5 rounded-full" style={{ background: s.bg, color: s.color }}>{s.label}</span>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               )}
 
-              {/* Sugar Chart */}
+              {/* Sugar recent readings */}
               {sugarHistory.length > 0 && (
                 <div className="bg-white border-[1.5px] border-[#E8F1F1] rounded-[28px] p-5 shadow-sm">
-                  <h3 className="text-[#1A3A38] font-extrabold text-[16px] mb-4">Fasting Blood Sugar</h3>
-                  <svg viewBox="0 0 320 100" className="w-full h-[120px] overflow-visible">
-                    <line x1="30" y1="15" x2="300" y2="15" stroke="#E8F1F1" strokeWidth="1" strokeDasharray="3"/>
-                    <line x1="30" y1="50" x2="300" y2="50" stroke="#E8F1F1" strokeWidth="1" strokeDasharray="3"/>
-                    <line x1="30" y1="85" x2="300" y2="85" stroke="#E8F1F1" strokeWidth="1"/>
-                    <text x="0" y="18" fill="#A0A0A0" fontSize="8" fontWeight="bold">200</text>
-                    <text x="0" y="53" fill="#A0A0A0" fontSize="8" fontWeight="bold">100</text>
-                    <text x="0" y="88" fill="#A0A0A0" fontSize="8" fontWeight="bold">0</text>
-                    <polyline points={sugarLine} fill="none" stroke="#26C6BF" strokeWidth="2.5" strokeLinejoin="round"/>
-                    {sugarPoints.map((pt, i) => (
-                      <g key={i}>
-                        <circle cx={pt.x} cy={mapY(pt.val, 200)} r="3.5" fill="#FFF" stroke="#26C6BF" strokeWidth="2"/>
-                        {pt.val > 0 && <text x={pt.x} y={mapY(pt.val, 200) - 7} fill="#26C6BF" fontSize="7" fontWeight="bold" textAnchor="middle">{pt.val}</text>}
-                        <text x={pt.x} y="100" fill="#A0A0A0" fontSize="8" fontWeight="bold" textAnchor="middle">{days[i].label}</text>
-                      </g>
-                    ))}
-                  </svg>
-                  <div className="flex items-center gap-1.5 mt-2 px-1">
-                    <div className="w-2.5 h-2.5 rounded-full bg-[#26C6BF]"/>
-                    <span className="text-[#7ECCC7] text-[11px] font-bold">Blood Sugar (mg/dL)</span>
+                  <h3 className="text-[#1A3A38] font-extrabold text-[16px] mb-3">Fasting Blood Sugar</h3>
+                  <div className="space-y-2">
+                    {sugarHistory.slice(0, 5).map((r: any, i: number) => {
+                      const s = getSugarStatus(Number(r.fasting_glucose));
+                      return (
+                        <div key={i} className="flex items-center justify-between py-2 border-b border-[#F0F0F0] last:border-0">
+                          <div>
+                            <span className="text-[#1A3A38] font-extrabold text-[15px]">{Number(r.fasting_glucose).toFixed(0)}</span>
+                            <span className="text-[#7ECCC7] text-[11px] ml-1">mg/dL</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-[#A0A0A0] text-[10px]">{r.date}</span>
+                            <span className="text-[9px] font-extrabold px-2 py-0.5 rounded-full" style={{ background: s.bg, color: s.color }}>{s.label}</span>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               )}

@@ -626,70 +626,28 @@ def generate_daily_tasks(features: dict, user) -> list[dict]:
     hb = features.get("hemoglobin")
     platelets = features.get("platelet_count")
 
-    # ── 1. Walk (always, monitorable) ──
-    if bp_avg >= 130:
-        walk_name, walk_why, walk_coins = "Walk 30 minutes today", f"BP avg {bp_avg:.0f} mmHg — 30-min walk reduces it by 5-8 mmHg", 15
-    elif bp_avg >= 120:
-        walk_name, walk_why, walk_coins = "Walk 25 minutes today", f"BP at {bp_avg:.0f} — regular walking keeps it in the healthy zone", 12
-    else:
-        walk_name, walk_why, walk_coins = "Walk 20 minutes today", "Daily walking improves BP, sugar, and mood simultaneously", 10
+    # ── 1. Walk (always, monitorable) — uses user's step goal ──
+    step_goal = getattr(user, 'step_goal', 6000) or 6000
+    step_goal = max(6000, min(60000, int(step_goal)))
+    walk_coins = round(25 + (step_goal - 6000) / (60000 - 6000) * 75)
 
     tasks.append({
-        "task_type": "MORNING_WALK", "task_name": walk_name,
+        "task_type": "MORNING_WALK", "task_name": f"Walk {step_goal:,} steps today",
         "description": "A daily walk is the single best thing for your health",
-        "why_this_task": walk_why, "category": "exercise",
-        "time_of_day": "morning", "duration_or_quantity": walk_name, "coins_reward": walk_coins
+        "why_this_task": "Daily walking improves BP, sugar, and mood simultaneously",
+        "category": "exercise",
+        "time_of_day": "morning", "duration_or_quantity": f"{step_goal:,} steps", "coins_reward": walk_coins
     })
 
-    # ── 2. Water (always, monitorable) ──
+    # ── 2. Water (tip only, not monitorable) ──
     glasses = 10 if bp_avg >= 130 else 8
     tasks.append({
         "task_type": "WATER_INTAKE", "task_name": f"Drink {glasses} glasses of water",
         "description": "Stay hydrated through the day",
         "why_this_task": "Hydration supports BP, kidney function, and overall health",
         "category": "wellness", "time_of_day": "all_day",
-        "duration_or_quantity": f"{glasses} glasses", "coins_reward": 8
+        "duration_or_quantity": f"{glasses} glasses", "coins_reward": 0
     })
-
-    # ── 3. BP 7-day check (if user has BP data) ──
-    if features.get("has_bp_data"):
-        days_since_bp = features.get("days_since_last_bp", 0)
-        if days_since_bp >= 7:
-            bp_name = "Log your BP — streak bonus ready!"
-            bp_why = f"It's been {days_since_bp} days. Log now to earn 20 coins!"
-            bp_coins = 20
-        else:
-            d = 7 - days_since_bp
-            bp_name = f"Log BP in {d} day{'s' if d != 1 else ''}"
-            bp_why = f"Log BP every 7 days to earn 20 coins. {d} day(s) to go!"
-            bp_coins = 0
-        tasks.append({
-            "task_type": "CHECK_BP_7DAYS", "task_name": bp_name,
-            "description": "Track your blood pressure weekly",
-            "why_this_task": bp_why, "category": "vitals",
-            "time_of_day": "morning", "duration_or_quantity": "1 BP reading", "coins_reward": bp_coins
-        })
-
-    # ── 4. Sugar 7-day check (if user has sugar data) ──
-    if features.get("has_sugar_data"):
-        days_since_sugar = features.get("days_since_last_sugar", 0)
-        if days_since_sugar >= 7:
-            sg_name = "Log your sugar — streak bonus ready!"
-            sg_why = f"It's been {days_since_sugar} days. Log now to earn 20 coins!"
-            sg_coins = 20
-        else:
-            d = 7 - days_since_sugar
-            sg_name = f"Log sugar in {d} day{'s' if d != 1 else ''}"
-            sg_why = f"Log fasting sugar every 7 days to earn 20 coins. {d} day(s) to go!"
-            sg_coins = 0
-        tasks.append({
-            "task_type": "CHECK_SUGAR_7DAYS", "task_name": sg_name,
-            "description": "Track your fasting glucose weekly",
-            "why_this_task": sg_why, "category": "vitals",
-            "time_of_day": "morning", "duration_or_quantity": "1 fasting glucose reading", "coins_reward": sg_coins
-        })
-
-    # ── 5. Health-driven tips (coins=0, shown as tips in UI) ──
 
     # BP elevated — low salt tip (Stage 1+)
     if bp_avg >= 130:

@@ -8,8 +8,6 @@ import { tasksAPI, coinsAPI, reportsAPI } from '../services/api.ts';
 const MONITORABLE_TASK_TYPES = new Set([
   'LOG_BP',
   'LOG_SUGAR',
-  'CHECK_BP_7DAYS',
-  'CHECK_SUGAR_7DAYS',
   'MEDICATION',
   'DEEP_BREATHING',
   'MORNING_WALK',
