@@ -193,3 +193,8 @@ export const shareAPI = {
   getHealthSummary: () => apiFetch('/share/health-summary'),
   getWhatsAppLink: () => apiFetch('/share/whatsapp-link'),
 };
+
+// ─── Blockchain ───
+export const blockchainAPI = {
+  getHistory: () => apiFetch('/blockchain/history'),
+};

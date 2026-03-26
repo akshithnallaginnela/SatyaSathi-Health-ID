@@ -164,6 +164,21 @@ async def analyze_report(
     # 6. Commit FIRST so the report is visible to the analysis query
     await db.commit()
 
+    # Anchor report on blockchain
+    try:
+        key_values = {k: extracted.get(k) for k in ["hemoglobin", "wbc_count", "platelet_count", "fasting_glucose", "creatinine", "total_cholesterol"] if extracted.get(k) is not None}
+        summary_parts = [f"{k.replace('_',' ').title()}: {v}" for k, v in list(key_values.items())[:3]]
+        await record_on_chain(
+            db=db,
+            user_id=user_id,
+            record_type="REPORT",
+            payload={"file_id": file_id, "lab_name": extracted.get("lab_name"), "values": key_values},
+            summary="Blood Report: " + (", ".join(summary_parts) if summary_parts else extracted.get("lab_name") or "Uploaded"),
+        )
+        await db.commit()
+    except Exception as e:
+        print(f"Blockchain Report error: {e}")
+
     # 7. Trigger Full ML Analysis in a fresh session
     try:
         async with async_session() as analysis_db:
