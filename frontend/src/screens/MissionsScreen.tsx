@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { CheckCircle2, Award, Heart, Footprints, Wind, Droplet, Pill, Utensils, Flame, Circle, Activity } from 'lucide-react';
+import { CheckCircle2, Award, Heart, Footprints, Wind, Droplet, Pill, Utensils, Flame, Activity } from 'lucide-react';
 import { tasksAPI, coinsAPI } from '../services/api.ts';
 
 const TASK_ICONS: Record<string, React.ReactNode> = {
@@ -109,30 +109,51 @@ export default function MissionsScreen() {
           </button>
         </div>
 
-        {/* TODAY'S ACTIVITY */}
-        <div className="pt-2">
-          <h3 className="text-[#1A3A38] font-extrabold text-[18px] mb-4">Today's Activity</h3>
+        {/* DAILY TASKS */}
+        <div className="bg-white border-[1.5px] border-[#E8F1F1] rounded-[24px] p-5 shadow-sm">
+          {/* Header */}
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-[#1A3A38] font-extrabold text-[18px]">Daily Tasks</h3>
+            <span className="text-[#26C6BF] font-extrabold text-[13px]">
+              {tasks.filter(t => MONITORABLE_TASKS.has(t.task_type) && t.completed).length}/
+              {tasks.filter(t => MONITORABLE_TASKS.has(t.task_type)).length} DONE
+            </span>
+          </div>
+
+          {/* Task rows */}
           <div className="space-y-3">
             {tasks.filter(t => MONITORABLE_TASKS.has(t.task_type)).map((task) => (
-              <div key={task.id} className="bg-white border-[1.5px] border-[#E8F1F1] rounded-[20px] p-4 flex items-center justify-between shadow-sm">
-                <div className="flex items-center gap-4">
-                  <button onClick={() => !task.completed && completeTask(task.id)}
-                    className={`w-11 h-11 rounded-full flex items-center justify-center shrink-0 transition-colors ${
-                      task.completed ? 'bg-[#E0F7F4] text-[#26C6BF]' : 'border-2 border-[#E8F1F1] text-[#7ECCC7]'
-                    }`}>
-                    {task.completed ? <CheckCircle2 size={24} /> : TASK_ICONS[task.task_type] || <Circle size={20} />}
-                  </button>
-                  <div>
-                    <h4 className="text-[#1A3A38] font-extrabold text-[15px]">{task.task_name}</h4>
-                    <span className="text-[#7ECCC7] text-[12px] font-semibold block capitalize">
-                      {task.completed ? 'Completed' : (task.time_slot || task.time_of_day || 'Anytime').replace(/_/g, ' ')}
-                    </span>
+              <button
+                key={task.id}
+                onClick={() => !task.completed && completeTask(task.id)}
+                className={`w-full flex items-center justify-between px-4 py-3.5 rounded-[16px] border transition-colors text-left ${
+                  task.completed
+                    ? 'bg-[#F2FDFB] border-[#C8F0EC]'
+                    : 'bg-white border-[#E8F1F1]'
+                }`}
+              >
+                {/* Left: circle + label */}
+                <div className="flex items-center gap-3">
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-colors ${
+                    task.completed
+                      ? 'bg-[#26C6BF] text-white'
+                      : 'border-2 border-[#D0E8E6]'
+                  }`}>
+                    {task.completed && <CheckCircle2 size={18} />}
                   </div>
+                  <span className={`font-semibold text-[15px] ${
+                    task.completed ? 'line-through text-[#7ECCC7]' : 'text-[#1A3A38]'
+                  }`}>
+                    {task.task_name}
+                  </span>
                 </div>
-                <div className="text-[#26C6BF] font-extrabold text-[14px]">
-                  +{task.coins_reward} pts
+
+                {/* Right: coin badge */}
+                <div className="flex items-center gap-1.5 bg-[#FFF8E1] border border-[#FFE082] rounded-full px-2.5 py-1 shrink-0 ml-3">
+                  <div className="w-2 h-2 bg-[#FFD700] rounded-full" />
+                  <span className="text-[#D4AF37] font-extrabold text-[12px]">+{task.coins_reward}</span>
                 </div>
-              </div>
+              </button>
             ))}
             {!loading && tasks.filter(t => MONITORABLE_TASKS.has(t.task_type)).length === 0 && (
               <p className="text-center text-[#7ECCC7] font-medium text-sm py-4">All caught up for today!</p>

@@ -316,37 +316,51 @@ export default function DashboardScreen({ onLogout }: { onLogout: () => void; ke
         {hasData && todaysTasks.length > 0 && (
           <div className="bg-white border-[1.5px] border-border-teal rounded-[28px] p-5 shadow-sm">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-dark-teal font-extrabold text-[17px]">Daily Care Plan</h3>
-              <span className="bg-[#E0F7F4] text-primary-teal text-[10px] px-2 py-1 rounded-lg font-extrabold">{tasksDone}/{todaysTasks.length} DONE</span>
+              <h3 className="text-dark-teal font-extrabold text-[17px]">Daily Tasks</h3>
+              <span className="text-primary-teal font-extrabold text-[13px]">{tasksDone}/{todaysTasks.length} DONE</span>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-3">
               {todaysTasks.map((task: any, idx: number) => {
                 const reward = task.coins_reward || task.coins || 0;
                 const isMonitorable = reward > 0;
                 return (
-                  <div key={task.id || idx} 
-                       onClick={() => !task.completed && isMonitorable && completeTask(task.id, reward)}
-                       className={`p-4 rounded-[20px] aspect-square border-[1.5px] transition-all bg-white relative ${
-                         task.completed ? 'border-[#E8F1F1] opacity-50' : isMonitorable ? 'border-border-teal shadow-sm hover:border-primary-teal cursor-pointer' : 'border-[#F0E8D8] shadow-sm'
-                       }`}>
-                    <div className="flex justify-between items-start">
-                      <div className={`w-6 h-6 rounded-full flex items-center justify-center ${task.completed ? 'bg-primary-teal' : isMonitorable ? 'border border-gray-200' : 'border border-[#E8D8B8]'}`}>
-                        {task.completed && <CheckCircle2 size={14} className="text-white" />}
+                  <button
+                    key={task.id || idx}
+                    onClick={() => !task.completed && isMonitorable && completeTask(task.id, reward)}
+                    disabled={task.completed || !isMonitorable}
+                    className={`w-full flex items-center justify-between px-4 py-3.5 rounded-[16px] border transition-colors text-left ${
+                      task.completed
+                        ? 'bg-[#F2FDFB] border-[#C8F0EC]'
+                        : 'bg-white border-[#E8F1F1]'
+                    }`}
+                  >
+                    {/* Left: circle + label */}
+                    <div className="flex items-center gap-3">
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-colors ${
+                        task.completed
+                          ? 'bg-[#26C6BF] text-white'
+                          : 'border-2 border-[#D0E8E6]'
+                      }`}>
+                        {task.completed && <CheckCircle2 size={18} />}
                       </div>
-                      {isMonitorable ? (
-                        <div className="bg-white shadow-sm text-[9px] font-extrabold text-[#D4AF37] border border-[#F4E3A0] px-2 py-0.5 rounded-full flex items-center gap-1">
-                          <div className="w-1 h-1 bg-[#FFD700] rounded-full" /> +{reward}
-                        </div>
-                      ) : (
-                        <div className="bg-[#FFF8EE] text-[9px] font-extrabold text-[#C8A060] border border-[#F4E3A0] px-2 py-0.5 rounded-full">
-                          💡 Tip
-                        </div>
-                      )}
+                      <span className={`font-semibold text-[15px] ${
+                        task.completed ? 'line-through text-[#7ECCC7]' : 'text-dark-teal'
+                      }`}>
+                        {task.task_name || 'Health Task'}
+                      </span>
                     </div>
-                    <h4 className={`font-extrabold text-[13px] leading-tight mt-4 ${task.completed ? 'text-gray-400 line-through' : isMonitorable ? 'text-dark-teal' : 'text-[#8B7355]'}`}>
-                      {task.task_name || 'Health Task'}
-                    </h4>
-                  </div>
+                    {/* Right: coin badge */}
+                    {isMonitorable ? (
+                      <div className="flex items-center gap-1.5 bg-[#FFF8E1] border border-[#FFE082] rounded-full px-2.5 py-1 shrink-0 ml-3">
+                        <div className="w-2 h-2 bg-[#FFD700] rounded-full" />
+                        <span className="text-[#D4AF37] font-extrabold text-[12px]">+{reward}</span>
+                      </div>
+                    ) : (
+                      <div className="bg-[#FFF8EE] text-[10px] font-extrabold text-[#C8A060] border border-[#F4E3A0] px-2.5 py-1 rounded-full shrink-0 ml-3">
+                        💡 Tip
+                      </div>
+                    )}
+                  </button>
                 );
               })}
             </div>
