@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Plus, X, Heart, Droplet, Activity, Scale } from 'lucide-react';
-import { vitalsAPI, dashboardAPI } from '../services/api.ts';
+import { Plus, X, Heart, Droplet, Activity, Scale, FileText, ChevronDown, ChevronUp } from 'lucide-react';
+import { vitalsAPI, dashboardAPI, trendsAPI } from '../services/api.ts';
 
 type LogTab = 'BP' | 'SUGAR' | 'BMI';
 
@@ -32,6 +32,9 @@ export default function VitalsScreen() {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState('');
+  const [fullHistory, setFullHistory] = useState<any>(null);
+  const [historyTab, setHistoryTab] = useState<'BP' | 'SUGAR' | 'REPORTS'>('BP');
+  const [showHistory, setShowHistory] = useState(false);
 
   const [bp, setBp] = useState({ sys: '', dia: '', pulse: '' });
   const [glucose, setGlucose] = useState('');
@@ -42,10 +45,11 @@ export default function VitalsScreen() {
   const loadHistory = async () => {
     setLoading(true);
     try {
-      const [vitalsRes, bmiRes] = await Promise.all([vitalsAPI.getHistory(), vitalsAPI.getLatestBMI()]);
+      const [vitalsRes, bmiRes, hist] = await Promise.all([vitalsAPI.getHistory(), vitalsAPI.getLatestBMI(), trendsAPI.getHistory().catch(() => null)]);
       setBpHistory(vitalsRes.bp_history || []);
       setSugarHistory(vitalsRes.sugar_history || []);
       setLatestBmi(bmiRes || null);
+      setFullHistory(hist);
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
   };
@@ -259,6 +263,101 @@ export default function VitalsScreen() {
             </>
           )}
         </div>
+      </div>
+
+      {/* Health History */}
+      <div className="px-6 pb-6">
+        <button onClick={() => setShowHistory(s => !s)}
+          className="w-full flex items-center justify-between bg-white border-[1.5px] border-[#E8F1F1] rounded-[24px] px-5 py-4 shadow-sm">
+          <span className="text-[#1A3A38] font-extrabold text-[16px]">Health History</span>
+          {showHistory ? <ChevronUp size={18} className="text-[#26C6BF]" /> : <ChevronDown size={18} className="text-[#26C6BF]" />}
+        </button>
+
+        {showHistory && (
+          <div className="bg-white border-[1.5px] border-[#E8F1F1] rounded-b-[24px] border-t-0 px-5 pb-5 shadow-sm">
+            {/* History tabs */}
+            <div className="flex gap-1 my-4 bg-[#F2FDFB] p-1 rounded-full">
+              {(['BP', 'SUGAR', 'REPORTS'] as const).map(t => (
+                <button key={t} onClick={() => setHistoryTab(t)}
+                  className={`flex-1 py-1.5 rounded-full text-[11px] font-bold transition-all ${historyTab === t ? 'bg-[#26C6BF] text-white' : 'text-[#7ECCC7]'}`}>
+                  {t}
+                </button>
+              ))}
+            </div>
+
+            {/* BP History */}
+            {historyTab === 'BP' && (
+              <div className="space-y-2">
+                {(fullHistory?.bp || []).length === 0 && <p className="text-[#7ECCC7] text-xs text-center py-4">No BP readings yet</p>}
+                {(fullHistory?.bp || []).map((r: any, i: number) => {
+                  const s = getBPStatus(r.systolic, r.diastolic);
+                  return (
+                    <div key={i} className="flex items-center justify-between py-2.5 border-b border-[#F0F0F0] last:border-0">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-red-50 flex items-center justify-center shrink-0">
+                          <Heart size={14} className="text-[#FF6B6B]" />
+                        </div>
+                        <div>
+                          <p className="text-[#1A3A38] font-extrabold text-[14px]">{r.systolic}/{r.diastolic} <span className="text-[#7ECCC7] font-normal text-[11px]">mmHg</span></p>
+                          <p className="text-[#A0A0A0] text-[10px]">{r.date} · {r.time}{r.pulse ? ` · ${r.pulse} bpm` : ''}</p>
+                        </div>
+                      </div>
+                      <span className="text-[9px] font-extrabold px-2 py-0.5 rounded-full shrink-0" style={{ background: s.bg, color: s.color }}>{s.label}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Sugar History */}
+            {historyTab === 'SUGAR' && (
+              <div className="space-y-2">
+                {(fullHistory?.sugar || []).length === 0 && <p className="text-[#7ECCC7] text-xs text-center py-4">No sugar readings yet</p>}
+                {(fullHistory?.sugar || []).map((r: any, i: number) => {
+                  const s = getSugarStatus(r.glucose);
+                  return (
+                    <div key={i} className="flex items-center justify-between py-2.5 border-b border-[#F0F0F0] last:border-0">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-[#F2FDFB] flex items-center justify-center shrink-0">
+                          <Droplet size={14} className="text-[#26C6BF]" />
+                        </div>
+                        <div>
+                          <p className="text-[#1A3A38] font-extrabold text-[14px]">{r.glucose.toFixed(0)} <span className="text-[#7ECCC7] font-normal text-[11px]">mg/dL</span></p>
+                          <p className="text-[#A0A0A0] text-[10px]">{r.date} · {r.time}</p>
+                        </div>
+                      </div>
+                      <span className="text-[9px] font-extrabold px-2 py-0.5 rounded-full shrink-0" style={{ background: s.bg, color: s.color }}>{s.label}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Reports History */}
+            {historyTab === 'REPORTS' && (
+              <div className="space-y-2">
+                {(fullHistory?.reports || []).length === 0 && <p className="text-[#7ECCC7] text-xs text-center py-4">No reports uploaded yet</p>}
+                {(fullHistory?.reports || []).map((r: any, i: number) => (
+                  <div key={i} className="flex items-start gap-3 py-2.5 border-b border-[#F0F0F0] last:border-0">
+                    <div className="w-8 h-8 rounded-full bg-purple-50 flex items-center justify-center shrink-0 mt-0.5">
+                      <FileText size={14} className="text-purple-500" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[#1A3A38] font-extrabold text-[13px]">{r.lab_name || 'Blood Report'}</p>
+                      <p className="text-[#A0A0A0] text-[10px] mb-1">{r.date}</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {r.hemoglobin && <span className="text-[9px] bg-red-50 text-red-500 px-1.5 py-0.5 rounded-full font-bold">Hb: {r.hemoglobin}</span>}
+                        {r.platelets && <span className="text-[9px] bg-blue-50 text-blue-500 px-1.5 py-0.5 rounded-full font-bold">PLT: {r.platelets.toLocaleString()}</span>}
+                        {r.glucose && <span className="text-[9px] bg-orange-50 text-orange-500 px-1.5 py-0.5 rounded-full font-bold">Glu: {r.glucose}</span>}
+                        {r.wbc && <span className="text-[9px] bg-green-50 text-green-500 px-1.5 py-0.5 rounded-full font-bold">WBC: {r.wbc.toLocaleString()}</span>}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* FAB — sticky at bottom of scroll area */}

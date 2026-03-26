@@ -192,3 +192,32 @@ async def get_trends_summary(
             "total_logs": bp_count + sugar_count
         }
     }
+
+
+@router.get("/history")
+async def get_full_history(
+    user_id: str = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db)
+):
+    """Full health history — all BP, sugar readings and blood reports."""
+    from models.domain import BloodReport
+
+    bp_res = await db.execute(
+        select(BPReading).where(BPReading.user_id == user_id).order_by(desc(BPReading.measured_at)).limit(50)
+    )
+    sugar_res = await db.execute(
+        select(SugarReading).where(SugarReading.user_id == user_id).order_by(desc(SugarReading.measured_at)).limit(50)
+    )
+    report_res = await db.execute(
+        select(BloodReport).where(BloodReport.user_id == user_id).order_by(desc(BloodReport.uploaded_at)).limit(20)
+    )
+
+    bp_list = bp_res.scalars().all()
+    sugar_list = sugar_res.scalars().all()
+    report_list = report_res.scalars().all()
+
+    return {
+        "bp": [{"date": r.measured_at.strftime("%Y-%m-%d"), "time": r.measured_at.strftime("%H:%M"), "systolic": r.systolic, "diastolic": r.diastolic, "pulse": r.pulse} for r in bp_list],
+        "sugar": [{"date": r.measured_at.strftime("%Y-%m-%d"), "time": r.measured_at.strftime("%H:%M"), "glucose": float(r.fasting_glucose)} for r in sugar_list],
+        "reports": [{"date": r.uploaded_at.strftime("%Y-%m-%d"), "lab_name": r.lab_name, "hemoglobin": float(r.hemoglobin) if r.hemoglobin else None, "wbc": float(r.wbc_count) if r.wbc_count else None, "platelets": int(r.platelet_count) if r.platelet_count else None, "glucose": float(r.fasting_glucose) if r.fasting_glucose else None} for r in report_list],
+    }

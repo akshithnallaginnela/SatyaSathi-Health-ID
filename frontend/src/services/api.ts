@@ -189,6 +189,7 @@ export const trendsAPI = {
   getSugar: (days: number = 30) => apiFetch(`/trends/sugar?days=${days}`),
   getWeight: (days: number = 90) => apiFetch(`/trends/weight?days=${days}`),
   getSummary: () => apiFetch('/trends/summary'),
+  getHistory: () => apiFetch('/trends/history'),
 };
 
 // ─── Share ───
