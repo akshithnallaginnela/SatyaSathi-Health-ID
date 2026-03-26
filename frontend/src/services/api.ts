@@ -2,7 +2,7 @@
  * VitalID API Service — JWT auth, auto-refresh, all endpoints.
  */
 
-const API_BASE = 'http://localhost:8000/api';
+const API_BASE = 'https://satyasathi-health-id.onrender.com/api';
 
 let accessToken: string | null = localStorage.getItem('vitalid_access_token');
 let refreshToken: string | null = localStorage.getItem('vitalid_refresh_token');
