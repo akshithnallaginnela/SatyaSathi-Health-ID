@@ -13,7 +13,7 @@ export default function RegisterScreen({ onRegister, onSwitchToLogin }: {
   onSwitchToLogin: () => void;
 }) {
   const [step, setStep] = useState<Step>('form');
-  const [form, setForm] = useState({ full_name: '', last_name: '', phone_number: '', password: '', date_of_birth: '', gender: 'male', blood_group: '', weight: '', height: '' });
+  const [form, setForm] = useState({ full_name: '', last_name: '', phone_number: '', password: '', date_of_birth: '', gender: 'male', blood_group: '', emergency_contact: '', weight: '', height: '' });
   const [otp, setOtp] = useState('');
   const [aadhaar, setAadhaar] = useState('');
   const [tempToken, setTempToken] = useState('');
@@ -32,6 +32,8 @@ export default function RegisterScreen({ onRegister, onSwitchToLogin }: {
     if (!/^[6-9]\d{9}$/.test(form.phone_number)) { setError('Enter valid 10-digit phone'); return; }
     if (form.password.length < 8) { setError('Password needs 8+ characters'); return; }
     if (!form.weight || !form.height) { setError('Enter weight and height'); return; }
+    if (form.emergency_contact && !/^[6-9]\d{9}$/.test(form.emergency_contact)) { setError('Enter valid emergency contact number'); return; }
+    if (form.emergency_contact && form.emergency_contact === form.phone_number) { setError('Emergency contact must be different from your number'); return; }
     setLoading(true);
     try {
       const fullName = form.last_name.trim() ? `${form.full_name.trim()} ${form.last_name.trim()}` : form.full_name.trim();
