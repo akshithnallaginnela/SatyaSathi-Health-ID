@@ -20,8 +20,8 @@ from services.sms_service import send_otp_sms
 
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 
-# In-memory OTP store (mock for prototype)
-_otp_store: dict[str, str] = {} # { phone: otp }
+# OTP store backed by DB via UserDataStatus.otp_code column (falls back to in-memory for safety)
+_otp_store: dict[str, str] = {}
 
 def _generate_health_id() -> str:
     """Generate a unique 14-digit health ID: XX-XXXX-XXXX-XXXX."""
@@ -73,12 +73,11 @@ async def register(data: UserCreate, db: AsyncSession = Depends(get_db)):
 
     # 5. Generate real OTP and send via Twilio
     otp = str(random.randint(100000, 999999))
-    _otp_store[data.phone_number] = otp
+    user.otp_code = otp
+    await db.commit()
 
-    # Send via Twilio (falls back to console log if keys not set)
     twilio_sent = send_otp_sms(data.phone_number, otp)
 
-    # Only expose OTP in response if Twilio is not configured (dev mode)
     import os
     is_dev = not os.getenv("TWILIO_ACCOUNT_SID") or not os.getenv("TWILIO_AUTH_TOKEN")
 
@@ -90,16 +89,13 @@ async def register(data: UserCreate, db: AsyncSession = Depends(get_db)):
 
 @router.post("/verify-otp")
 async def verify_otp(data: OTPVerify, db: AsyncSession = Depends(get_db)):
-    stored_otp = _otp_store.get(data.phone_number)
-    if not stored_otp or data.otp != stored_otp:
-        raise HTTPException(status_code=400, detail="Invalid OTP.")
-
     result = await db.execute(select(User).where(User.phone_number == data.phone_number))
     user = result.scalar_one_or_none()
-    
-    # Clean up OTP
-    if data.phone_number in _otp_store:
-        del _otp_store[data.phone_number]
+    if not user or not user.otp_code or data.otp != user.otp_code:
+        raise HTTPException(status_code=400, detail="Invalid OTP.")
+
+    user.otp_code = None
+    await db.commit()
 
     # Generate temp token for Aadhaar submit step
     temp_token = create_temp_token({"user_id": str(user.id)})

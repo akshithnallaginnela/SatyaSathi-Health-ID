@@ -64,6 +64,7 @@ class User(Base):
     profile_photo_url = Column(String(255))
     step_goal = Column(Integer, default=6000)
     emergency_contact = Column(String(15))
+    otp_code = Column(String(6))
     created_at = Column(DateTime, default=datetime.utcnow)
 
 class UserDataStatus(Base):
