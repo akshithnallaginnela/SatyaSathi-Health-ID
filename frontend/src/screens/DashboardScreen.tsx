@@ -1,14 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { Flame, CheckCircle2, MapPin, Activity, Heart, Share2, TrendingUp } from 'lucide-react';
-import { dashboardAPI, clinicsAPI, tasksAPI, clearTokens, trendsAPI, shareAPI } from '../services/api.ts';
+import { Flame, CheckCircle2, MapPin, Activity, Share2, Footprints } from 'lucide-react';
+import { dashboardAPI, tasksAPI, clearTokens, shareAPI } from '../services/api.ts';
 
-// Lazy load TrendChart to handle if chart.js not installed
-const TrendChart = React.lazy(() => 
-  import('../components/TrendChart.tsx').catch(() => ({
-    default: () => <div className="text-center py-8 text-gray-400">Install chart.js to see charts</div>
-  }))
-);
 
 // ── Score theme helper ─────────────────────────────────────────────────────
 
@@ -55,13 +49,64 @@ function getScoreTheme(score: number) {
   };
 }
 
+// ── Step Progress Bar ──────────────────────────────────────────────────────
+function StepProgressBar({ walkTask }: { walkTask?: any }) {
+  const todayKey = `steps_${new Date().toISOString().slice(0, 10)}`;
+  const [steps, setSteps] = useState(() => parseInt(localStorage.getItem(todayKey) || '0'));
+
+  // Derive goal: prefer the live walk task name (e.g. "Walk 8,000 steps today")
+  // fallback to localStorage step_goal, fallback to 6000
+  const goalFromTask = walkTask
+    ? parseInt((walkTask.task_name || '').replace(/[^0-9]/g, '') || '0') || null
+    : null;
+  const goalFromStorage = parseInt(localStorage.getItem('step_goal') || '0') || 6000;
+  const [goal, setGoal] = useState(goalFromTask || goalFromStorage);
+
+  useEffect(() => {
+    if (goalFromTask) setGoal(goalFromTask);
+  }, [goalFromTask]);
+
+  // Poll localStorage every 5s to stay in sync with MissionsScreen GPS tracking
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setSteps(parseInt(localStorage.getItem(todayKey) || '0'));
+      if (!goalFromTask) setGoal(parseInt(localStorage.getItem('step_goal') || '0') || 6000);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [todayKey, goalFromTask]);
+
+  const pct = Math.min(100, Math.round((steps / goal) * 100));
+  const barColor = pct >= 100 ? '#22c55e' : '#26C6BF';
+
+  return (
+    <div className="mb-4 bg-[#F2FDFB] border border-[#C8F0EC] rounded-[16px] px-4 py-3">
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-1.5">
+          <Footprints size={13} className="text-[#26C6BF]" />
+          <span className="text-[#1A3A38] font-extrabold text-[12px]">Steps Today</span>
+        </div>
+        <span className="text-[#26C6BF] font-extrabold text-[12px]">
+          {steps.toLocaleString()} / {goal.toLocaleString()}
+        </span>
+      </div>
+      <div className="w-full h-2 bg-[#E8F1F1] rounded-full overflow-hidden">
+        <div
+          className="h-full rounded-full transition-all duration-500"
+          style={{ width: `${pct}%`, background: barColor }}
+        />
+      </div>
+      <div className="flex justify-between mt-1">
+        <span className="text-[#7ECCC7] text-[10px] font-semibold">{pct}% of goal</span>
+        {pct >= 100 && <span className="text-green-500 text-[10px] font-extrabold">Goal reached 🎉</span>}
+      </div>
+    </div>
+  );
+}
+
 export default function DashboardScreen({ onLogout }: { onLogout: () => void; key?: string }) {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [clinics, setClinics] = useState<any[]>([]);
-  const [bpTrend, setBpTrend] = useState<any>(null);
-  const [sugarTrend, setSugarTrend] = useState<any>(null);
-  const [showTrends, setShowTrends] = useState(false);
   const [sharing, setSharing] = useState(false);
   const [notice, setNotice] = useState('');
   const lastFetchRef = React.useRef<number>(0);
@@ -103,8 +148,55 @@ export default function DashboardScreen({ onLogout }: { onLogout: () => void; ke
 
     const loadClinics = async (lat: number, lng: number) => {
       try {
-        const clinicData = await clinicsAPI.nearest(lat, lng);
-        setClinics(Array.isArray(clinicData) ? clinicData : []);
+        // Load Google Maps script if not already loaded
+        const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+        if (!apiKey) return;
+        await new Promise<void>((resolve, reject) => {
+          if ((window as any).google?.maps) { resolve(); return; }
+          const existing = document.getElementById('gmaps-script');
+          if (existing) { existing.addEventListener('load', () => resolve()); return; }
+          const script = document.createElement('script');
+          script.id = 'gmaps-script';
+          script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places`;
+          script.async = true;
+          script.onload = () => resolve();
+          script.onerror = () => reject();
+          document.head.appendChild(script);
+        });
+        const service = new (window as any).google.maps.places.PlacesService(document.createElement('div'));
+        service.nearbySearch(
+          {
+            location: new (window as any).google.maps.LatLng(lat, lng),
+            radius: 30000,
+            type: 'hospital',
+            keyword: 'clinic hospital health',
+          },
+          (results: any[], status: string) => {
+            if (status === 'OK' && results) {
+              const mapped = results.slice(0, 5).map((r: any) => {
+                // Calculate distance in km using Haversine
+                const R = 6371;
+                const dLat = ((r.geometry.location.lat() - lat) * Math.PI) / 180;
+                const dLon = ((r.geometry.location.lng() - lng) * Math.PI) / 180;
+                const a = Math.sin(dLat/2)**2 + Math.cos(lat*Math.PI/180)*Math.cos(r.geometry.location.lat()*Math.PI/180)*Math.sin(dLon/2)**2;
+                const distKm = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+                return {
+                  id: r.place_id,
+                  name: r.name,
+                  type: r.types?.[0]?.replace(/_/g, ' ') || 'Health Facility',
+                  address: r.vicinity,
+                  distance: distKm < 1 ? `${Math.round(distKm * 1000)} m` : `${distKm.toFixed(1)} km`,
+                  open_now: r.opening_hours?.open_now,
+                  rating: r.rating,
+                  lat: r.geometry.location.lat(),
+                  lng: r.geometry.location.lng(),
+                  place_id: r.place_id,
+                };
+              });
+              setClinics(mapped);
+            }
+          }
+        );
       } catch (e) {
         console.error('Clinics fetch error', e);
       }
@@ -136,22 +228,6 @@ export default function DashboardScreen({ onLogout }: { onLogout: () => void; ke
       await tasksAPI.completeTask(taskId);
     } catch (e) {
       console.error(e);
-    }
-  };
-
-  const loadTrends = async () => {
-    try {
-      const [bp, sugar] = await Promise.all([
-        trendsAPI.getBP(30),
-        trendsAPI.getSugar(30)
-      ]);
-      setBpTrend(bp);
-      setSugarTrend(sugar);
-      setShowTrends(true);
-    } catch (e) {
-      console.error('Trends load error', e);
-      // Don't set showTrends to true if there's an error
-      showNotice('Could not load trends. Make sure you have logged some vitals.');
     }
   };
 
@@ -319,6 +395,8 @@ export default function DashboardScreen({ onLogout }: { onLogout: () => void; ke
               <h3 className="text-dark-teal font-extrabold text-[17px]">Daily Tasks</h3>
               <span className="text-primary-teal font-extrabold text-[13px]">{tasksDone}/{todaysTasks.length} DONE</span>
             </div>
+            {/* Step progress bar — goal synced from MORNING_WALK task */}
+            <StepProgressBar walkTask={todaysTasks.find((t: any) => t.task_type === 'MORNING_WALK')} />
             <div className="space-y-3">
               {todaysTasks.map((task: any, idx: number) => {
                 const reward = task.coins_reward || task.coins || 0;
@@ -513,151 +591,38 @@ export default function DashboardScreen({ onLogout }: { onLogout: () => void; ke
           </div>
         )}
 
-        {/* 6. HEALTH TRENDS */}
-        {hasData && (
-          <div className="pt-4">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-dark-teal font-extrabold text-[17px]">Health Trends</h3>
-              {!showTrends && (
-                <button
-                  onClick={loadTrends}
-                  className="text-primary-teal text-xs font-bold flex items-center gap-1 bg-[#F2FDFB] px-3 py-2 rounded-full border border-border-teal"
-                >
-                  <TrendingUp size={14} />
-                  View Trends
-                </button>
-              )}
-            </div>
-
-            {!showTrends ? (
-              <div className="bg-gradient-to-br from-blue-50 to-purple-50 rounded-3xl p-8 text-center border-2 border-dashed border-gray-200">
-                <div className="text-6xl mb-4 animate-bounce">📈</div>
-                <div className="w-16 h-16 bg-orange-50 rounded-full flex items-center justify-center mx-auto mb-4 border-2 border-white shadow-sm">
-                  <TrendingUp size={32} className="text-orange-500" />
-                </div>
-                <h3 className="text-dark-teal font-extrabold text-lg mb-2">Track Your Progress</h3>
-                <p className="text-muted-teal text-sm leading-relaxed mb-6 max-w-xs mx-auto">
-                  Keep logging your vitals regularly to see trends and track your progress over time.
-                </p>
-                <button
-                  onClick={loadTrends}
-                  className="bg-orange-500 text-white font-extrabold px-6 py-3 rounded-2xl shadow-md hover:shadow-lg transition-all"
-                >
-                  Load Trends
-                </button>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {/* BP Trend */}
-                {bpTrend && bpTrend.data.length > 0 ? (
-                  <div className="bg-white border border-[#E8F1F1] rounded-2xl p-5 shadow-sm">
-                    <h4 className="text-dark-teal font-extrabold text-sm mb-3">Blood Pressure (Last 30 Days)</h4>
-                    
-                    {/* Try to show chart, fallback to simple view */}
-                    <React.Suspense fallback={
-                      <div className="space-y-2">
-                        {bpTrend.data.slice(-5).reverse().map((d: any, i: number) => (
-                          <div key={i} className="flex justify-between items-center p-2 bg-gray-50 rounded-lg">
-                            <span className="text-xs text-gray-600">{new Date(d.date).toLocaleDateString()}</span>
-                            <span className="text-sm font-bold text-dark-teal">{d.systolic}/{d.diastolic} mmHg</span>
-                          </div>
-                        ))}
-                      </div>
-                    }>
-                      <TrendChart
-                        data={bpTrend.data.map((d: any) => ({ date: d.date, value: d.systolic, value2: d.diastolic }))}
-                        label="Systolic"
-                        label2="Diastolic"
-                        color="#EF4444"
-                        color2="#F59E0B"
-                        yAxisLabel="mmHg"
-                      />
-                    </React.Suspense>
-                    
-                    <div className="mt-3 grid grid-cols-3 gap-2 text-center">
-                      <div className="bg-gray-50 rounded-lg p-2">
-                        <p className="text-[9px] text-gray-500 font-bold uppercase">Average</p>
-                        <p className="text-sm font-extrabold text-dark-teal">{bpTrend.stats.avg_systolic}/{bpTrend.stats.avg_diastolic}</p>
-                      </div>
-                      <div className="bg-gray-50 rounded-lg p-2">
-                        <p className="text-[9px] text-gray-500 font-bold uppercase">Readings</p>
-                        <p className="text-sm font-extrabold text-dark-teal">{bpTrend.stats.readings_count}</p>
-                      </div>
-                      <div className="bg-gray-50 rounded-lg p-2">
-                        <p className="text-[9px] text-gray-500 font-bold uppercase">Trend</p>
-                        <p className="text-sm font-extrabold text-primary-teal capitalize">{bpTrend.stats.trend}</p>
-                      </div>
-                    </div>
-                  </div>
-                ) : null}
-
-                {/* Sugar Trend */}
-                {sugarTrend && sugarTrend.data.length > 0 ? (
-                  <div className="bg-white border border-[#E8F1F1] rounded-2xl p-5 shadow-sm">
-                    <h4 className="text-dark-teal font-extrabold text-sm mb-3">Blood Sugar (Last 30 Days)</h4>
-                    
-                    {/* Try to show chart, fallback to simple view */}
-                    <React.Suspense fallback={
-                      <div className="space-y-2">
-                        {sugarTrend.data.slice(-5).reverse().map((d: any, i: number) => (
-                          <div key={i} className="flex justify-between items-center p-2 bg-gray-50 rounded-lg">
-                            <span className="text-xs text-gray-600">{new Date(d.date).toLocaleDateString()}</span>
-                            <span className="text-sm font-bold text-dark-teal">{d.glucose} mg/dL</span>
-                          </div>
-                        ))}
-                      </div>
-                    }>
-                      <TrendChart
-                        data={sugarTrend.data.map((d: any) => ({ date: d.date, value: d.glucose }))}
-                        label="Fasting Glucose"
-                        color="#8B5CF6"
-                        yAxisLabel="mg/dL"
-                      />
-                    </React.Suspense>
-                    
-                    <div className="mt-3 grid grid-cols-3 gap-2 text-center">
-                      <div className="bg-gray-50 rounded-lg p-2">
-                        <p className="text-[9px] text-gray-500 font-bold uppercase">Average</p>
-                        <p className="text-sm font-extrabold text-dark-teal">{sugarTrend.stats.avg_glucose}</p>
-                      </div>
-                      <div className="bg-gray-50 rounded-lg p-2">
-                        <p className="text-[9px] text-gray-500 font-bold uppercase">Readings</p>
-                        <p className="text-sm font-extrabold text-dark-teal">{sugarTrend.stats.readings_count}</p>
-                      </div>
-                      <div className="bg-gray-50 rounded-lg p-2">
-                        <p className="text-[9px] text-gray-500 font-bold uppercase">Above 100</p>
-                        <p className="text-sm font-extrabold text-orange-600">{sugarTrend.stats.above_100_count}</p>
-                      </div>
-                    </div>
-                  </div>
-                ) : null}
-
-                {(!bpTrend || bpTrend.data.length === 0) && (!sugarTrend || sugarTrend.data.length === 0) && (
-                  <div className="bg-gray-50 rounded-2xl p-8 text-center border border-dashed border-gray-200">
-                    <p className="text-gray-400 text-sm">Not enough data yet</p>
-                    <p className="text-gray-300 text-xs mt-1">Log at least 2 readings to see trends</p>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        )}
-
         {/* 7. CLINICS */}
         <div className="bg-white border border-[#F0F0F0] rounded-[28px] p-5 shadow-sm">
           <h3 className="text-dark-teal font-extrabold text-[16px] flex items-center gap-2 mb-4">
             <MapPin size={18} className="text-primary-teal" /> Nearby Clinics
           </h3>
           <div className="space-y-3">
+            {clinics.length === 0 && (
+              <p className="text-muted-teal text-[12px] text-center py-3">Locating nearby clinics...</p>
+            )}
             {clinics.slice(0, 3).map((c, i) => (
-              <div key={i} className="flex justify-between items-center p-3 border border-gray-50 rounded-xl bg-gray-50/50">
-                <div>
-                  <p className="text-dark-teal font-extrabold text-[13px]">{c.name}</p>
-                  <p className="text-muted-teal text-[10px]">{c.type}</p>
+              <div key={i} className="flex justify-between items-center p-3 border border-gray-100 rounded-xl bg-gray-50/50">
+                <div className="flex-1 min-w-0 pr-3">
+                  <p className="text-dark-teal font-extrabold text-[13px] truncate">{c.name}</p>
+                  <p className="text-muted-teal text-[10px] truncate">{c.address || c.type}</p>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    {c.rating && (
+                      <span className="text-[10px] font-bold text-[#D4AF37]">★ {c.rating}</span>
+                    )}
+                    {c.open_now !== undefined && (
+                      <span className={`text-[10px] font-bold ${c.open_now ? 'text-green-500' : 'text-red-400'}`}>
+                        {c.open_now ? 'Open' : 'Closed'}
+                      </span>
+                    )}
+                  </div>
                 </div>
-                <div className="text-right">
-                  <p className="text-primary-teal text-[11px] font-bold">{c.distance || 'Nearby'}</p>
-                  <button className="bg-primary-teal text-white text-[10px] px-3 py-1 rounded-md mt-1">Book</button>
+                <div className="text-right shrink-0">
+                  <p className="text-primary-teal text-[11px] font-bold">{c.distance}</p>
+                  <button
+                    onClick={() => window.open(`https://www.google.com/maps/dir/?api=1&destination=${c.lat},${c.lng}&destination_place_id=${c.place_id}`, '_blank')}
+                    className="bg-primary-teal text-white text-[10px] px-3 py-1 rounded-md mt-1">
+                    Directions
+                  </button>
                 </div>
               </div>
             ))}

@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">SatyaSathi Health</string>
+    <string name="title_activity_main">SatyaSathi Health</string>
+    <string name="package_name">com.satyasathi.health</string>
+    <string name="custom_url_scheme">com.satyasathi.health</string>
+</resources>

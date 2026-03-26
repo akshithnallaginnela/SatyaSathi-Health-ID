@@ -87,11 +87,11 @@ function App() {
   if (authState === 'register') return <RegisterScreen onRegister={handleLoginSuccess} onSwitchToLogin={() => setAuthState('login')} />;
 
   return (
-    <div className="flex justify-center items-center min-h-screen p-4 bg-gray-100">
-      <div className="w-[375px] h-[812px] bg-white rounded-[40px] border-[8px] border-gray-900 shadow-2xl relative overflow-hidden flex flex-col">
+    <div className="w-screen h-screen bg-gray-100 flex flex-col md:justify-center md:items-center md:p-4">
+      <div className="w-full h-full md:w-[375px] md:h-[812px] md:rounded-[40px] md:border-[8px] md:border-gray-900 md:shadow-2xl bg-white relative overflow-hidden flex flex-col">
         
-        {/* Dynamic Island Notch UI */}
-        <div className="absolute top-0 w-full flex justify-center z-50 pt-2 pointer-events-none">
+        {/* Dynamic Island Notch UI - Hidden on Desktop, Visible on Mobile */}
+        <div className="hidden md:flex absolute top-0 w-full justify-center z-50 pt-2 pointer-events-none">
           <div className="bg-black w-[120px] h-[30px] rounded-full flex items-center justify-between px-3">
             <div className="w-2.5 h-2.5 rounded-full bg-[#1A1A1A] border-[1px] border-[#333]" />
             <div className="w-2 h-2 rounded-full bg-[#0A0A0A]" />
@@ -101,7 +101,7 @@ function App() {
         {/* Header App Title - handled inside screens so it doesn't overlap */}
 
         {/* Main Content Area */}
-        <div className="flex-1 overflow-y-auto no-scrollbar bg-[#FAFAFA]">
+        <div className="flex-1 overflow-y-auto no-scrollbar bg-[#FAFAFA] md:pt-8">
           <AnimatePresence mode="wait">
             {activeTab === 'dashboard' && <DashboardScreen key="dash" onLogout={handleLogout} />}
             {activeTab === 'missions' && <MissionsScreen key="miss" />}
@@ -112,7 +112,7 @@ function App() {
         </div>
 
         {/* Bottom Navigation */}
-        <div className="bg-white border-t border-gray-100 pb-8 pt-3 px-4 flex justify-between items-center z-40 shrink-0">
+        <div className="bg-white border-t border-gray-100 md:pb-8 pb-4 pt-3 px-4 flex justify-between items-center z-40 shrink-0">
           <NavItem id="dashboard" icon={<LayoutDashboard />} label="Home" active={activeTab} onClick={setActiveTab} />
           <NavItem id="missions" icon={<Target />} label="Missions" active={activeTab} onClick={setActiveTab} />
 

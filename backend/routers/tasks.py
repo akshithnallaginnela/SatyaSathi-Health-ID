@@ -173,13 +173,26 @@ async def get_monthly_task_status(
     }
 
 
+@router.get("/step-goal")
+async def get_step_goal(
+    user_id: str = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get user's current daily step goal."""
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return {"step_goal": user.step_goal or 6000}
+
+
 @router.post("/step-goal")
 async def update_step_goal(
     data: dict,
     user_id: str = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
-    """Update user's daily step goal (6000–60000)."""
+    """Update user's daily step goal (6000–60000) and patch today's walk task immediately."""
     goal = int(data.get("step_goal", 6000))
     goal = max(6000, min(60000, goal))
 
@@ -189,5 +202,23 @@ async def update_step_goal(
         raise HTTPException(status_code=404, detail="User not found")
 
     user.step_goal = goal
+    await db.flush()
+
+    # Patch today's MORNING_WALK task immediately
+    walk_coins = round(25 + (goal - 6000) / (60000 - 6000) * 75)
+    today = date.today()
+    walk_result = await db.execute(
+        select(DailyTask).where(
+            DailyTask.user_id == user_id,
+            DailyTask.task_date == today,
+            DailyTask.task_type == "MORNING_WALK"
+        )
+    )
+    walk_task = walk_result.scalar_one_or_none()
+    if walk_task:
+        walk_task.task_name = f"Walk {goal:,} steps today"
+        walk_task.duration_or_quantity = f"{goal:,} steps"
+        walk_task.coins_reward = walk_coins
+
     await db.commit()
-    return {"step_goal": goal, "message": f"Step goal updated to {goal:,}"}
+    return {"step_goal": goal, "walk_coins": walk_coins, "message": f"Step goal updated to {goal:,}"}

@@ -22,15 +22,20 @@ export default function HealthIDCard({ profile, vitals, onDownload }: HealthIDCa
 
   React.useEffect(() => {
     if (!profile?.health_id) return;
-    const qrPayload = JSON.stringify({
-      id:   profile.health_id,
-      name: profile.full_name || '',
-      bg:   profile.blood_group || 'Unknown',
-      bp:   vitals?.bp_value || null,
-      glu:  vitals?.sugar_value || null,
-      ec:   profile.emergency_contact || profile.phone_number || '',
-    });
-    QRCode.toDataURL(qrPayload, {
+    const lines = [
+      `SatyaSathi Health ID`,
+      `--------------------`,
+      `Name: ${profile.full_name || '—'}`,
+      `ID:   ${profile.health_id}`,
+      `DOB:  ${profile.date_of_birth || '—'}`,
+      `Gender: ${profile.gender || '—'}`,
+      `Blood Group: ${profile.blood_group || '—'}`,
+      ...(vitals?.bp_value    ? [`BP: ${vitals.bp_value} mmHg`]   : []),
+      ...(vitals?.sugar_value ? [`Sugar: ${vitals.sugar_value} mg/dL`] : []),
+      `--------------------`,
+      `Emergency: ${profile.emergency_contact || profile.phone_number || '—'}`,
+    ];
+    QRCode.toDataURL(lines.join('\n'), {
       width: 160, margin: 1, errorCorrectionLevel: 'M',
       color: { dark: '#1A3A38', light: '#FFFFFF' },
     }).then(setQrDataUrl).catch(console.error);
