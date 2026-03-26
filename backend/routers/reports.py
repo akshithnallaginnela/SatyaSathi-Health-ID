@@ -14,6 +14,7 @@ from models.domain import (
 from security.jwt_handler import get_current_user_id
 from services.ocr_service import extract_report_values
 from ml.analysis_engine import run_full_analysis
+from services.blockchain_service import record_on_chain
 
 router = APIRouter(prefix="/api/reports", tags=["Reports"])
 

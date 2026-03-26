@@ -248,6 +248,17 @@ class AuditLog(Base):
     action = Column(String(50))
     detail = Column(Text)
     created_at = Column(DateTime, default=datetime.utcnow)
+
+class BlockchainRecord(Base):
+    __tablename__ = "blockchain_records"
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    user_id = Column(GUID(), ForeignKey("users.id"), nullable=False)
+    record_type = Column(String(30), nullable=False)   # "BP", "SUGAR", "BMI", "REPORT"
+    record_date = Column(Date, nullable=False)
+    data_hash = Column(String(64), nullable=False)     # SHA-256 of the payload
+    tx_hash = Column(String(120), nullable=False)      # Polygon tx hash (or mock)
+    summary = Column(String(200))                      # Human-readable e.g. "BP: 120/80"
+    created_at = Column(DateTime, default=datetime.utcnow)
 from pydantic import BaseModel, Field, field_validator, ConfigDict
 from typing import Optional, List
 import re

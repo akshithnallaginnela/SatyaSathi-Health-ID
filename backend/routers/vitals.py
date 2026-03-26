@@ -11,6 +11,7 @@ from models.domain import (
 )
 from security.jwt_handler import get_current_user_id
 from ml.analysis_engine import run_full_analysis
+from services.blockchain_service import record_on_chain
 
 router = APIRouter(prefix="/api/vitals", tags=["Vitals"])
 
@@ -74,6 +75,19 @@ async def log_bp(
 
     await db.commit()
 
+    # Anchor BP reading on blockchain
+    try:
+        await record_on_chain(
+            db=db,
+            user_id=user_id,
+            record_type="BP",
+            payload={"systolic": reading.systolic, "diastolic": reading.diastolic, "pulse": reading.pulse, "date": str(date.today())},
+            summary=f"BP: {reading.systolic}/{reading.diastolic} mmHg",
+        )
+        await db.commit()
+    except Exception as e:
+        print(f"Blockchain BP error: {e}")
+
     # Trigger AI analysis in fresh session so it sees the new reading
     try:
         async with async_session() as analysis_db:
@@ -136,6 +150,19 @@ async def log_sugar(
         ))
 
     await db.commit()
+
+    # Anchor sugar reading on blockchain
+    try:
+        await record_on_chain(
+            db=db,
+            user_id=user_id,
+            record_type="SUGAR",
+            payload={"fasting_glucose": reading.fasting_glucose, "date": str(date.today())},
+            summary=f"Blood Sugar: {reading.fasting_glucose} mg/dL",
+        )
+        await db.commit()
+    except Exception as e:
+        print(f"Blockchain Sugar error: {e}")
 
     # Trigger AI analysis in fresh session so it sees the new reading
     try:
@@ -216,6 +243,19 @@ async def log_bmi(
         user.bmi = round(user.weight_kg / ((user.height_cm / 100) ** 2), 2)
     
     await db.commit()
+
+    # Anchor BMI on blockchain
+    try:
+        await record_on_chain(
+            db=db,
+            user_id=user_id,
+            record_type="BMI",
+            payload={"weight_kg": user.weight_kg, "height_cm": user.height_cm, "bmi": user.bmi, "date": str(date.today())},
+            summary=f"BMI: {user.bmi} | {user.weight_kg}kg / {user.height_cm}cm",
+        )
+        await db.commit()
+    except Exception as e:
+        print(f"Blockchain BMI error: {e}")
 
     # Trigger AI analysis in fresh session so it sees updated BMI
     try:
