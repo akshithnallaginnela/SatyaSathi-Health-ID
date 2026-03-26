@@ -201,6 +201,14 @@ export default function RegisterScreen({ onRegister, onSwitchToLogin }: {
                   <option value="O+">O+</option>
                   <option value="O-">O-</option>
                 </select></div>
+              <div>
+                <label className={labelClass}>Emergency Contact Number</label>
+                <input type="tel" placeholder="Different from your number" maxLength={10}
+                  value={form.emergency_contact}
+                  onChange={e => setForm({...form, emergency_contact: e.target.value.replace(/\D/g,'')})}
+                  className={inputClass}/>
+                <p className="text-[#7ECCC7] text-[10px] mt-1 px-1">This number appears on your Health ID QR for emergencies</p>
+              </div>
             </div>
           )}
 
