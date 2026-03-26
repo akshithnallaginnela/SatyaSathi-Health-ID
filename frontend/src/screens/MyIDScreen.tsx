@@ -3,9 +3,9 @@ import { motion, AnimatePresence } from 'motion/react';
 import {
   Shield, CreditCard, Activity, LogOut, Bell, UploadCloud,
   Plus, X, Trash2, Droplets, Lock, Download, ChevronRight,
-  Eye, EyeOff, User as UserIcon, Edit3, Check, Settings
+  Eye, EyeOff, User as UserIcon, Edit3, Check, Settings, Link
 } from 'lucide-react';
-import { profileAPI, coinsAPI, clearTokens, notificationsAPI, mlAPI, healthIdAPI } from '../services/api.ts';
+import { profileAPI, coinsAPI, clearTokens, notificationsAPI, mlAPI, healthIdAPI, blockchainAPI } from '../services/api.ts';
 import HealthIDCard from '../components/HealthIDCard.tsx';
 
 type ModalType = 'reminder' | 'password' | 'editProfile' | null;
@@ -43,16 +43,20 @@ export default function MyIDScreen({ user, onLogout, onReportUploaded, onOpenSet
   // Downloading
   const [downloading, setDownloading] = useState(false);
 
+  // Blockchain history
+  const [chainHistory, setChainHistory] = useState<any[]>([]);
+
   const reminderCheckRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     (async () => {
       try {
-        const [p, c, a, cd] = await Promise.all([profileAPI.get(), coinsAPI.getBalance(), profileAPI.getActivity(), healthIdAPI.getCardData()]);
+        const [p, c, a, cd, chain] = await Promise.all([profileAPI.get(), coinsAPI.getBalance(), profileAPI.getActivity(), healthIdAPI.getCardData(), blockchainAPI.getHistory().catch(() => [])]);
         setProfile(p);
         setCardData(cd);
         setCoins(c.total_balance);
         setActivity(a);
+        setChainHistory(Array.isArray(chain) ? chain : []);
         setEditForm({ full_name: p.full_name || '', weight_kg: p.weight_kg || '', height_cm: p.height_cm || '' });
       } catch (e) { console.error(e); }
     })();
@@ -366,6 +370,48 @@ export default function MyIDScreen({ user, onLogout, onReportUploaded, onOpenSet
           {activity.completed_tasks.length === 0 && (
             <p className="text-[#7ECCC7] text-xs text-center py-4">No activity yet. Complete some missions!</p>
           )}
+        </div>
+      </div>
+
+      {/* Blockchain Health Timeline */}
+      <div className="px-6 mt-4">
+        <div className="flex items-center gap-2 mb-3">
+          <Link size={12} className="text-[#26C6BF]" />
+          <h3 className="text-[#26C6BF] text-[10px] font-extrabold uppercase tracking-widest">Health Record Timeline</h3>
+        </div>
+        <div className="space-y-2">
+          {chainHistory.length === 0 ? (
+            <div className="bg-[#F2FDFB] border border-[#C8F0EC] rounded-2xl p-4 text-center">
+              <p className="text-[#7ECCC7] text-xs">No records yet. Log vitals or upload a report to start your immutable timeline.</p>
+            </div>
+          ) : chainHistory.slice(0, 20).map((r: any) => {
+            const typeColors: Record<string, string> = {
+              BP: 'bg-red-50 text-red-500 border-red-100',
+              SUGAR: 'bg-orange-50 text-orange-500 border-orange-100',
+              BMI: 'bg-blue-50 text-blue-500 border-blue-100',
+              REPORT: 'bg-purple-50 text-purple-500 border-purple-100',
+            };
+            const colorClass = typeColors[r.record_type] || 'bg-[#F2FDFB] text-[#26C6BF] border-[#C8F0EC]';
+            return (
+              <div key={r.id} className="bg-white border border-[#C8F0EC] rounded-2xl p-3 flex items-start gap-3">
+                <div className={`px-2 py-0.5 rounded-full border text-[9px] font-extrabold shrink-0 mt-0.5 ${colorClass}`}>
+                  {r.record_type}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[#1A3A38] text-xs font-semibold truncate">{r.summary}</p>
+                  <p className="text-[#7ECCC7] text-[10px] mt-0.5">{r.record_date}</p>
+                </div>
+                <div className="shrink-0 text-right">
+                  {r.is_mock ? (
+                    <span className="text-[9px] text-[#C8A060] font-bold bg-[#FFF8EE] border border-[#F4E3A0] px-1.5 py-0.5 rounded-full">Local</span>
+                  ) : (
+                    <span className="text-[9px] text-[#26C6BF] font-bold bg-[#F2FDFB] border border-[#C8F0EC] px-1.5 py-0.5 rounded-full">⛓ On-chain</span>
+                  )}
+                  <p className="text-[#D0D0D0] text-[8px] mt-0.5 font-mono">{r.tx_hash.slice(0, 12)}…</p>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
 
