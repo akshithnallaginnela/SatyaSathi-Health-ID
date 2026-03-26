@@ -88,7 +88,7 @@ async def legacy_analyze_report(
 ):
     return await analyze_report(file, user_id, db)
 
-_uploads_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "uploads")
+_uploads_dir = "/app/data/uploads" if os.path.exists("/app/data") else os.path.join(os.path.dirname(os.path.abspath(__file__)), "uploads")
 os.makedirs(_uploads_dir, exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=_uploads_dir), name="uploads")
 

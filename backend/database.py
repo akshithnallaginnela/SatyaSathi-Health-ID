@@ -10,7 +10,9 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sess
 load_dotenv()
 
 # PostgreSQL first, but defaults to async sqlite for local testing if no env var is provided
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///./vitalid.db")
+# Use /app/data for persistent storage on Fly.io, fallback to local for dev
+_default_db = "sqlite+aiosqlite:////app/data/vitalid.db" if os.path.exists("/app/data") else "sqlite+aiosqlite:///./vitalid.db"
+DATABASE_URL = os.getenv("DATABASE_URL", _default_db)
 
 # Source of truth for SQLAlchemy Base
 from models.domain import Base
