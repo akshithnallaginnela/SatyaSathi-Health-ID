@@ -43,6 +43,7 @@ export default function RegisterScreen({ onRegister, onSwitchToLogin }: {
         password: form.password,
         gender: form.gender || undefined,
         blood_group: form.blood_group || undefined,
+        emergency_contact: form.emergency_contact || undefined,
         weight_kg: form.weight ? parseFloat(form.weight) : undefined,
         height_cm: form.height ? parseFloat(form.height) : undefined,
       };
