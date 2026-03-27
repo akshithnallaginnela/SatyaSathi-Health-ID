@@ -164,3 +164,14 @@ async def get_me(user_id: str = Depends(get_current_user_id), db: AsyncSession =
     if not user:
         raise HTTPException(status_code=404, detail="User not found.")
     return UserResponse.model_validate(user)
+
+@router.delete("/admin/delete-user/{phone}")
+async def admin_delete_user(phone: str, db: AsyncSession = Depends(get_db)):
+    """Temp admin endpoint — delete user by phone number."""
+    result = await db.execute(select(User).where(User.phone_number == phone))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found.")
+    await db.delete(user)
+    await db.commit()
+    return {"message": f"User {phone} deleted successfully."}
