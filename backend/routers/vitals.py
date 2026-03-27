@@ -51,9 +51,13 @@ async def log_bp(
     streak_bonus = False
     if prev_bp:
         days_since = (datetime.utcnow() - prev_bp.measured_at).days
-        if days_since >= 7:
-            coins_awarded = 10
-            streak_bonus = True
+        if days_since < 7:
+            raise HTTPException(
+                status_code=400,
+                detail=f"You can log BP again in {7 - days_since} day(s). Next allowed: {(prev_bp.measured_at + timedelta(days=7)).strftime('%d %b %Y')}"
+            )
+        coins_awarded = 10
+        streak_bonus = True
 
     new_reading = BPReading(
         user_id=user_id,
@@ -130,9 +134,13 @@ async def log_sugar(
     streak_bonus = False
     if prev_sugar:
         days_since = (datetime.utcnow() - prev_sugar.measured_at).days
-        if days_since >= 7:
-            coins_awarded = 10
-            streak_bonus = True
+        if days_since < 7:
+            raise HTTPException(
+                status_code=400,
+                detail=f"You can log Sugar again in {7 - days_since} day(s). Next allowed: {(prev_sugar.measured_at + timedelta(days=7)).strftime('%d %b %Y')}"
+            )
+        coins_awarded = 10
+        streak_bonus = True
 
     new_reading = SugarReading(
         user_id=user_id,
